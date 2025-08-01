@@ -17,6 +17,9 @@ impl JulianDay {
     pub const J2000: Self = Self(2451545.0);
     
     /// Creates a new Julian Day with validation
+    /// 
+    /// # Errors
+    /// Returns `DomainError::InvalidJulianDay` if the Julian Day value is not finite or is negative
     pub fn new(jd: f64) -> crate::DomainResult<Self> {
         if jd.is_finite() && jd > 0.0 {
             Ok(Self(jd))
@@ -71,6 +74,10 @@ pub struct EclipticSpherical {
 
 impl EclipticSpherical {
     /// Creates new ecliptic coordinates with validation
+    /// 
+    /// # Errors
+    /// Returns `DomainError::InvalidCoordinates` if any coordinate is not finite
+    /// Returns `DomainError::InvalidDistance` if distance is not positive
     pub fn new(lon_rad: f64, lat_rad: f64, r_au: f64) -> crate::DomainResult<Self> {
         if !lon_rad.is_finite() || !lat_rad.is_finite() || !r_au.is_finite() {
             return Err(crate::DomainError::InvalidCoordinates);
@@ -189,6 +196,9 @@ impl EphemerisData {
     }
     
     /// Add position for celestial body
+    /// 
+    /// # Errors
+    /// Returns `DomainError::EphemerisCapacityExceeded` if maximum capacity (11 bodies) is reached
     pub fn add_position(&mut self, _body: CelestialBody, position: Cartesian) -> crate::DomainResult<()> {
         if self.positions.len() >= 11 {
             return Err(crate::DomainError::EphemerisCapacityExceeded);

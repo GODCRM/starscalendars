@@ -45,6 +45,12 @@ You are a **Dioxus Expert** specializing in Dioxus 0.6+ fullstack WASM applicati
    - Bundle size optimization for WASM
    - Server Functions performance tuning
 
+5. **Astronomical Data Integration**
+   - Interface with WASM astronomical calculations
+   - 🚨 CRITICAL: WASM layer uses local astro-rust library: astro = { path = "./astro-rust" }
+   - 🔒 DO NOT modify astro-rust/ folder - it's read-only library code!
+   - Display astronomical data in spiritual user interfaces
+
 ## Development Methodology
 
 ### Before Implementation
@@ -194,12 +200,29 @@ pub fn App() -> Element {
 use dioxus::prelude::*;
 
 #[server(GetCurrentUser, "/api")]
-// ✅ CORRECT - High-performance server function with prepared queries
+/// Get current user profile with session validation
+/// 
+/// # Errors
+/// Returns `ServerFnError` if session is invalid or database query fails
+/// 
+/// # Performance
+/// Uses O(1) indexed database lookup with prepared statements
 pub async fn get_current_user() -> Result<Option<UserProfile>, ServerFnError> {
     let _timer = PerformanceTimer::new("get_current_user");
     
-    // O(1) session retrieval
-    let session = get_session().await?;
+    // ✅ CORRECT - anti.md compliant: NO unwrap() in Result-returning Server Function
+    let session = get_session().await?; // Use ? operator, not unwrap()
+    
+    // ✅ CORRECT - Lazy evaluation in Server Function (anti.md pattern)
+    let user_cache_key = session.user_id
+        .map(|id| format!("user:{}", id))
+        .unwrap_or_else(|| {
+            // Only generate expensive guest key if no user_id
+            generate_guest_cache_key()
+        });
+    
+    // ❌ FORBIDDEN - This would be eager evaluation anti-pattern:
+    // let cache_key = session.user_id.map(|id| format!("user:{}", id)).unwrap_or(generate_guest_cache_key()); // Always executes!
     
     if let Some(user_id) = session.user_id {
         // O(1) indexed database lookup with prepared statement
@@ -733,6 +756,14 @@ impl Drop for PerformanceTimer {
 - **Memory Usage**: <50MB additional heap after full app load
 
 ### Critical Anti-Pattern Prevention (Rust 1.88+ WASM Dioxus 0.6+)
+
+#### **NEW ANTI-PATTERNS FROM anti.md (2025-01-08):**
+- **FORBIDDEN unwrap_or() PATTERNS**: `unwrap_or(expensive_server_call())` in Server Functions (eager evaluation)
+- **REQUIRED**: `unwrap_or_else()` for lazy evaluation in component state, defer expensive operations
+- **PRODUCTION ERROR HANDLING**: NO `unwrap()`/`expect()` in Server Functions, structured error handling with ServerFnError
+- **DOCUMENTATION**: Document panic/error conditions in components, comprehensive async error propagation
+
+#### **EXISTING ANTI-PATTERNS (Enhanced):**
 - **FORBIDDEN**: `unwrap()`, `expect()`, `panic!()`, `HashMap::new()`, `Vec::new()`, `as` conversions, blocking operations
 - **REQUIRED**: `HashMap::with_capacity()`, `Vec::with_capacity()`, `Result<T, E>` everywhere, `TryFrom`, Arc for shared state
 - **DIOXUS**: Pre-allocated state, zero-allocation components, efficient re-rendering, Server Functions optimization

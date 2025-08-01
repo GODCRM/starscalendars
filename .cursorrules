@@ -305,7 +305,8 @@ pub trait TelegramApi {
 - **Babylon.js 8 - CDN**: https://cdn.babylonjs.com/babylon.js
 
 - **Astro Rust - Main**: https://docs.rs/astro/latest/astro/
-- **Astro Rust - GIT**: https://github.com/saurvs/astro-rust
+- **Astro Rust - LOCAL COPY**: ./astro-rust/ folder (🔒 DO NOT MODIFY!)
+- **Astro Rust - GIT**: https://github.com/saurvs/astro-rust (⚠️ DEPRECATED)
 
 - **Teloxide - Main**: https://docs.rs/teloxide/latest/teloxide/
 - **Teloxide - GIT**: https://github.com/teloxide/teloxide

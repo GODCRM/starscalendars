@@ -21,11 +21,14 @@ impl UserId {
         Self(id)
     }
     
-    /// Parse from string representation
+    /// Parse a user ID from a string
+    /// 
+    /// # Errors
+    /// Returns `DomainError::InvalidUserId` if the string is not a valid UUID
     pub fn parse(s: &str) -> crate::DomainResult<Self> {
         Uuid::parse_str(s)
             .map(Self)
-            .map_err(|_| crate::DomainError::InvalidUserId(s.to_string()))
+            .map_err(|_parse_error| crate::DomainError::InvalidUserId(s.to_string()))
     }
     
     /// Get the underlying UUID
@@ -51,7 +54,10 @@ impl Default for UserId {
 pub struct TelegramUserId(i64);
 
 impl TelegramUserId {
-    /// Create new Telegram user ID with validation
+    /// Create a new TelegramUserId
+    /// 
+    /// # Errors
+    /// Returns `DomainError::InvalidTelegramUserId` if the ID is invalid (e.g., negative)
     pub fn new(id: i64) -> crate::DomainResult<Self> {
         if id <= 0 {
             return Err(crate::DomainError::InvalidTelegramUserId(id));

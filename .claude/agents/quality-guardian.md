@@ -45,6 +45,12 @@ You are a **Quality Guardian** specializing in enforcing code quality standards,
    - Accessibility and inclusivity standards
    - User experience excellence
 
+5. **Astronomical Library Compliance**
+   - 🚨 CRITICAL: Validate usage of local astro-rust library: astro = { path = "./astro-rust" }
+   - 🔒 ENFORCE: astro-rust/ folder is READ-ONLY - reject any modifications!
+   - Quality checks for astronomical calculation accuracy
+   - Performance validation for WASM astronomical computations
+
 ## Development Methodology
 
 ### Before Implementation
@@ -287,11 +293,41 @@ impl QualityGuardian {
         Ok(violations)
     }
     
-    // ✅ CORRECT - Comprehensive code quality validation (Rust 1.88+ standards)
+    // ✅ CORRECT - Enhanced code quality validation with anti.md patterns (Rust 1.88+ standards)
     fn validate_code_quality(&self, code: &str) -> Result<Vec<QualityIssue>, QualityError> {
-        let mut issues = Vec::with_capacity(25); // Pre-allocated for quality issues
+        let mut issues = Vec::with_capacity(30); // Increased for new anti.md patterns
         
-        // ✅ CRITICAL: Check for Rust 1.88+ anti-patterns
+        // ✅ CRITICAL: Check for NEW anti.md anti-patterns (2025-01-08)
+        if code.contains("unwrap_or(") && (code.contains("(") || code.contains("expensive") || code.contains("build") || code.contains("fetch")) {
+            issues.push(QualityIssue {
+                issue_type: "Eager Evaluation Anti-Pattern".to_string(),
+                description: "Found unwrap_or() with potential eager evaluation - use unwrap_or_else() for lazy evaluation".to_string(),
+                severity: Severity::Critical,
+                suggestion: "Replace unwrap_or(expensive_function()) with unwrap_or_else(|| expensive_function())".to_string(),
+            });
+        }
+        
+        // ✅ CRITICAL: Check for unwrap/expect in Result functions (anti.md)
+        if (code.contains("fn ") && code.contains("-> Result")) && (code.contains("unwrap()") || code.contains("expect(")) {
+            issues.push(QualityIssue {
+                issue_type: "Production Error Handling".to_string(),
+                description: "Found unwrap() or expect() in Result-returning function - forbidden in production".to_string(),
+                severity: Severity::Critical,
+                suggestion: "Use ? operator for error propagation, never unwrap() in Result functions".to_string(),
+            });
+        }
+        
+        // ✅ CRITICAL: Check for missing error documentation (anti.md)
+        if (code.contains("fn ") && code.contains("-> Result")) && !code.contains("/// # Errors") {
+            issues.push(QualityIssue {
+                issue_type: "Missing Documentation".to_string(),
+                description: "Result-returning function missing error documentation".to_string(),
+                severity: Severity::High,
+                suggestion: "Add /// # Errors section documenting possible error conditions".to_string(),
+            });
+        }
+        
+        // ✅ CRITICAL: Check for Rust 1.88+ existing anti-patterns
         if code.contains("unwrap()") || code.contains("expect(") || code.contains("panic!(") {
             issues.push(QualityIssue {
                 issue_type: "Error Handling".to_string(),
@@ -338,6 +374,26 @@ impl QualityGuardian {
                 description: "Multiple WASM calls detected - violates O(1) горячий путь requirement".to_string(),
                 severity: Severity::Critical,
                 suggestion: "Exactly one compute_all(t) call per frame - use thread-local buffers".to_string(),
+            });
+        }
+        
+        // ✅ CRITICAL: Check for correct astro-rust library usage
+        if code.contains("astro = { git =") || code.contains("astro = { version =") {
+            issues.push(QualityIssue {
+                issue_type: "Incorrect Astro Library".to_string(),
+                description: "Found external astro library reference - must use local astro-rust".to_string(),
+                severity: Severity::Critical,
+                suggestion: "Use astro = { path = \"./astro-rust\" } - local copy only!".to_string(),
+            });
+        }
+        
+        // ✅ CRITICAL: Check for vsop87 or other astronomical libraries
+        if code.contains("vsop87") || code.contains("aster") || code.contains("ephemeris") {
+            issues.push(QualityIssue {
+                issue_type: "External Astronomical Library".to_string(),
+                description: "Found external astronomical library - must use local astro-rust only".to_string(),
+                severity: Severity::Critical,
+                suggestion: "Remove external astronomical libraries - use local astro-rust: astro = { path = \"./astro-rust\" }".to_string(),
             });
         }
         
@@ -395,6 +451,39 @@ impl QualityGuardian {
     
     fn initialize_anti_patterns(&mut self) -> Result<(), QualityError> {
         // Critical anti-patterns
+        // ✅ NEW: anti.md anti-patterns (2025-01-08)
+        self.anti_patterns.insert("unwrap_or_eager".to_string(), AntiPatternRule {
+            pattern: "unwrap_or(".to_string(),
+            description: "Potential eager evaluation with unwrap_or() - use unwrap_or_else() for expensive operations".to_string(),
+            severity: Severity::Critical,
+            replacement: "Use unwrap_or_else(|| expensive_operation()) for lazy evaluation".to_string(),
+            examples: vec![
+                "value.unwrap_or(expensive_function())".to_string(),
+                "value.unwrap_or(build_from_scratch())".to_string(),
+            ],
+        });
+        
+        self.anti_patterns.insert("unwrap_in_result".to_string(), AntiPatternRule {
+            pattern: "unwrap()".to_string(),
+            description: "unwrap() usage in Result-returning function - forbidden in production".to_string(),
+            severity: Severity::Critical,
+            replacement: "Use ? operator for error propagation in Result functions".to_string(),
+            examples: vec![
+                "fn process() -> Result<T, E> { some_result.unwrap(); }".to_string(),
+            ],
+        });
+        
+        self.anti_patterns.insert("missing_error_docs".to_string(), AntiPatternRule {
+            pattern: "-> Result".to_string(),
+            description: "Result-returning function missing error documentation".to_string(),
+            severity: Severity::High,
+            replacement: "Add /// # Errors documentation section".to_string(),
+            examples: vec![
+                "fn process() -> Result<T, E> { // Missing error docs }".to_string(),
+            ],
+        });
+        
+        // Existing anti-patterns (enhanced)
         self.anti_patterns.insert("unwrap()".to_string(), AntiPatternRule {
             pattern: "unwrap()".to_string(),
             description: "Unsafe unwrap() usage - can cause panic".to_string(),

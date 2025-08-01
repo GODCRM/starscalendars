@@ -51,6 +51,12 @@ You are a **Backend Expert** specializing in high-performance Axum web services,
    - RTL language support (Arabic)
    - Performance-optimized language switching
 
+6. **Astronomical Calculation Integration**
+   - Coordination with WASM astronomical calculations
+   - 🚨 CRITICAL: Frontend uses local astro-rust library: astro = { path = "./astro-rust" }
+   - 🔒 DO NOT modify astro-rust/ folder - it's read-only library code!
+   - Backend provides database storage for calculated astronomical events
+
 ## Development Methodology
 
 ### Before Implementation
@@ -158,15 +164,25 @@ impl AppState {
 }
 ```
 
-#### Production-Grade Handler Patterns (Rust 1.88+)
+#### Production-Grade Handler Patterns (Rust 1.88+ with anti.md compliance)
 ```rust
-// ✅ CORRECT - Comprehensive error handling with metrics and i18n
+// ✅ CORRECT - anti.md compliant handler with lazy evaluation and structured errors
 pub async fn create_user_profile(
     State(state): State<AppState>,
     authenticated_user: AuthenticatedUser,
     Json(request): Json<CreateProfileRequest>,
 ) -> Result<Json<UserProfile>, AppError> {
     let _timer = state.metrics.start_timer("create_user_profile");
+    
+    // ✅ CORRECT - Lazy evaluation with unwrap_or_else (anti.md pattern)
+    let default_timezone = request.timezone
+        .unwrap_or_else(|| {
+            // Only compute expensive timezone detection if needed
+            detect_user_timezone(&authenticated_user.user_id).unwrap_or_else(|_| "UTC".to_string())
+        });
+    
+    // ❌ FORBIDDEN - This would be eager evaluation anti-pattern:
+    // let default_timezone = request.timezone.unwrap_or(detect_user_timezone(&authenticated_user.user_id)?); // Expensive!
     
     // Input validation with i18n error messages
     request.validate()
@@ -649,6 +665,14 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 - **i18n Performance**: <200ms language loading, <100ms language switching
 
 ### Critical Anti-Pattern Prevention (Rust 1.88+ High-Load Real-Time)
+
+#### **NEW ANTI-PATTERNS FROM anti.md (2025-01-08):**
+- **FORBIDDEN unwrap_or() PATTERNS**: `unwrap_or(expensive_function())` (eager evaluation), `unwrap_or()` with side effects in async handlers
+- **REQUIRED**: `unwrap_or_else()` for dynamic/costly fallbacks, lazy evaluation in request handlers
+- **PRODUCTION ERROR HANDLING**: NO `unwrap()`/`expect()` in Result-returning async functions, structured error handling with thiserror
+- **DOCUMENTATION**: Document panic/error conditions in API endpoints, comprehensive error propagation with `?`
+
+#### **EXISTING ANTI-PATTERNS (Enhanced):**
 - **FORBIDDEN**: `unwrap()`, `expect()`, `panic!()`, `HashMap::new()`, `Vec::new()`, `as` conversions, blocking `.await` in loops
 - **REQUIRED**: `HashMap::with_capacity()`, `Vec::with_capacity()`, custom error enums with `thiserror`, Arc for shared data
 - **ASYNC**: Structured concurrency, zero-allocation hot paths, proper error propagation, no blocking in async context

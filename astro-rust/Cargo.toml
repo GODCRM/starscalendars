@@ -1,0 +1,13 @@
+[package]
+
+name = "astro"
+version = "2.0.1-arossbell"
+authors = ["Saurav Sachidanand", "Adam R Bell"]
+
+license = "MIT"
+
+repository = "https://www.github.com/arossbell/astro-rust"
+documentation = "https://saurvs.github.io/astro-rust"
+
+description = "Advanced algorithms for astronomy"
+keywords = ["astronomy", "algorithms", "ephemeris", "planet", "solar"]

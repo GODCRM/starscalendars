@@ -39,7 +39,10 @@
       "Bash(wasm-pack build:*)",
       "Bash(time cargo check --workspace --exclude starscalendars-infra)",
       "Bash(pnpm install:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo search:*)",
+      "Bash(cargo tree:*)"
     ],
     "deny": []
   }

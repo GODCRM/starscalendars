@@ -7,17 +7,37 @@ quality-check: anti-patterns clippy security arch
 	@echo "✅ All quality checks passed!"
 
 # 🔍 Проверка антипаттернов
-anti-patterns:
-	@echo "🔍 Scanning for anti-patterns..."
+anti-patterns: unwrap-or-patterns production-patterns error-handling-patterns
+	@echo "✅ No anti-patterns found"
+
+# 📋 unwrap_or антипаттерны из anti.md
+unwrap-or-patterns:
+	@echo "📋 Checking unwrap_or anti-patterns..."
+	@! (grep -r "\.unwrap_or(" --include="*.rs" --exclude-dir=target . | grep -E "\(\w+\(" ) || \
+		(echo "❌ Found unwrap_or with function call - use unwrap_or_else" && exit 1)
+	@! grep -r "\.unwrap_or.*build_from_scratch\|\.unwrap_or.*save_in_redis" --include="*.rs" --exclude-dir=target . || \
+		(echo "❌ Found unwrap_or with side effects - use unwrap_or_else" && exit 1)
+	@echo "✅ unwrap_or patterns validated"
+
+# 🏭 Production-ready patterns
+production-patterns:
+	@echo "🏭 Checking production-ready patterns..."
 	@! grep -r "\.unwrap()" --include="*.rs" --exclude-dir=target . || (echo "❌ Found .unwrap() usage" && exit 1)
 	@! grep -r "\.expect(" --include="*.rs" --exclude-dir=target . || (echo "❌ Found .expect() usage" && exit 1)  
 	@! grep -r "panic!(" --include="*.rs" --exclude-dir=target . || (echo "❌ Found panic!() usage" && exit 1)
 	@! grep -r "HashMap::new()" --include="*.rs" --exclude-dir=target . || (echo "❌ Found HashMap::new() - use with_capacity()" && exit 1)
 	@! grep -r "Vec::new()" --include="*.rs" --exclude-dir=target . || (echo "❌ Found Vec::new() - use with_capacity()" && exit 1)
 	# @! grep -r " as " --include="*.rs" --exclude-dir=target . || (echo "⚠️  Found 'as' conversions - consider TryFrom" && exit 1)
-	@echo "✅ No anti-patterns found"
+	@echo "✅ Production patterns validated"
 
-# 🦀 Строгий Clippy
+# 🚨 Error handling patterns из anti.md
+error-handling-patterns:
+	@echo "🚨 Checking error handling patterns..."
+	@! (grep -r "fn.*-> Result" --include="*.rs" --exclude-dir=target . | head -5 | xargs -I {} sh -c 'file="{}"; grep -q "unwrap\|expect" "$${file%:*}" && echo "❌ Found unwrap/expect in Result function: $${file%:*}"' ) || exit 1
+	@grep -q "thiserror\|anyhow" Cargo.toml || echo "⚠️  Consider using thiserror/anyhow for structured error handling"
+	@echo "✅ Error handling patterns validated"
+
+# 🦀 Строгий Clippy с anti.md правилами
 clippy:
 	@echo "🦀 Running strict Clippy checks..."
 	cargo clippy --all-targets --all-features -- \
@@ -28,7 +48,13 @@ clippy:
 		-D clippy::await_holding_lock \
 		-D clippy::inefficient_to_string \
 		-D clippy::large_stack_arrays \
-		-D clippy::vec_init_then_push
+		-D clippy::vec_init_then_push \
+		-D clippy::or_fun_call \
+		-D clippy::ok_expect \
+		-D clippy::unwrap_in_result \
+		-D clippy::map_err_ignore \
+		-W clippy::missing_panics_doc \
+		-W clippy::missing_errors_doc
 
 # 🎯 WASM производительность
 wasm-perf:
@@ -89,7 +115,7 @@ monitor:
 	@echo "📊 Running quality monitoring..."
 	@./scripts/quality-monitor.sh
 
-# 🔍 Find anti-patterns with details
+# 🔍 Find anti-patterns with details (enhanced with anti.md patterns)
 find-patterns:
 	@echo "🔍 Detailed anti-pattern analysis..."
 	@echo "Searching for unwrap() usage:"
@@ -102,6 +128,13 @@ find-patterns:
 	@grep -rn "HashMap::new()" --include="*.rs" . || echo "None found"
 	@echo "\nSearching for Vec::new() usage:"
 	@grep -rn "Vec::new()" --include="*.rs" . || echo "None found"
+	@echo "\n📋 ANTI.MD PATTERNS:"
+	@echo "Searching for unwrap_or with function calls:"
+	@grep -rn "\.unwrap_or(" --include="*.rs" . | grep -E "\(\w+\(" || echo "None found"
+	@echo "\nSearching for unwrap_or with side effects:"
+	@grep -rn "\.unwrap_or.*build_from_scratch\|\.unwrap_or.*save_in_redis" --include="*.rs" . || echo "None found"
+	@echo "\nSearching for unwrap/expect in Result functions:"
+	@grep -r "fn.*-> Result" --include="*.rs" . | head -5 | while read line; do file="$${line%:*}"; grep -q "unwrap\|expect" "$$file" && echo "Found in: $$file" || true; done || echo "None found"
 
 # 🔒 Security analysis
 security-audit:

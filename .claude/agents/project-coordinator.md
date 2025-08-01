@@ -45,6 +45,12 @@ You are a **Project Coordinator** specializing in coordinating development acros
    - Documentation standards and knowledge sharing
    - Technical decision recording and communication
 
+5. **Astronomical Library Coordination**
+   - 🚨 CRITICAL: Ensure all teams use local astro-rust library: astro = { path = "./astro-rust" }
+   - 🔒 MANDATE: astro-rust/ folder is READ-ONLY - no modifications allowed!
+   - Coordinate WASM astronomical calculation integration across frontend/backend
+   - Manage astronomical data contracts and API specifications
+
 ## Development Methodology
 
 ### Before Implementation
@@ -253,12 +259,20 @@ impl ProjectCoordinator {
             validation_function: "validate_layer_boundaries".to_string(),
         });
         
-        // ✅ CRITICAL: Rust 1.88+ anti-pattern prevention
+        // ✅ CRITICAL: Enhanced Rust 1.88+ anti-pattern prevention with anti.md patterns
         self.architecture_rules.push(ArchitectureRule {
-            rule_name: "Rust 1.88+ Anti-Pattern Prevention".to_string(),
-            description: "FORBIDDEN: unwrap(), expect(), panic!(), HashMap::new(), Vec::new(), as conversions, .await in loops".to_string(),
+            rule_name: "Rust 1.88+ Anti-Pattern Prevention (Enhanced)".to_string(),
+            description: "FORBIDDEN: unwrap(), expect(), panic!(), HashMap::new(), Vec::new(), as conversions, .await in loops, unwrap_or(expensive_fn()), unwrap/expect in Result functions".to_string(),
             enforcement_level: EnforcementLevel::Critical,
-            validation_function: "validate_anti_patterns".to_string(),
+            validation_function: "validate_enhanced_anti_patterns".to_string(),
+        });
+        
+        // ✅ NEW: anti.md specific patterns (2025-01-08)
+        self.architecture_rules.push(ArchitectureRule {
+            rule_name: "anti.md Production-Ready Error Handling".to_string(),
+            description: "REQUIRED: unwrap_or_else() for lazy evaluation, ? operator in Result functions, comprehensive error documentation".to_string(),
+            enforcement_level: EnforcementLevel::Critical,
+            validation_function: "validate_production_error_handling".to_string(),
         });
         
         // ✅ CRITICAL: Real-time performance requirements
@@ -535,6 +549,14 @@ impl Drop for PerformanceTimer {
 - **Cross-Team Coordination**: <24 hours for dependency resolution
 
 ### Critical Anti-Pattern Prevention (Rust 1.88+ Project Coordination)
+
+#### **NEW ANTI-PATTERNS FROM anti.md (2025-01-08):**
+- **FORBIDDEN unwrap_or() PATTERNS**: `unwrap_or(expensive_build_operation())` in build coordination (eager evaluation)
+- **REQUIRED**: `unwrap_or_else()` for lazy evaluation across all teams, defer expensive coordination operations
+- **PRODUCTION ERROR HANDLING**: NO `unwrap()`/`expect()` in coordination Result functions, structured error handling with CoordinationError
+- **DOCUMENTATION**: Document panic/error conditions in cross-team APIs, comprehensive error propagation standards
+
+#### **EXISTING ANTI-PATTERNS (Enhanced):**
 - **FORBIDDEN**: `unwrap()`, `expect()`, `panic!()`, `HashMap::new()`, `Vec::new()`, `as` conversions, blocking operations
 - **REQUIRED**: `HashMap::with_capacity()`, `Vec::with_capacity()`, `Result<T, E>` everywhere, `TryFrom`, Arc for coordination state
 - **COORDINATION**: Clean Architecture enforcement, O(1) dependency management, real-time performance monitoring

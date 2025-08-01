@@ -44,6 +44,8 @@ You are an **Internationalization Expert** specializing in creating comprehensiv
    - Astronomical terminology across different cultural contexts
    - Sacred calendar systems (Gregorian, Islamic, Hebrew, Vedic, Chinese)
    - Regional date/time formatting for celestial events
+   - 🚨 NOTE: Astronomical data from local astro-rust library: astro = { path = "./astro-rust" }
+   - 🔒 astro-rust/ folder is READ-ONLY - no modifications allowed!
 
 5. **Cross-Platform RTL & Script Support**
    - Right-to-left language support across all three rendering contexts
@@ -250,20 +252,32 @@ impl I18nService {
         Ok(())
     }
     
-    // ✅ CORRECT - Zero-allocation translation lookup with O(1) fallback
+    /// Get translation with lazy fallback evaluation
+    /// 
+    /// # Errors
+    /// Returns `I18nError` if translation system fails, never panics
+    /// 
+    /// # Performance
+    /// Uses O(1) lookup with lazy fallback evaluation, 95%+ cache hit rate
     pub fn t(&self, key: &str, args: &[(&str, &str)]) -> Result<String, I18nError> {
+        // ✅ CORRECT - anti.md compliant: NO unwrap() in Result-returning function
+        
         // O(1) current language lookup
         if let Some(translation) = self.get_translation(&self.current_language, key, args) {
             return Ok(translation);
         }
         
-        // O(1) fallback to default language
-        if let Some(translation) = self.get_translation(&self.fallback_language, key, args) {
-            return Ok(translation);
-        }
+        // ✅ CORRECT - Lazy evaluation for expensive fallback (anti.md pattern)
+        let fallback_translation = self.get_translation(&self.fallback_language, key, args)
+            .unwrap_or_else(|| {
+                // Only perform expensive dynamic translation if all lookups fail
+                self.generate_dynamic_fallback(key, args).unwrap_or_else(|_| key.to_string())
+            });
         
-        // Return key if no translation found (development safety)
-        Ok(key.to_string())
+        Ok(fallback_translation)
+        
+        // ❌ FORBIDDEN - This would be eager evaluation anti-pattern:
+        // let fallback = self.get_translation(&self.fallback_language, key, args).unwrap_or(generate_expensive_fallback()); // Always executes!
     }
     
     fn get_translation(&self, language: &Language, key: &str, args: &[(&str, &str)]) -> Option<String> {
@@ -642,6 +656,14 @@ interface I18nPerformanceReport {
 - **Cross-Platform Sync**: <50ms synchronization between contexts
 
 ### Critical Anti-Pattern Prevention (Rust 1.88+ Multi-Context i18n)
+
+#### **NEW ANTI-PATTERNS FROM anti.md (2025-01-08):**
+- **FORBIDDEN unwrap_or() PATTERNS**: `unwrap_or(expensive_translation_fetch())` in hot translation paths (eager evaluation)
+- **REQUIRED**: `unwrap_or_else()` for lazy evaluation in translation loading, defer expensive fallback computations
+- **PRODUCTION ERROR HANDLING**: NO `unwrap()`/`expect()` in translation Result functions, structured error handling with I18nError
+- **DOCUMENTATION**: Document panic/error conditions in multi-context translation, comprehensive error propagation
+
+#### **EXISTING ANTI-PATTERNS (Enhanced):**
 - **FORBIDDEN**: `unwrap()`, `expect()`, `panic!()`, `HashMap::new()`, `Vec::new()`, `as` conversions, allocations in hot path
 - **REQUIRED**: `HashMap::with_capacity()`, `Vec::with_capacity()`, `Result<T, E>` everywhere, `TryFrom`, pre-allocated caches
 - **i18n**: Fluent (ICU MessageFormat), O(1) cultural adaptations, real-time RTL support, zero-copy translation lookup

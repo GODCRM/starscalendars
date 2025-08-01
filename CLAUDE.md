@@ -77,7 +77,7 @@ starscalendars/
 ## Key Technologies & Stack
 
 - **Frontend Main Scene**: Babylon.js 8 with pure TypeScript/Vite
-- **Astronomical Calculations**: Rust + WebAssembly using astro-rust library
+- **Astronomical Calculations**: Rust + WebAssembly using local astro-rust library (📚 READ-ONLY: astro-rust/ folder must NOT be modified!)
 - **Backend**: Axum (Rust) with PostgreSQL and WebSockets
 - **Authentication System**: Telegram-only auth via Teloxide with subscription verification
 - **Multilingual System**: 12-language support with Fluent (ICU MessageFormat)
@@ -92,6 +92,7 @@ starscalendars/
 - Each module (frontend, backend, wasm-astro, telegram-bot, i18n) is a separate workspace
 - WASM modules compile to bundler target for Vite integration
 - Telegram bot runs as independent service with webhook/polling support
+- **🚨 CRITICAL**: astro-rust/ folder contains local copy of astronomical library - NEVER modify this folder!
 
 ### Key Design Decisions (per tz.md)
 - **Clean Architecture**: Domain → UseCases → Adapters → Delivery layers
@@ -263,6 +264,78 @@ Once source code is created, these commands will be available:
 - `Vec::new()` (use `Vec::with_capacity()`)
 - `.await` in loops
 
+## 🌟 ASTRO-RUST API USAGE RULES (MANDATORY)
+
+### **КРИТИЧЕСКИЕ ПРАВИЛА ИСПОЛЬЗОВАНИЯ ASTRO-RUST:**
+
+#### **1. ОБЯЗАТЕЛЬНОЕ ИСПОЛЬЗОВАНИЕ ЛОКАЛЬНОЙ КОПИИ:**
+```toml
+# ✅ ПРАВИЛЬНО - локальная копия с багфиксами (🚨 НЕ ИЗМЕНЯТЬ astro-rust/ папку!)
+astro = { path = "./astro-rust" }
+
+# ❌ ЗАПРЕЩЕНО - оригинал с багами
+astro = "2.0.0"  # Broken decimal_day & lunar equations!
+```
+**🔒 ВАЖНО**: Папка `astro-rust/` содержит неприкосновенный код библиотеки:
+- **✅ МОЖНО**: Читать, изучать, анализировать код для создания WASM оберток
+- **✅ НУЖНО**: Полностью изучить API библиотеки перед написанием кода
+- **❌ ЗАПРЕЩЕНО**: Изменять, модифицировать любые файлы в этой папке
+
+#### **2. ОСНОВНЫЕ ФУНКЦИИ API:**
+```rust
+// ✅ Солнечная позиция (геоцентрическая эклиптическая)
+let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(julian_day);
+// sun_ecl.long, sun_ecl.lat в РАДИАНАХ!
+
+// ✅ Лунная позиция ELP-2000/82 (геоцентрическая эклиптическая)  
+let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(julian_day);
+// moon_ecl.long, moon_ecl.lat в РАДИАНАХ!
+
+// ✅ Планетарные позиции VSOP87 (гелиоцентрические эклиптические)
+let (long_rad, lat_rad, dist_au) = astro::planet::heliocent_coords(&astro::planet::Planet::Earth, julian_day);
+```
+
+#### **3. ПОДДЕРЖИВАЕМЫЕ ПЛАНЕТЫ:**
+```rust
+use astro::planet::Planet;
+// ✅ Доступны: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune
+// ✅ Pluto доступен через astro::pluto модуль (отдельно)
+```
+
+#### **4. КООРДИНАТНЫЕ СИСТЕМЫ:**
+```rust
+// ✅ EclPoint структура
+struct EclPoint {
+    pub long: f64,  // Эклиптическая долгота в РАДИАНАХ
+    pub lat: f64,   // Эклиптическая широта в РАДИАНАХ  
+}
+
+// ✅ Конвертация в Cartesian для 3D сцены
+fn ecl_to_cartesian(ecl_point: &EclPoint, radius_au: f64) -> Cartesian {
+    let cos_lat = ecl_point.lat.cos();
+    let x = radius_au * cos_lat * ecl_point.long.cos();
+    let y = radius_au * cos_lat * ecl_point.long.sin();
+    let z = radius_au * ecl_point.lat.sin();
+    Cartesian::new(x, y, z)
+}
+```
+
+#### **5. КОРРЕКЦИИ НУТАЦИИ И ПРЕЦЕССИИ:**
+```rust
+// ✅ Нутация (если нужна высокая точность)
+let (nut_long, nut_oblq) = astro::nutation::nutation(julian_day);
+
+// ✅ Прецессия между эпохами
+let corrected_coords = astro::precess::precess_ecl_coords(ecl_coords, jd_old, jd_new);
+```
+
+#### **6. ЗАПРЕЩЕННЫЕ ПАТТЕРНЫ:**
+```rust
+// ❌ НИКОГДА не изобретать свои формулы если они есть в astro-rust!
+// ❌ НИКОГДА не использовать градусы - все в радианах!
+// ❌ НИКОГДА не игнорировать коррекции нутации/прецессии для точных расчетов!
+```
+
 ## Key Development Patterns (tz.md Compliance)
 
 ### **Domain Layer Patterns:**
@@ -309,7 +382,9 @@ pub trait TelegramApi {
 - **Babylon.js 8 - CDN**: https://cdn.babylonjs.com/babylon.js
 
 - **Astro Rust - Main**: https://docs.rs/astro/latest/astro/
-- **Astro Rust - GIT**: https://github.com/saurvs/astro-rust
+- **Astro Rust - ЛОКАЛЬНАЯ КОПИЯ**: `./astro-rust/` папка в корне проекта (🔒 НЕ ИЗМЕНЯТЬ!)
+- **Astro Rust - GIT ORIGINAL**: https://github.com/saurvs/astro-rust (⚠️ DEPRECATED - has bugs)
+- **Astro Rust - CORRECTED FORK**: https://github.com/arossbell/astro-rust (📚 Reference only - use local copy!)
 
 - **Teloxide - Main**: https://docs.rs/teloxide/latest/teloxide/
 - **Teloxide - GIT**: https://github.com/teloxide/teloxide
@@ -353,6 +428,13 @@ make quality-report
 make pre-commit
 ```
 
+### 📚 ОБЯЗАТЕЛЬНЫЙ ПРОЦЕСС РАБОТЫ С ASTRO-RUST
+**СНАЧАЛА - ИЗУЧЕНИЕ КОДОВОЙ БАЗЫ:**
+1. **Читай код в `./astro-rust/src/`** - изучи все модули: sun, lunar, planet, nutation, precess
+2. **Найди все доступные функции** - не придумывай свои формулы!
+3. **Понимай API параметры** - что принимает, что возвращает, в каких единицах
+4. **ЗАТЕМ создавай WASM обертки** используя найденные функции
+
 ### КРИТИЧЕСКИ ЗАПРЕЩЕНО
 **Enforced by quality-rules.toml and Makefile:**
 - `unwrap()`, `expect()`, `panic!()` - блокируется на уровне компиляции (clippy deny)
@@ -363,3 +445,4 @@ make pre-commit
 - `.await` в циклах - блокирующие операции в real-time контексте (clippy await_holding_lock = deny)
 - `mem_forget` - denial rule (clippy mem_forget = deny)
 - `todo!()`, `unimplemented!()` - блокируется компиляцией (clippy deny)
+- **Изменение файлов в `./astro-rust/`** - строго read-only!

@@ -84,7 +84,7 @@ interface AstronomicalState {
 
 #### Modern ES2025 Patterns
 ```typescript
-// ✅ CORRECT - Zero-allocation destructuring with pre-allocated buffers (ES2025)
+// ✅ CORRECT - anti.md compliant with lazy evaluation patterns (ES2025)
 const updateCelestialBodies = async (
     positions: Float64Array,
     options?: Partial<UpdateOptions>
@@ -93,8 +93,15 @@ const updateCelestialBodies = async (
     const earthLon = positions[3], earthLat = positions[4], earthDist = positions[5];
     const moonLon = positions[6], moonLat = positions[7], moonDist = positions[8];
     
-    // O(1) optional chaining with pre-defined constants
-    const scaleFactor = options?.visualScale ?? DEFAULT_SCALE;
+    // ✅ CORRECT - Lazy evaluation with nullish coalescing (anti.md pattern)
+    const scaleFactor = options?.visualScale ?? (() => {
+        // Only compute expensive scale calculation if needed
+        return calculateOptimalScale(earthDist, moonDist);
+    })();
+    
+    // ❌ FORBIDDEN - This would be eager evaluation anti-pattern:
+    // const scaleFactor = options?.visualScale || calculateOptimalScale(earthDist, moonDist); // Always executes!
+    
     const animationDuration = options?.animationMs ?? 16; // Exactly 60fps requirement
     
     return updateScenePositions({ earthLon, earthLat, earthDist, moonLon, moonLat, moonDist });
@@ -125,6 +132,10 @@ import {
     MeshBuilder, Vector3, Quaternion, Matrix 
 } from "@babylonjs/core";
 import init, { compute_all, out_len, memory } from "../wasm-astro/pkg/wasm_astro.js";
+
+// 🚨 CRITICAL: wasm-astro uses local astro-rust library
+// astro = { path = "./astro-rust" } in wasm-astro/Cargo.toml
+// 🔒 DO NOT modify astro-rust/ folder - it's read-only library code!
 
 class CinematicAstronomyScene {
     private engine: Engine;
@@ -597,6 +608,14 @@ export default defineConfig({
 - **WASM Integration**: Zero-copy data transfer, exactly one call per frame
 
 ### Critical Anti-Pattern Prevention (TypeScript 5.8.3+ Real-Time)
+
+#### **NEW ANTI-PATTERNS FROM anti.md (2025-01-08):**
+- **FORBIDDEN JavaScript EQUIVALENT PATTERNS**: Eager evaluation in fallbacks (`value || expensiveFunction()`), side effects in default values
+- **REQUIRED**: Lazy evaluation patterns (`value ?? (() => expensiveFunction())()`), pure default value functions
+- **PRODUCTION ERROR HANDLING**: NO uncaught promise rejections in WASM integration, structured error handling with Result patterns
+- **DOCUMENTATION**: Document all async/await error conditions, comprehensive TypeScript error type annotations
+
+#### **EXISTING ANTI-PATTERNS (Enhanced):**
 - **FORBIDDEN**: `any`, `as`, `!`, `@ts-ignore`, allocations in render loop, multiple WASM calls per frame
 - **REQUIRED**: Strict typing, `Result<T, E>` pattern, zero-copy WASM transfer, pre-allocated collections
 - **PERFORMANCE**: Exactly one `compute_all(t)` call per frame, zero allocations in 60fps hot path, pre-allocated vectors

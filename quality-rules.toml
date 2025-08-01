@@ -8,6 +8,11 @@ panic = "deny"
 unimplemented = "deny"
 todo = "deny"
 
+# Error handling антипаттерны из anti.md (Rust 1.88+ compliance)
+unwrap_or_default = "warn"          # Предпочтительнее unwrap_or_else
+or_fun_call = "deny"                # unwrap_or(func()) -> unwrap_or_else(|| func())  
+ok_expect = "deny"                  # result.ok().expect() -> result.expect()
+
 # Производительность
 inefficient_to_string = "deny"
 large_stack_arrays = "deny"
@@ -27,6 +32,18 @@ async_yields_async = "deny"
 mem_forget = "deny"
 box_collection = "warn"
 
+# Production-ready patterns из anti.md
+missing_panics_doc = "warn"         # Документирование потенциальных panic
+unwrap_in_result = "deny"           # unwrap/expect внутри Result-returning функции
+needless_question_mark = "warn"     # Избыточное использование ?
+map_err_ignore = "deny"             # Игнорирование ошибок в map_err
+result_map_or_into_option = "warn"  # Неэффективные Result -> Option конверсии
+
+# Structured error handling patterns
+missing_errors_doc = "warn"         # Документирование возможных ошибок
+error_impl_error = "deny"           # Custom errors должны impl std::error::Error  
+fallible_impl_from = "deny"         # From impl не должны fallible
+
 [lints.rust]
 unsafe_code = "deny"
 missing_docs = "warn"
@@ -36,3 +53,26 @@ unused_must_use = "deny"
 # [workspace.lints]
 # clippy = { level = "deny", priority = -1 }
 # rust = { level = "deny", priority = -1 }
+
+# ==============================================================================
+# НОВЫЕ АНТИПАТТЕРНЫ ИЗ anti.md (2025-01-08) - Обработка ошибок готовая к производству
+# ==============================================================================
+#
+# Ключевые anti-patterns добавленные из документа anti.md:
+#
+# 1. unwrap_or() АНТИПАТТЕРНЫ:
+#    - or_fun_call: unwrap_or(func()) должен быть unwrap_or_else(|| func())
+#    - Жадная оценка vs ленивая оценка для производительности
+#    - Предотвращение непреднамеренных побочных эффектов
+#
+# 2. PRODUCTION-READY PATTERNS:
+#    - unwrap_in_result/expect_in_result: Избегать panic в Result-функциях
+#    - missing_panics_doc: Документировать потенциальные panic
+#    - error_impl_error: Custom errors должны impl std::error::Error
+#
+# 3. STRUCTURED ERROR HANDLING:
+#    - Поддержка thiserror/anyhow patterns
+#    - Правильное использование ? оператора
+#    - Документирование возможных ошибок
+#
+# Эти правила обеспечивают Rust 1.88+ compliance и готовность к производству
