@@ -33,26 +33,26 @@ importers:
   frontend:
     dependencies:
       '@babylonjs/core':
-        specifier: ^8.18.0
+        specifier: ^8.20.0
         version: 8.20.0
       '@babylonjs/gui':
-        specifier: ^8.18.0
+        specifier: ^8.20.0
         version: 8.20.0(@babylonjs/core@8.20.0)
       '@babylonjs/inspector':
-        specifier: ^8.18.0
+        specifier: ^8.20.0
         version: 8.20.0(@babylonjs/addons@8.20.0(@babylonjs/core@8.20.0))(@babylonjs/core@8.20.0)(@babylonjs/gui-editor@8.20.0(@babylonjs/core@8.20.0)(@babylonjs/gui@8.20.0(@babylonjs/core@8.20.0))(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23))(@babylonjs/gui@8.20.0(@babylonjs/core@8.20.0))(@babylonjs/loaders@8.20.0(@babylonjs/core@8.20.0)(babylonjs-gltf2interface@8.20.0))(@babylonjs/materials@8.20.0(@babylonjs/core@8.20.0))(@babylonjs/serializers@8.20.0(@babylonjs/core@8.20.0)(babylonjs-gltf2interface@8.20.0))(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)
       '@babylonjs/loaders':
-        specifier: ^8.18.0
+        specifier: ^8.20.0
         version: 8.20.0(@babylonjs/core@8.20.0)(babylonjs-gltf2interface@8.20.0)
       '@babylonjs/materials':
-        specifier: ^8.18.0
+        specifier: ^8.20.0
         version: 8.20.0(@babylonjs/core@8.20.0)
       '@fluent/bundle':
-        specifier: ^0.18.0
-        version: 0.18.0
+        specifier: ^0.19.1
+        version: 0.19.1
       '@fluent/react':
         specifier: ^0.15.2
-        version: 0.15.2(@fluent/bundle@0.18.0)(react@18.3.1)
+        version: 0.15.2(@fluent/bundle@0.19.1)(react@18.3.1)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -94,7 +94,7 @@ importers:
         specifier: ^3.3.3
         version: 3.6.2
       typescript:
-        specifier: ^5.8.3
+        specifier: ^5.8.4
         version: 5.9.2
       vite:
         specifier: ^5.4.8
@@ -425,9 +425,9 @@ packages:
     resolution: {integrity: sha512-Ul5l+lHEcw3L5+k8POx6r74mxEYKG5kOb6Xpy2gCRW6zweT6TEhAf8vhxGgjhqrd/VO/Dirhsb+1hNpD1ue9hw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@fluent/bundle@0.18.0':
-    resolution: {integrity: sha512-8Wfwu9q8F9g2FNnv82g6Ch/E1AW1wwljsUOolH5NEtdJdv0sZTuWvfCM7c3teB9dzNaJA8rn4khpidpozHWYEA==}
-    engines: {node: '>=14.0.0', npm: '>=7.0.0'}
+  '@fluent/bundle@0.19.1':
+    resolution: {integrity: sha512-SWJLZrPamDPsJlFFOW1nkgN0j0rbPbmSdmK0XAoXlyqKieLtMVl4vzng3aR5pwKoUx0scug8+YY2oct3fdfy9A==}
+    engines: {node: '>=18.0.0', npm: '>=7.0.0'}
 
   '@fluent/react@0.15.2':
     resolution: {integrity: sha512-M2klqXTUJTD8o2VDm6vEXApE/pSc16YtB7DSZ/Q8cPYF63FgDkvquVLHjzzG1PvrK9JlKJKPzl3wJ7hTAqSK4w==}
@@ -1754,18 +1754,18 @@ snapshots:
       '@eslint/core': 0.15.1
       levn: 0.4.1
 
-  '@fluent/bundle@0.18.0': {}
+  '@fluent/bundle@0.19.1': {}
 
-  '@fluent/react@0.15.2(@fluent/bundle@0.18.0)(react@18.3.1)':
+  '@fluent/react@0.15.2(@fluent/bundle@0.19.1)(react@18.3.1)':
     dependencies:
-      '@fluent/bundle': 0.18.0
-      '@fluent/sequence': 0.8.0(@fluent/bundle@0.18.0)
+      '@fluent/bundle': 0.19.1
+      '@fluent/sequence': 0.8.0(@fluent/bundle@0.19.1)
       cached-iterable: 0.3.0
       react: 18.3.1
 
-  '@fluent/sequence@0.8.0(@fluent/bundle@0.18.0)':
+  '@fluent/sequence@0.8.0(@fluent/bundle@0.19.1)':
     dependencies:
-      '@fluent/bundle': 0.18.0
+      '@fluent/bundle': 0.19.1
 
   '@fortawesome/fontawesome-common-types@6.7.2': {}
 

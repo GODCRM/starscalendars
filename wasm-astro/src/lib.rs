@@ -105,10 +105,10 @@ fn calculate_all_positions(
     julian_day: JulianDay,
     buffer: &mut Vec<f64>,
 ) -> Result<(), DomainError> {
-    // Calculate positions for all celestial bodies using simplified calculations
-    // TODO: Integrate proper astro library when API is verified
+    // Calculate positions for all celestial bodies using astro-rust high-precision algorithms
+    // ✅ IMPLEMENTED: Full astro-rust integration with VSOP87, ELP-2000/82, and Pluto calculations
     for &body in CelestialBody::ALL {
-        let position = calculate_body_position_simplified(body, julian_day)?;
+        let position = calculate_body_position_precise(body, julian_day)?;
 
         // Add to flat buffer: [x, y, z]
         buffer.push(position.x);
@@ -119,12 +119,12 @@ fn calculate_all_positions(
     Ok(())
 }
 
-/// Calculate position of specific celestial body using corrected astro-rust fork
+/// Calculate position of specific celestial body using local astro-rust library  
 ///
 /// 🚨 CRITICAL: Uses ONLY astro-rust API functions - NO custom formulas!
-/// Implements high-precision VSOP87 and ELP-2000/82 calculations for all celestial bodies.
-/// Uses the corrected astro-rust fork by arossbell (fixes decimal_day & lunar bugs).
-fn calculate_body_position_simplified(body: CelestialBody, julian_day: JulianDay) -> Result<Cartesian, DomainError> {
+/// Implements high-precision VSOP87, ELP-2000/82, and Pluto calculations for all celestial bodies.
+/// Uses the local astro-rust library with critical bug fixes (decimal_day & lunar equations).
+fn calculate_body_position_precise(body: CelestialBody, julian_day: JulianDay) -> Result<Cartesian, DomainError> {
     let jd = julian_day.as_f64();
     
     let position = match body {
@@ -183,13 +183,9 @@ fn calculate_body_position_simplified(body: CelestialBody, julian_day: JulianDay
             ecliptic_to_cartesian(long_rad, lat_rad, radius_au)
         },
         CelestialBody::Pluto => {
-            // Pluto calculation via separate pluto module (not in planet enum)
-            // TODO: Implement astro::pluto module integration when needed
-            // For now, use approximate position
-            let t = (jd - 2451545.0) / 365.25 / 100.0; // Centuries since J2000
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 0.004; // Very rough approximation
-            let r = 39.482; // Approximate semi-major axis in AU
-            ecliptic_to_cartesian(mean_anomaly, 0.0, r)
+            // Pluto calculation using high-precision heliocentric coordinates
+            let (long_rad, lat_rad, radius_au) = astro::pluto::heliocent_pos(jd);
+            ecliptic_to_cartesian(long_rad, lat_rad, radius_au)
         },
     };
 
@@ -245,7 +241,7 @@ mod tests {
 
     #[test]
     fn test_body_position_calculation() {
-        if let Ok(earth_pos) = calculate_body_position_simplified(CelestialBody::Earth, JulianDay::J2000) {
+        if let Ok(earth_pos) = calculate_body_position_precise(CelestialBody::Earth, JulianDay::J2000) {
             assert!((earth_pos.magnitude() - 1.0).abs() < 0.2); // Earth should be ~1 AU from Sun
         } else {
             assert!(false, "Earth position calculation should succeed");

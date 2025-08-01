@@ -42,7 +42,8 @@
       "Bash(npm run type-check:*)",
       "Bash(cargo clippy:*)",
       "Bash(cargo search:*)",
-      "Bash(cargo tree:*)"
+      "Bash(cargo tree:*)",
+      "WebFetch(domain:doc.babylonjs.com)"
     ],
     "deny": []
   }

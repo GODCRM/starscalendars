@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { WASMModule, initializeWASM, type AstronomicalState, type CelestialPosition } from './wasm/init';
+import BabylonScene from './scene/BabylonScene';
+import './styles/BabylonScene.css';
 
 // ✅ CORRECT - Result type pattern (TypeScript 5.8.3+ strict compliance)
 type Result<T, E> = { success: true; data: T } | { success: false; error: E };
@@ -251,6 +253,13 @@ const App: React.FC = () => {
             height={1080}
             role="img"
             aria-label="3D astronomical visualization"
+          />
+          
+          {/* Babylon.js 3D Scene Manager */}
+          <BabylonScene 
+            canvas={canvasRef.current}
+            astronomicalData={appState.astronomicalData}
+            isInitialized={appState.isInitialized}
           />
           
           {/* HTML/CSS overlay for performance-critical GUI elements */}
