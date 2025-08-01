@@ -49,6 +49,7 @@ dashmap = { workspace = true }
 
 # Astronomical calculations
 astro = { workspace = true }
+smallvec = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

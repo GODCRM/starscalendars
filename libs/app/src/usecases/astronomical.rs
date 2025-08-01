@@ -1,6 +1,6 @@
 //! Astronomical calculation use cases
 
-use crate::{AppResult, AppServices, ports::*};
+use crate::{AppResult, AppServices, ports::{AstronomicalService, CacheServiceExt}};
 use async_trait::async_trait;
 use starscalendars_domain::*;
 

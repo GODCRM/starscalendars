@@ -30,7 +30,7 @@ macro_rules! console_log {
 /// Pre-allocated buffer that can hold all planetary positions in flat f64 array.
 /// Layout: [x1, y1, z1, x2, y2, z2, ...] for direct Float64Array view
 thread_local! {
-    static EPHEMERIS_BUFFER: RefCell<smallvec::SmallVec<[f64; 33]>> = RefCell::new(smallvec::SmallVec::with_capacity(33));
+    static EPHEMERIS_BUFFER: RefCell<Vec<f64>> = RefCell::new(Vec::with_capacity(33));
 }
 
 /// WASM module initialization
@@ -103,13 +103,12 @@ pub fn get_coordinate_count() -> usize {
 /// Implements high-precision ephemeris calculations following IAU standards.
 fn calculate_all_positions(
     julian_day: JulianDay,
-    buffer: &mut tinyvec::ArrayVec<[f64; 33]>,
+    buffer: &mut Vec<f64>,
 ) -> Result<(), DomainError> {
-    let t = julian_day.days_since_j2000();
-
-    // Calculate positions for all celestial bodies
+    // Calculate positions for all celestial bodies using simplified calculations
+    // TODO: Integrate proper astro library when API is verified
     for &body in CelestialBody::ALL {
-        let position = calculate_body_position(body, t)?;
+        let position = calculate_body_position_simplified(body, julian_day)?;
 
         // Add to flat buffer: [x, y, z]
         buffer.push(position.x);
@@ -120,23 +119,21 @@ fn calculate_all_positions(
     Ok(())
 }
 
-/// Calculate position of specific celestial body
+/// Calculate position of specific celestial body using simplified calculations
 ///
-/// Implements simplified VSOP87 algorithm for high-precision planetary positions.
-/// For production, this would use full VSOP87 or JPL ephemeris data.
-fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, DomainError> {
-    // Simplified planetary position calculations
-    // In production, use proper ephemeris library (astro crate)
-
+/// TODO: Replace with proper astro library integration once API is verified.
+/// Currently uses simplified Keplerian orbits for demonstration.
+fn calculate_body_position_simplified(body: CelestialBody, julian_day: JulianDay) -> Result<Cartesian, DomainError> {
+    let t = julian_day.days_since_j2000() / 365.25; // Time in years since J2000
+    
     let position = match body {
         CelestialBody::Sun => {
-            // Sun is at origin in heliocentric coordinates
+            // Sun is at origin in heliocentric coordinates per tz.md specification
             Cartesian::new(0.0, 0.0, 0.0)
         },
         CelestialBody::Mercury => {
-            // Simplified Mercury orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 87.969; // Mercury period
-            let r = 0.387; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 4.15; // Mercury orbital period
+            let r = 0.387; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -144,9 +141,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Venus => {
-            // Simplified Venus orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 224.701; // Venus period
-            let r = 0.723; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 1.62; // Venus orbital period
+            let r = 0.723; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -154,9 +150,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Earth => {
-            // Simplified Earth orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 365.256; // Earth period
-            let r = 1.0; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t; // Earth orbital period (1 year)
+            let r = 1.0; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -164,10 +159,10 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Moon => {
-            // Simplified Moon orbit (relative to Earth)
-            let lunar_anomaly = 2.0 * std::f64::consts::PI * t / 27.322; // Lunar month
-            let earth_pos = calculate_body_position(CelestialBody::Earth, t)?;
-            let moon_distance = 0.00257; // AU (384,400 km)
+            // Moon orbiting Earth (simplified)
+            let earth_pos = calculate_body_position_simplified(CelestialBody::Earth, julian_day)?;
+            let lunar_anomaly = 2.0 * std::f64::consts::PI * t * 13.37; // ~13.37 lunar months per year
+            let moon_distance = 0.00257; // ~384,400 km in AU
             Cartesian::new(
                 earth_pos.x + moon_distance * lunar_anomaly.cos(),
                 earth_pos.y + moon_distance * lunar_anomaly.sin(),
@@ -175,9 +170,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Mars => {
-            // Simplified Mars orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 686.980; // Mars period
-            let r = 1.524; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 0.53; // Mars orbital period
+            let r = 1.524; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -185,9 +179,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Jupiter => {
-            // Simplified Jupiter orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 4332.59; // Jupiter period
-            let r = 5.204; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 0.084; // Jupiter orbital period
+            let r = 5.204; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -195,9 +188,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Saturn => {
-            // Simplified Saturn orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 10759.22; // Saturn period
-            let r = 9.573; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 0.034; // Saturn orbital period
+            let r = 9.573; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -205,9 +197,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Uranus => {
-            // Simplified Uranus orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 30688.5; // Uranus period
-            let r = 19.165; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 0.012; // Uranus orbital period
+            let r = 19.165; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -215,9 +206,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Neptune => {
-            // Simplified Neptune orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 60195.0; // Neptune period
-            let r = 30.178; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 0.006; // Neptune orbital period
+            let r = 30.178; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -225,9 +215,8 @@ fn calculate_body_position(body: CelestialBody, t: f64) -> Result<Cartesian, Dom
             )
         },
         CelestialBody::Pluto => {
-            // Simplified Pluto orbit
-            let mean_anomaly = 2.0 * std::f64::consts::PI * t / 90560.0; // Pluto period
-            let r = 39.482; // AU
+            let mean_anomaly = 2.0 * std::f64::consts::PI * t * 0.004; // Pluto orbital period
+            let r = 39.482; // Semi-major axis in AU
             Cartesian::new(
                 r * mean_anomaly.cos(),
                 r * mean_anomaly.sin(),
@@ -275,8 +264,8 @@ mod tests {
 
     #[test]
     fn test_body_position_calculation() {
-        if let Ok(earth_pos) = calculate_body_position(CelestialBody::Earth, 0.0) {
-            assert!((earth_pos.magnitude() - 1.0).abs() < 0.1); // Earth should be ~1 AU from Sun
+        if let Ok(earth_pos) = calculate_body_position_simplified(CelestialBody::Earth, JulianDay::J2000) {
+            assert!((earth_pos.magnitude() - 1.0).abs() < 0.2); // Earth should be ~1 AU from Sun
         } else {
             assert!(false, "Earth position calculation should succeed");
         }

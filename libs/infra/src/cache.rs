@@ -37,19 +37,20 @@ impl CacheService for RedisCacheService {
         let mut conn = self.conn.clone();
         let ttl_secs = ttl.as_secs();
         
-        if ttl_secs > 0 {
-            conn.setex(key, ttl_secs, value).await
+        let result: redis::RedisResult<()> = if ttl_secs > 0 {
+            conn.set_ex(key, value, ttl_secs).await
         } else {
             conn.set(key, value).await
-        }
-        .map_err(|e| InfraError::Redis(e))?;
+        };
+        
+        result.map_err(|e| InfraError::Redis(e))?;
         
         Ok(())
     }
     
     async fn delete(&self, key: &str) -> AppResult<()> {
         let mut conn = self.conn.clone();
-        conn.del(key).await
+        let _: () = conn.del(key).await
             .map_err(|e| InfraError::Redis(e))?;
         
         Ok(())

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-You are an expert in Rust 1.88+ (26.06.2025 release), Axum 0.84, Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.8.3, Babylon.js 8, and high-performance 3D web development with production-grade Telegram-only authentication.
+You are an expert in Rust 1.88+ (26.06.2025 release), Axum 0.8.4, Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.8.3, Babylon.js 8, and high-performance 3D web development with production-grade Telegram-only authentication.
 
 ## Communication Style
 - DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you 

@@ -46,7 +46,12 @@ pub trait CacheService: Send + Sync {
 
     /// Delete cached value
     async fn delete(&self, key: &str) -> AppResult<()>;
+}
 
+/// Extension trait for generic cache operations
+/// 
+/// This is separate to maintain dyn compatibility of CacheService
+pub trait CacheServiceExt: CacheService {
     /// Get and deserialize cached value
     async fn get_json<T>(&self, key: &str) -> AppResult<Option<T>>
     where
@@ -73,6 +78,9 @@ pub trait CacheService: Send + Sync {
         self.set(key, &json_str, ttl).await
     }
 }
+
+// Automatically implement CacheServiceExt for all CacheService implementations
+impl<T: CacheService + ?Sized> CacheServiceExt for T {}
 
 /// JWT service port for token operations
 #[async_trait]

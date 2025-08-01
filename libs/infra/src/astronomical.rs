@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use starscalendars_app::*;
 use starscalendars_domain::*;
 use crate::InfraError;
+use smallvec::SmallVec;
 
 /// Astronomical service implementation using astro crate
 pub struct AstroCalculationService {
@@ -50,11 +51,11 @@ impl AstronomicalService for AstroCalculationService {
         .map_err(|e| InfraError::Internal(format!("Task join error: {}", e)))?
     }
     
-    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> AppResult<smallvec::SmallVec<[Cartesian; 11]>> {
+    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> AppResult<SmallVec<[Cartesian; 11]>> {
         let jd = julian_day;
         
         tokio::task::spawn_blocking(move || {
-            let mut positions = smallvec::SmallVec::with_capacity(11);
+            let mut positions = SmallVec::with_capacity(11);
             
             for &body in CelestialBody::ALL {
                 let position = Self::calculate_body_position(jd, body)?;
@@ -124,31 +125,31 @@ impl AstroCalculationService {
         }
         
         let elements = orbital_elements[planet_index];
-        let [a, e, _i, _omega, _w, m0] = elements;
+        let [a, e, _i, _omega, _w, m0]: [f64; 6] = elements;
         
         // Time since J2000.0 in centuries
-        let t = (jd - 2451545.0) / 36525.0;
+        let _t: f64 = (jd - 2451545.0) / 36525.0;
         
         // Mean anomaly (simplified)
-        let mean_motion = (360.0 / (a.powf(1.5) * 365.25)).to_radians();
-        let m = (m0.to_radians() + mean_motion * (jd - 2451545.0)) % (2.0 * std::f64::consts::PI);
+        let mean_motion: f64 = (360.0 / (a.powf(1.5) * 365.25)).to_radians();
+        let m: f64 = (m0.to_radians() + mean_motion * (jd - 2451545.0)) % (2.0 * std::f64::consts::PI);
         
         // Solve Kepler's equation (simplified iteration)
-        let mut e_anom = m;
+        let mut e_anom: f64 = m;
         for _ in 0..5 {
             e_anom = m + e * e_anom.sin();
         }
         
         // True anomaly
-        let nu = 2.0 * ((1.0 + e) / (1.0 - e)).sqrt().atan() * (e_anom / 2.0).tan().atan();
+        let nu: f64 = 2.0 * ((1.0 + e) / (1.0 - e)).sqrt().atan() * (e_anom / 2.0).tan().atan();
         
         // Distance
-        let r = a * (1.0 - e * e) / (1.0 + e * nu.cos());
+        let r: f64 = a * (1.0 - e * e) / (1.0 + e * nu.cos());
         
         // Position in orbital plane
-        let x = r * nu.cos();
-        let y = r * nu.sin();
-        let z = 0.0; // Simplified to ecliptic plane
+        let x: f64 = r * nu.cos();
+        let y: f64 = r * nu.sin();
+        let z: f64 = 0.0; // Simplified to ecliptic plane
         
         Ok(Cartesian::new(x, y, z))
     }
@@ -168,10 +169,10 @@ impl AstroCalculationService {
         let m = (357.528 + 35999.050 * t).to_radians();
         
         // Mean anomaly of Moon
-        let m_prime = (134.963 + 477198.868 * t).to_radians();
+        let _m_prime: f64 = (134.963 + 477198.868 * t).to_radians();
         
         // Argument of latitude
-        let f = (93.272 + 483202.017 * t).to_radians();
+        let _f: f64 = (93.272 + 483202.017 * t).to_radians();
         
         // Distance in kilometers (simplified)
         let distance_km = 385000.0 + 20905.0 * d.cos() + 3699.0 * (2.0 * d - m).cos();
@@ -244,8 +245,8 @@ impl AstronomicalService for MockAstronomicalService {
         Ok(ephemeris)
     }
     
-    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> AppResult<smallvec::SmallVec<[Cartesian; 11]>> {
+    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> AppResult<SmallVec<[Cartesian; 11]>> {
         let ephemeris = self.calculate_ephemeris(julian_day).await?;
-        Ok(ephemeris.positions)
+        Ok(ephemeris.positions.into())
     }
 }

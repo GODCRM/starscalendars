@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
@@ -31,7 +32,14 @@
       "Bash(make:*)",
       "WebFetch(domain:forge.rust-lang.org)",
       "WebFetch(domain:rust-lang.github.io)",
-      "Bash(./scripts/validate-quality-system.sh:*)"
+      "Bash(./scripts/validate-quality-system.sh:*)",
+      "WebFetch(domain:blog.rust-lang.org)",
+      "WebFetch(domain:markaicode.com)",
+      "Bash(SQLX_OFFLINE=true cargo check -p starscalendars-infra --quiet)",
+      "Bash(wasm-pack build:*)",
+      "Bash(time cargo check --workspace --exclude starscalendars-infra)",
+      "Bash(pnpm install:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": []
   }

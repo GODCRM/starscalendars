@@ -99,9 +99,10 @@ impl JwtService for JwtServiceImpl {
                     jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
                         // Get expiry time from the token if possible
                         let exp_time = time::OffsetDateTime::now_utc();
-                        InfraError::Internal(
+                        let infra_error = InfraError::Internal(
                             DomainError::JwtTokenExpired(exp_time).to_string()
-                        ).into()
+                        );
+                        AppError::from(infra_error)
                     }
                     _ => InfraError::Jwt(e).into(),
                 }

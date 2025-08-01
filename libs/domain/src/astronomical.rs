@@ -172,8 +172,8 @@ impl CelestialBody {
 pub struct EphemerisData {
     /// Julian Day for this calculation
     pub julian_day: JulianDay,
-    /// Positions of all celestial bodies
-    pub positions: smallvec::SmallVec<[Cartesian; 11]>,
+    /// Positions of all celestial bodies (using Vec for simplicity)
+    pub positions: Vec<Cartesian>,
     /// Calculation timestamp for caching
     pub calculated_at: time::OffsetDateTime,
 }
@@ -183,13 +183,13 @@ impl EphemerisData {
     pub fn new(julian_day: JulianDay) -> Self {
         Self {
             julian_day,
-            positions: smallvec::SmallVec::with_capacity(11),
+            positions: Vec::with_capacity(11),
             calculated_at: time::OffsetDateTime::now_utc(),
         }
     }
     
     /// Add position for celestial body
-    pub fn add_position(&mut self, body: CelestialBody, position: Cartesian) -> crate::DomainResult<()> {
+    pub fn add_position(&mut self, _body: CelestialBody, position: Cartesian) -> crate::DomainResult<()> {
         if self.positions.len() >= 11 {
             return Err(crate::DomainError::EphemerisCapacityExceeded);
         }
@@ -201,8 +201,8 @@ impl EphemerisData {
     /// Convert to flat f64 array for WASM interop
     /// 
     /// Layout: [x1, y1, z1, x2, y2, z2, ...] for direct Float64Array view
-    pub fn to_flat_array(&self) -> smallvec::SmallVec<[f64; 33]> {
-        let mut result = smallvec::SmallVec::with_capacity(33);
+    pub fn to_flat_array(&self) -> Vec<f64> {
+        let mut result = Vec::with_capacity(self.positions.len() * 3);
         
         for pos in &self.positions {
             result.push(pos.x);

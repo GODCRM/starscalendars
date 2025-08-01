@@ -56,4 +56,4 @@ wasm = []
 
 # wasm-pack optimization settings
 [package.metadata.wasm-pack.profile.release]
-wee_alloc = false  # Use system allocator for better performance
+wasm-opt = false  # Disable wasm-opt for compatibility with new WASM features

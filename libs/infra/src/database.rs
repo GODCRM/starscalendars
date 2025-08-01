@@ -3,7 +3,7 @@
 //! Repository adapters implementing the port interfaces using SQLx.
 
 use async_trait::async_trait;
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use starscalendars_app::*;
 use starscalendars_domain::*;
 use crate::InfraError;
