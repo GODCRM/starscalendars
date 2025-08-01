@@ -1,0 +1,19 @@
+[toolchain]
+# Rust 1.88+ for StarsCalendars production environment
+channel = "1.88.0"
+components = [
+    "cargo",
+    "clippy",
+    "rust-docs",
+    "rust-src",
+    "rust-std",
+    "rustc",
+    "rustfmt",
+]
+targets = [
+    "wasm32-unknown-unknown",  # WASM target for astronomical calculations
+    "x86_64-unknown-linux-gnu",  # Production deployment target
+    "x86_64-apple-darwin",     # macOS development
+    "aarch64-apple-darwin",    # Apple Silicon development
+]
+profile = "default"

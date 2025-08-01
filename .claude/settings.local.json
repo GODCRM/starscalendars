@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(cargo run:*)",
+      "Bash(mv:*)",
+      "Bash(chmod:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:rust-unofficial.github.io)",
+      "WebFetch(domain:medium.com)",
+      "Bash(ls:*)",
+      "WebFetch(domain:doc.rust-lang.org)",
+      "Bash(cargo check:*)",
+      "Bash(rm:*)",
+      "Bash(pnpm run:*)",
+      "Bash(npm run build:*)",
+      "Bash(cargo build:*)",
+      "Bash(./build.sh)",
+      "Bash(cargo test)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(touch:*)",
+      "Bash(npm install)",
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:dioxuslabs.com)",
+      "Bash(make:*)",
+      "WebFetch(domain:forge.rust-lang.org)",
+      "WebFetch(domain:rust-lang.github.io)",
+      "Bash(./scripts/validate-quality-system.sh:*)"
+    ],
+    "deny": []
+  }
+}

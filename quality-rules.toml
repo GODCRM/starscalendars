@@ -1,0 +1,38 @@
+# Quality enforcement rules for Cargo.toml
+
+[lints.clippy]
+# Критические антипаттерны (deny = блокировка компиляции)
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unimplemented = "deny"
+todo = "deny"
+
+# Производительность
+inefficient_to_string = "deny"
+large_stack_arrays = "deny"
+large_const_arrays = "deny"
+vec_init_then_push = "deny"
+
+# Безопасность типов
+as_conversions = "deny"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+
+# Async паттерны
+await_holding_lock = "deny"
+async_yields_async = "deny"
+
+# Память
+mem_forget = "deny"
+box_collection = "warn"
+
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+unused_must_use = "deny"
+
+# Пример использования в Cargo.toml:
+# [workspace.lints]
+# clippy = { level = "deny", priority = -1 }
+# rust = { level = "deny", priority = -1 }

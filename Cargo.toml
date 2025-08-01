@@ -1,0 +1,114 @@
+[workspace]
+resolver = "2"
+members = [
+    "backend",
+    "wasm-astro",
+    "dioxus-app",
+    "libs/domain",
+    "libs/app",
+    "libs/infra",
+]
+
+[workspace.dependencies]
+# Core Rust ecosystem (Rust 1.88+ / 2025 editions)
+tokio = { version = "1.47", features = ["full"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+time = { version = "0.3", features = ["serde", "macros"] }
+uuid = { version = "1.10", features = ["v4", "serde"] }
+config = "0.14"
+figment = { version = "0.10", features = ["toml", "env"] }
+
+# Web server stack (2025 versions)
+axum = { version = "0.8.4", features = ["ws", "macros", "multipart"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "compression-gzip", "trace", "fs"] }
+hyper = { version = "1.4", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# Database and caching (2025 versions)
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "macros", "uuid", "time"] }
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
+# Authentication and security
+jsonwebtoken = "9.3"
+argon2 = "0.5"
+
+# Telegram integration (2025 version)
+teloxide = { version = "0.17.0", features = ["macros"] }
+
+# WASM and frontend integration (2025 versions)
+wasm-bindgen = "0.2.100"
+js-sys = "0.3"
+web-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+
+# Dioxus fullstack (2025 version)
+dioxus = { version = "0.6", features = ["router", "fullstack"] }
+dioxus-web = "0.6"
+
+# Astronomical calculations
+astro = "2.0"
+
+# Utilities
+once_cell = "1.19"
+parking_lot = "0.12"
+dashmap = "6.1"
+smallvec = { version = "1.13", features = ["serde"] }
+tinyvec = { version = "1.8", features = ["alloc", "serde"] }
+
+# Async utilities
+futures = "0.3"
+futures-util = "0.3"
+async-trait = "0.1"
+
+# Development and testing
+tokio-test = "0.4"
+mockall = "0.13"
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.5"
+
+[workspace.lints]
+# Inherit quality rules from quality-rules.toml
+clippy.unwrap_used = "deny"
+clippy.expect_used = "deny"
+clippy.panic = "deny"
+clippy.unimplemented = "deny"
+clippy.todo = "deny"
+clippy.inefficient_to_string = "deny"
+clippy.large_stack_arrays = "deny"
+clippy.large_const_arrays = "deny"
+clippy.vec_init_then_push = "deny"
+clippy.as_conversions = "deny"
+clippy.cast_possible_truncation = "warn"
+clippy.cast_sign_loss = "warn"
+clippy.await_holding_lock = "deny"
+clippy.async_yields_async = "deny"
+clippy.mem_forget = "deny"
+clippy.box_collection = "warn"
+rust.unsafe_code = "deny"
+rust.missing_docs = "warn"
+rust.unused_must_use = "deny"
+
+[profile.release]
+# Aggressive optimization for production performance
+opt-level = 3
+lto = "fat"
+panic = "abort"
+strip = true
+
+[profile.dev]
+# Fast compilation for development
+opt-level = 0
+debug = true
+strip = false
+
+[profile.bench]
+# Performance testing optimization
+opt-level = 3
+lto = "fat"
+debug = false

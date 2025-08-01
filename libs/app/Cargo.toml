@@ -1,0 +1,37 @@
+[package]
+name = "starscalendars-app"
+version = "0.1.0"
+edition = "2024"
+description = "Application layer - use cases and port interfaces for StarsCalendars"
+authors = ["StarsCalendars Team"]
+license = "UNLICENSED"
+
+[lints]
+workspace = true
+
+[dependencies]
+# Domain layer dependency
+starscalendars-domain = { path = "../domain" }
+
+# Core async and error handling
+tokio = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Serialization and time
+serde = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }
+
+# Performance collections
+smallvec = { workspace = true }
+dashmap = { workspace = true }
+
+# Configuration
+config = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+mockall = { workspace = true }

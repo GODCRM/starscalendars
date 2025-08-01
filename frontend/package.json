@@ -1,0 +1,63 @@
+{
+  "name": "starscalendars-frontend",
+  "version": "0.1.0",
+  "description": "Frontend for StarsCalendars - 3D astronomical visualization with Babylon.js and WASM",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:prod": "tsc && vite build --mode production",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\"",
+    "clean": "rm -rf dist node_modules/.vite",
+    "test": "vitest",
+    "build:wasm": "cd ../wasm-astro && wasm-pack build --release --target web -- --features wasm"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^8.18.0",
+    "@babylonjs/materials": "^8.18.0",
+    "@babylonjs/loaders": "^8.18.0",
+    "@babylonjs/gui": "^8.18.0",
+    "@babylonjs/inspector": "^8.18.0",
+    "@fluent/bundle": "^0.18.0",
+    "@fluent/react": "^0.19.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.0",
+    "date-fns": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "eslint": "^9.12.0",
+    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "eslint-plugin-react-refresh": "^0.4.12",
+    "prettier": "^3.3.3",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.8",
+    "vite-plugin-wasm": "^3.3.0",
+    "vite-plugin-top-level-await": "^1.4.4",
+    "vitest": "^2.1.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

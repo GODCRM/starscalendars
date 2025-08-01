@@ -1,0 +1,106 @@
+# EditorConfig for StarsCalendars spiritual platform
+# Ensures consistent formatting across all editors and IDEs
+# https://editorconfig.org/
+
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Rust source files - following Rust standard formatting
+[*.rs]
+indent_size = 4
+max_line_length = 100
+insert_final_newline = true
+
+# Cargo configuration files
+[Cargo.toml]
+indent_size = 4
+
+[Cargo.lock]
+indent_size = 4
+insert_final_newline = false
+
+# TOML configuration files
+[*.toml]
+indent_size = 4
+
+# TypeScript/JavaScript - for frontend and Babylon.js integration
+[*.{js,ts,tsx,jsx}]
+indent_size = 2
+max_line_length = 100
+
+# JSON files - API responses, package configs, etc.
+[*.json]
+indent_size = 2
+
+# YAML files - GitHub Actions, Docker, etc.
+[*.{yml,yaml}]
+indent_size = 2
+
+# HTML files - for GUI overlays and documentation
+[*.html]
+indent_size = 2
+
+# CSS/SCSS - for spiritual platform styling
+[*.{css,scss,sass}]
+indent_size = 2
+
+# Markdown documentation
+[*.md]
+indent_size = 2
+trim_trailing_whitespace = false
+
+# Shell scripts - for build and deployment
+[*.{sh,bash}]
+indent_size = 2
+
+# SQL files - database migrations and queries
+[*.sql]
+indent_size = 2
+
+# Docker files
+[Dockerfile*]
+indent_size = 2
+
+# Make files - our quality enforcement Makefile
+[{Makefile,*.mk}]
+indent_style = tab
+indent_size = 4
+
+# Git configuration files
+[.git*]
+indent_size = 2
+
+# GitHub Actions workflows
+[.github/**/*.{yml,yaml}]
+indent_size = 2
+
+# VS Code settings
+[.vscode/*.json]
+indent_size = 2
+
+# Fluent localization files (for 12-language support)
+[*.ftl]
+indent_size = 2
+charset = utf-8
+
+# ICU MessageFormat files
+[*.{properties,po}]
+indent_size = 2
+charset = utf-8
+
+# WebAssembly text format
+[*.wat]
+indent_size = 2
+
+# Configuration files that shouldn't be modified
+[{package-lock.json,yarn.lock,pnpm-lock.yaml}]
+insert_final_newline = false
+trim_trailing_whitespace = false

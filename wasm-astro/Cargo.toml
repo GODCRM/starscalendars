@@ -1,0 +1,59 @@
+[package]
+name = "starscalendars-wasm-astro"
+version = "0.1.0"
+edition = "2024"
+description = "WebAssembly astronomical calculations core for StarsCalendars"
+authors = ["StarsCalendars Team"]
+license = "UNLICENSED"
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Domain layer for shared types
+starscalendars-domain = { path = "../libs/domain", features = ["wasm"] }
+
+# WASM bindings
+wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+
+# Astronomical calculations
+astro = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde-wasm-bindgen = "0.6"
+
+# Performance optimized collections
+smallvec = { workspace = true }
+tinyvec = { workspace = true }
+
+# Time handling
+time = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Thread-local storage for buffer management
+thread_local = "1.1"
+
+# Utilities
+once_cell = { workspace = true }
+
+web-sys = { version = "0.3", features = [
+  "console",
+  "Performance",
+  "Window",
+] }
+
+[features]
+default = ["wasm"]
+wasm = []
+
+# wasm-pack optimization settings
+[package.metadata.wasm-pack.profile.release]
+wee_alloc = false  # Use system allocator for better performance

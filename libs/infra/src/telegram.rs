@@ -1,0 +1,249 @@
+//! Telegram API service implementation
+//!
+//! Integration with Telegram Bot API using teloxide and reqwest.
+
+use async_trait::async_trait;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use starscalendars_app::*;
+use crate::InfraError;
+
+/// Telegram Bot API implementation
+pub struct TelegramApiService {
+    client: Client,
+    bot_token: String,
+    base_url: String,
+}
+
+impl TelegramApiService {
+    /// Create new Telegram API service
+    pub fn new(bot_token: String) -> Self {
+        Self {
+            client: Client::new(),
+            bot_token,
+            base_url: "https://api.telegram.org".to_string(),
+        }
+    }
+    
+    /// Create with custom base URL (for testing)
+    pub fn with_base_url(bot_token: String, base_url: String) -> Self {
+        Self {
+            client: Client::new(),
+            bot_token,
+            base_url,
+        }
+    }
+    
+    /// Build API URL
+    fn api_url(&self, method: &str) -> String {
+        format!("{}/bot{}/{}", self.base_url, self.bot_token, method)
+    }
+}
+
+#[async_trait]
+impl TelegramService for TelegramApiService {
+    async fn is_member_of_channel(&self, user_id: i64, channel: &str) -> AppResult<bool> {
+        #[derive(Serialize)]
+        struct GetChatMemberRequest {
+            chat_id: String,
+            user_id: i64,
+        }
+        
+        #[derive(Deserialize)]
+        struct GetChatMemberResponse {
+            ok: bool,
+            result: Option<ChatMember>,
+        }
+        
+        #[derive(Deserialize)]
+        struct ChatMember {
+            status: String,
+        }
+        
+        let request = GetChatMemberRequest {
+            chat_id: channel.to_string(),
+            user_id,
+        };
+        
+        let response = self.client
+            .post(&self.api_url("getChatMember"))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        let chat_member_response: GetChatMemberResponse = response
+            .json()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        if !chat_member_response.ok {
+            return Ok(false);
+        }
+        
+        match chat_member_response.result {
+            Some(member) => {
+                // User is considered a member if they are not kicked or left
+                Ok(matches!(member.status.as_str(), "creator" | "administrator" | "member"))
+            }
+            None => Ok(false),
+        }
+    }
+    
+    async fn send_message(&self, user_id: i64, message: &str) -> AppResult<()> {
+        #[derive(Serialize)]
+        struct SendMessageRequest {
+            chat_id: i64,
+            text: String,
+            parse_mode: Option<String>,
+        }
+        
+        #[derive(Deserialize)]
+        struct SendMessageResponse {
+            ok: bool,
+            description: Option<String>,
+        }
+        
+        let request = SendMessageRequest {
+            chat_id: user_id,
+            text: message.to_string(),
+            parse_mode: Some("Markdown".to_string()),
+        };
+        
+        let response = self.client
+            .post(&self.api_url("sendMessage"))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        let send_response: SendMessageResponse = response
+            .json()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        if !send_response.ok {
+            let error_msg = send_response.description
+                .unwrap_or_else(|| "Unknown Telegram API error".to_string());
+            return Err(InfraError::TelegramApi(error_msg).into());
+        }
+        
+        Ok(())
+    }
+    
+    async fn get_user_info(&self, user_id: i64) -> AppResult<TelegramUserInfo> {
+        #[derive(Serialize)]
+        struct GetChatRequest {
+            chat_id: i64,
+        }
+        
+        #[derive(Deserialize)]
+        struct GetChatResponse {
+            ok: bool,
+            result: Option<TelegramChat>,
+            description: Option<String>,
+        }
+        
+        #[derive(Deserialize)]
+        struct TelegramChat {
+            id: i64,
+            #[serde(rename = "type")]
+            chat_type: String,
+            username: Option<String>,
+            first_name: Option<String>,
+            last_name: Option<String>,
+        }
+        
+        let request = GetChatRequest {
+            chat_id: user_id,
+        };
+        
+        let response = self.client
+            .post(&self.api_url("getChat"))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        let chat_response: GetChatResponse = response
+            .json()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        if !chat_response.ok {
+            let error_msg = chat_response.description
+                .unwrap_or_else(|| "Failed to get user info".to_string());
+            return Err(InfraError::TelegramApi(error_msg).into());
+        }
+        
+        match chat_response.result {
+            Some(chat) => Ok(TelegramUserInfo {
+                id: chat.id,
+                username: chat.username,
+                first_name: chat.first_name.unwrap_or_else(|| "Unknown".to_string()),
+                last_name: chat.last_name,
+                is_bot: chat.chat_type == "bot",
+            }),
+            None => Err(InfraError::TelegramApi("User not found".to_string()).into()),
+        }
+    }
+}
+
+/// Mock Telegram service for testing
+pub struct MockTelegramService {
+    /// Whether users are considered subscribed by default
+    pub default_subscription_status: bool,
+    /// Specific user subscription overrides
+    pub user_subscriptions: dashmap::DashMap<i64, bool>,
+    /// User info storage for testing
+    pub user_info: dashmap::DashMap<i64, TelegramUserInfo>,
+}
+
+impl MockTelegramService {
+    /// Create new mock service
+    pub fn new() -> Self {
+        Self {
+            default_subscription_status: false,
+            user_subscriptions: dashmap::DashMap::with_capacity(100),
+            user_info: dashmap::DashMap::with_capacity(100),
+        }
+    }
+    
+    /// Set subscription status for a user
+    pub fn set_user_subscription(&self, user_id: i64, is_subscribed: bool) {
+        self.user_subscriptions.insert(user_id, is_subscribed);
+    }
+    
+    /// Set user info for testing
+    pub fn set_user_info(&self, user_id: i64, info: TelegramUserInfo) {
+        self.user_info.insert(user_id, info);
+    }
+}
+
+impl Default for MockTelegramService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl TelegramService for MockTelegramService {
+    async fn is_member_of_channel(&self, user_id: i64, _channel: &str) -> AppResult<bool> {
+        Ok(self.user_subscriptions
+            .get(&user_id)
+            .map(|v| *v)
+            .unwrap_or(self.default_subscription_status))
+    }
+    
+    async fn send_message(&self, _user_id: i64, _message: &str) -> AppResult<()> {
+        // Mock implementation - just succeed
+        Ok(())
+    }
+    
+    async fn get_user_info(&self, user_id: i64) -> AppResult<TelegramUserInfo> {
+        self.user_info
+            .get(&user_id)
+            .map(|info| info.clone())
+            .ok_or_else(|| InfraError::TelegramApi("User not found".to_string()).into())
+    }
+}

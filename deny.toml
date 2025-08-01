@@ -1,0 +1,147 @@
+# cargo-deny configuration for comprehensive security scanning
+# Version: cargo-deny 0.18.3 (latest as of 2025)
+
+[graph]
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "x86_64-pc-windows-msvc" },
+    { triple = "x86_64-apple-darwin" },
+    { triple = "aarch64-apple-darwin" },
+    { triple = "wasm32-unknown-unknown" },
+]
+all-features = true
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+# 🔒 ADVISORY DATABASE - Critical Security Scanning
+[advisories]
+version = 2
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "warn"
+notice = "warn"
+ignore = [
+    # No security exceptions for StarsCalendars - spiritual platform must be secure
+]
+
+# 📜 LICENSE COMPLIANCE - Ensure spiritual platform legal compliance
+[licenses]
+version = 2
+confidence-threshold = 0.8
+
+# ALLOWED LICENSES for spiritual open-source platform
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+]
+
+# FORBIDDEN LICENSES for spiritual platform
+deny = [
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL-1.0",
+    "AGPL-3.0",
+    "LGPL-2.0",
+    "LGPL-2.1",
+    "LGPL-3.0",
+    "SSPL-1.0",
+    "BSL-1.1",
+]
+
+copyleft = "deny"
+allow-osi-fsf-free = "neither"
+default = "deny"
+
+private = { ignore = true }
+
+[[licenses.exceptions]]
+allow = ["Unicode-DFS-2016"]
+name = "unicode-ident"
+
+# 🚫 BANNED DEPENDENCIES - Zero tolerance for problematic crates
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+
+# CRITICAL SECURITY BANS
+deny = [
+    # Cryptographic vulnerabilities
+    { name = "openssl", version = "*" },  # Use rustls instead
+    { name = "native-tls", version = "*" }, # Use rustls instead
+    
+    # Potential security issues
+    { name = "time", version = "<0.3.0" }, # Known security issues in old versions
+    { name = "chrono", version = "<0.4.19" }, # Timezone vulnerabilities
+    
+    # Unmaintained or problematic crates
+    { name = "stdweb", version = "*" }, # Deprecated, use web-sys
+    { name = "js-sys", version = "<0.3.60" }, # Security fixes needed
+    { name = "wasm-bindgen", version = "<0.2.84" }, # WASM security
+    
+    # Performance killers (banned per tz.md requirements)
+    { name = "lazy_static", version = "*" }, # Use std::sync::OnceLock
+    { name = "once_cell", version = "<1.18.0" }, # Old versions have issues
+]
+
+# APPROVED ALTERNATIVES for banned crates
+[[bans.deny]]
+name = "openssl"
+use-instead = "rustls"
+
+[[bans.deny]]
+name = "native-tls"  
+use-instead = "rustls-tls"
+
+[[bans.deny]]
+name = "stdweb"
+use-instead = "web-sys"
+
+[[bans.deny]]
+name = "lazy_static"
+use-instead = "std::sync::OnceLock"
+
+# SKIP version checks only for critical system dependencies
+skip = [
+    { name = "windows-sys", version = "*" }, # System dependency
+    { name = "windows-targets", version = "*" }, # System dependency
+]
+
+skip-tree = [
+    { name = "winapi", version = "*" }, # Legacy Windows API
+    { name = "wasm-bindgen", version = "*" }, # WASM core dependency
+]
+
+# 🔗 SOURCES - Only trusted crate sources for spiritual platform
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+# ALLOWED git sources for specific spiritual/astronomical crates
+allow-git = [
+    "https://github.com/saurvs/astro-rust",
+    "https://github.com/teloxide/teloxide",
+    "https://github.com/babylonjs/babylon.js",
+]
+
+[sources.allow-org]
+github = [
+    "rust-lang",
+    "tokio-rs", 
+    "serde-rs",
+    "dtolnay",
+    "BurntSushi",
+    "rustwasm",
+    "teloxide",
+    "saurvs", # astro-rust maintainer
+]

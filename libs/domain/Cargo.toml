@@ -1,0 +1,35 @@
+[package]
+name = "starscalendars-domain"
+version = "0.1.0"
+edition = "2024"
+description = "Domain layer - pure business logic and types for StarsCalendars"
+authors = ["StarsCalendars Team"]
+license = "UNLICENSED"
+
+[lints]
+workspace = true
+
+[dependencies]
+# Core serialization and time handling
+serde = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+# Performance-optimized collections
+smallvec = { workspace = true }
+tinyvec = { workspace = true }
+
+# Astronomical calculations
+astro = { workspace = true }
+
+# No infrastructure dependencies allowed in domain layer
+# This ensures Clean Architecture compliance
+
+[features]
+default = []
+wasm = []
+
+[dev-dependencies]
+proptest = { workspace = true }
+criterion = { workspace = true }

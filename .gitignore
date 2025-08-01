@@ -1,0 +1,122 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+*.pdb
+
+# Node.js and pnpm
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+
+# WASM artifacts
+wasm-astro/pkg/
+*.wasm
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editors (keep .vscode/settings.json for quality enforcement)
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.fleet/
+.nova/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+.temp/
+.tmp/
+
+# Dioxus build artifacts
+.dioxus/
+dx_build/
+
+# Local configuration
+config.local.toml
+secrets.toml
+
+# Testing
+.pytest_cache/
+
+# Docker
+.docker/
+
+# Backup files
+*.bak
+*.backup
+
+# Profiling
+perf.data
+*.prof
+
+# Documentation build
+_book/
+target/doc/
+docs/build/
+
+# Quality enforcement artifacts
+.quality-reports/
+*.profraw
+*.profdata
+coverage/
+tarpaulin-report.html
+
+# Cargo audit and deny reports
+cargo-audit.log
+cargo-deny.log
+
+# Performance benchmarks output
+criterion-reports/
+bench-results/
+
+# Security scanning results
+security-audit.json
+vulnerability-scan.log

@@ -1,0 +1,61 @@
+[package]
+name = "starscalendars-backend"
+version = "0.1.0"
+edition = "2024"
+description = "Axum HTTP/WS server with PostgreSQL, Telegram, and JWT authentication"
+authors = ["StarsCalendars Team"]
+license = "UNLICENSED"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "backend"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace libraries
+starscalendars-domain = { path = "../libs/domain" }
+starscalendars-app = { path = "../libs/app" }
+starscalendars-infra = { path = "../libs/infra" }
+
+# Web server stack
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+hyper = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization and validation
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling and logging
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Time and utilities
+time = { workspace = true }
+uuid = { workspace = true }
+
+# Configuration
+config = { workspace = true }
+figment = { workspace = true }
+
+# Performance
+once_cell = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+axum-test = "14.1"
+
+[features]
+default = []
+production = []

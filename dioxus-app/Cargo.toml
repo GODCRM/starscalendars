@@ -1,0 +1,48 @@
+[package]
+name = "starscalendars-dioxus-app"
+version = "0.1.0"
+edition = "2024"
+description = "Dioxus fullstack app for authentication, profile, and admin features"
+authors = ["StarsCalendars Team"]
+license = "UNLICENSED"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "dioxus-app"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace libraries
+starscalendars-domain = { path = "../libs/domain" }
+starscalendars-app = { path = "../libs/app" }
+starscalendars-infra = { path = "../libs/infra" }
+
+# Dioxus fullstack
+dioxus = { workspace = true }
+dioxus-web = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling and logging
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Time and utilities
+time = { workspace = true }
+uuid = { workspace = true }
+
+# Configuration
+config = { workspace = true }
+
+[features]
+default = []
+server = []
+web = []
