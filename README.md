@@ -9,7 +9,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **🌌 Real-time 3D Visualization**: Cinematic quality astronomical scenes using Babylon.js 8
 - **⚡ WebAssembly Calculations**: High-precision ephemeris calculations compiled to WASM
 - **📱 Telegram Integration**: Community-driven authentication and premium features
-- **🌍 Global Localization**: 12-language support with cultural adaptations
+- **🌍 Global Localization**: 11-language support with cultural adaptations
 - **🏧 Clean Architecture**: Domain-driven design with clear separation of concerns
 
 ## 🛠️ Technology Stack
@@ -175,14 +175,13 @@ make pre-commit
 
 ## 🌍 Internationalization
 
-**12 Language Support** with cultural adaptations:
+**11 Language Support** with cultural adaptations:
 
-**Tier 1-2**: English, Chinese, Spanish, Hindi, Arabic  
-**Tier 3-4**: Portuguese, German, French, Japanese, Russian  
+**Tier 1-2**: English, Chinese, Spanish, Hindi, Portuguese  
+**Tier 3-4**: German, French, Japanese, Russian  
 **Tier 5**: Georgian, Armenian
 
 - **Fluent L10n**: ICU MessageFormat standard
-- **RTL Support**: Arabic language optimization
 - **Cultural Sensitivity**: Spiritual community considerations
 
 ## 📋 Development Status - ОБНОВЛЕНО 2025-01-08

@@ -205,7 +205,7 @@ make wasm-perf        # WASM-specific performance checks
 - **Requirement**: All text must be localizable via Fluent ICU MessageFormat
 - **Pattern**: `t!("key", args)` for all user-facing strings
 - **Validation**: No hardcoded English strings in components
-- **RTL Support**: Arabic language layout validation required
+- **Script Support**: Complex typography validation for 11 supported languages
 
 ### **Cultural Sensitivity Enforcement**
 ```rust
@@ -214,7 +214,6 @@ match user.culture_preference {
     Culture::Western => format_date_western(date),
     Culture::Chinese => format_date_lunar(date), 
     Culture::Hindu => format_date_vedic(date),
-    Culture::Islamic => format_date_hijri(date),
     // ... 8 more cultural adaptations
 }
 ```
@@ -301,7 +300,7 @@ error: usage of `as` conversion is not allowed
 1. **Performance Benchmarks** → Validate all targets met
 2. **Security Audit** → Complete dependency scanning
 3. **Architecture Review** → Clean Architecture compliance
-4. **Cultural Testing** → 12-language validation
+4. **Cultural Testing** → 11-language validation
 5. **Production Deploy** → Only after quality certification
 
 ## 🎯 Quality Champion Guidelines

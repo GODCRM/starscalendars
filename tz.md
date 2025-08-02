@@ -325,17 +325,17 @@ SQL: все запросы проходят compile-time проверку SQLX; 
 Безопасность: прохождение статических анализов (clippy, cargo-audit), CSP работает, HTTPS, токены корректно выдаются/освежаются.
 Кроссбраузерность: Chromium/Firefox/Safari последних релизов; мобильные Chrome/Safari.
 VR-ready: экспериментальная ветка с прототипом WebXR запускается (в будущем), без изменений бэкенда.
-## Многоязычная система (12 языков)
+## Многоязычная система (11 языков)
 
 ### Поддерживаемые языки (приоритетные уровни)
-- **Tier 1** (1B+ носителей): English, Chinese, Spanish, Hindi, Arabic
-- **Tier 2** (400M+ носителей): Portuguese, German, French, Japanese  
+- **Tier 1** (1B+ носителей): English, Chinese, Spanish, Hindi, Portuguese
+- **Tier 2** (400M+ носителей): German, French, Japanese  
 - **Tier 3** (специализированные): Russian, Georgian, Armenian
 
 ### Архитектура i18n
 - **Fluent** для локализации (ICU MessageFormat)
 - **Кроссплатформенная синхронизация**: Dioxus ↔ Babylon.js ↔ HTML overlay
-- **Культурные адаптации**: RTL поддержка, священные календари, региональные форматы
+- **Культурные адаптации**: священные календари, региональные форматы
 - **Производительность**: <200ms загрузка языка, <100ms переключение
 
 ### Реализация
@@ -343,7 +343,7 @@ VR-ready: экспериментальная ветка с прототипом 
 // libs/domain/i18n.rs
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Language {
-    English, Chinese, Spanish, Hindi, Arabic,
+    English, Chinese, Spanish, Hindi,
     Portuguese, German, French, Japanese,
     Russian, Georgian, Armenian,
 }
@@ -353,13 +353,10 @@ impl Language {
         match self {
             Language::English => "en-US",
             Language::Chinese => "zh-CN", 
-            Language::Arabic => "ar-SA", // RTL
+            Language::Spanish => "es-ES",
+            Language::Hindi => "hi-IN",
             // ... остальные языки
         }
-    }
-    
-    pub fn is_rtl(&self) -> bool {
-        matches!(self, Language::Arabic)
     }
 }
 ```
@@ -368,7 +365,7 @@ impl Language {
 - **HTML/CSS overlay** для основного UI (меню, кнопки, формы)
 - **Babylon.js GUI** только для 3D-интегрированных элементов
 - **Производительность**: HTML overlay значительно быстрее Babylon GUI
-- **RTL адаптация**: автоматическое зеркалирование для арабского
+- **Локализация**: полная поддержка всех 11 языков
 
 ### Telegram интеграция
 - **Многоязычный бот** с культурными адаптациями

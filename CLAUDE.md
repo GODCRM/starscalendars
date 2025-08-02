@@ -55,7 +55,7 @@ starscalendars/
 
 ## Project Overview
 
-StarsCalendars is a spiritual astronomy platform that combines high-precision astronomical calculations with esoteric knowledge. The project integrates 3D visualization using Babylon.js 8, WebAssembly astronomical computations, and spiritual/astrological features for a community of spiritual seekers. The platform uses TELEGRAM-ONLY authentication with 12-language localization system (Tier 1-5 priority: English, Chinese, Spanish, Hindi, Arabic, Portuguese, German, French, Japanese, Russian, Georgian, Armenian) for global spiritual community access.
+StarsCalendars is a spiritual astronomy platform that combines high-precision astronomical calculations with esoteric knowledge. The project integrates 3D visualization using Babylon.js 8, WebAssembly astronomical computations, and spiritual/astrological features for a community of spiritual seekers. The platform uses TELEGRAM-ONLY authentication with 11-language localization system (Tier 1-5 priority: English, Chinese, Spanish, Hindi, Portuguese, German, French, Japanese, Russian, Georgian, Armenian) for global spiritual community access.
 
 ## Architecture (Clean Architecture per tz.md)
 
@@ -180,7 +180,7 @@ Once source code is created, these commands will be available:
 - Load testing for 10,000+ concurrent bot users
 - WASM-JS interop performance testing
 - GUI performance comparison (HTML overlay vs Babylon GUI)
-- RTL language support testing (Arabic)
+- Cross-platform language rendering testing
 
 ## Important Notes
 
@@ -193,7 +193,7 @@ Once source code is created, these commands will be available:
 - 12-language support with cultural sensitivity for global spiritual community
 - GUI performance: HTML/CSS overlay significantly faster than Babylon.js GUI
 - WASM performance: exactly one `compute_all(t)` call per frame
-- Multilingual system: Fluent with ICU MessageFormat, RTL support for Arabic
+- Multilingual system: Fluent with ICU MessageFormat for 11-language support
 
 ## Code Quality Requirements (tz.md Standards)
 

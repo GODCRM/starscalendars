@@ -61,8 +61,7 @@
 
      i18n-expert - Международнализация Tier 1-2:
      - Создание i18n системы с Fluent (ICU MessageFormat)
-     - Реализация поддержки 5 основных языков (English, Chinese, Spanish, Hindi, Arabic)
-     - RTL поддержка для арабского языка
+     - Реализация поддержки 5 основных языков (English, Chinese, Spanish, Hindi, Portuguese)
      - Cross-platform language synchronization между всеми компонентами
      - Performance optimization для <200ms загрузки языков
 
@@ -208,7 +207,7 @@
      Main Features Success Criteria:
 
      - ✅ Full Telegram integration working
-     - ✅ 12-language support complete
+     - ✅ 11-language support complete
      - ✅ Real-time astronomical updates
      - ✅ Subscription system functional
      - ✅ 10,000+ concurrent user support
