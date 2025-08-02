@@ -68,7 +68,7 @@
      Phase 1.4: Базовая аутентификация
 
      dioxus-expert - Auth интерфейсы:
-     - Создание dioxus-app/ с Dioxus 0.6+ fullstack
+     - Создание dioxus-app/ с Dioxus 0.7 ALPHA fullstack (CUTTING-EDGE REWRITTEN)
      - Реализация базовых auth форм (/auth/login, /auth/register)
      - Интеграция с backend JWT сервисами
      - Создание базовых profile страниц

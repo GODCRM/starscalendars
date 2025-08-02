@@ -406,14 +406,13 @@ pub trait TelegramApi {
 - **Fluent L10n**: https://projectfluent.org/
 - **Rust I18N**: https://docs.rs/rust-i18n/latest/rust_i18n/
 
-- **Dioxus - Article**: https://habr.com/ru/articles/865980/
-- **Dioxus - Main**: https://dioxuslabs.com/learn/0.6/
-- **Dioxus - Main guide**: https://dioxuslabs.com/learn/0.6/guide
-- **Dioxus - Main fullstack**: https://dioxuslabs.com/learn/0.6/guides/fullstack/
-- **Dioxus - GIT**: https://github.com/DioxusLabs/dioxus/tree/v0.6
-- **Dioxus - GIT Examples**: https://github.com/DioxusLabs/dioxus/tree/v0.6/examples
-- **Dioxus - GIT Examples Projects**: https://github.com/DioxusLabs/dioxus/tree/v0.6/example-projects
-- **Dioxus - Additional**: https://docs.rs/dioxus/latest/dioxus/
+- **Dioxus - Main**: https://dioxuslabs.com/learn/0.7/
+- **Dioxus - Main guide**: https://dioxuslabs.com/learn/0.7/guide
+- **Dioxus - Main fullstack**: https://dioxuslabs.com/learn/0.7/guides/fullstack/
+- **Dioxus - GIT**: https://github.com/DioxusLabs/dioxus
+- **Dioxus - GIT Examples**: https://github.com/DioxusLabs/dioxus/tree/main/examples
+- **Dioxus - GIT Examples Projects**: https://github.com/DioxusLabs/dioxus/tree/main/example-projects
+- **Dioxus - Additional**: https://docs.rs/dioxus/0.7.0-alpha.3/dioxus/index.html
 
 ## Quality Enforcement System
 

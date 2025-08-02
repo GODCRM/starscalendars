@@ -35,7 +35,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **Thread-local buffers** for performance optimization
 
 ### Authentication & UI
-- **Dioxus** fullstack framework for auth/profile/admin
+- **Dioxus 0.7 ALPHA** fullstack framework for auth/profile/admin
 - **Pure Telegram** authentication (no passwords)
 - **Subscription verification** via getChatMember API
 
@@ -47,7 +47,7 @@ starscalendars/
 ├── frontend/          # TypeScript + Vite + Babylon.js
 ├── wasm-astro/        # Rust WASM: эфемеридное ядро  
 ├── backend/           # Axum HTTP/WS, PostgreSQL, Telegram, JWT
-├── dioxus-app/        # Dioxus fullstack для auth/profile/admin
+├── dioxus-app/        # Dioxus 0.7 ALPHA fullstack для auth/profile/admin
 ├── libs/
 │   ├── domain/        # Чистые типы и бизнес-правила
 │   ├── app/           # Use-cases, портовые интерфейсы

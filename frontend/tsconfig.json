@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "target": "ES2025",
+    "lib": ["ES2025", "DOM", "DOM.Iterable"],
     "allowJs": false,
     "skipLibCheck": true,
     "noResolve": false,
@@ -11,6 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
     "allowUmdGlobalAccess": true,
     "resolveJsonModule": true,
     "isolatedModules": true,

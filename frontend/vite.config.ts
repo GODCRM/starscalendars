@@ -27,6 +27,23 @@ export default defineConfig({
           'babylon': ['@babylonjs/core', '@babylonjs/materials', '@babylonjs/loaders'],
           'react-vendor': ['react', 'react-dom'],
           'wasm-astro': ['../wasm-astro/pkg']
+        },
+        // ✅ 2025 Optimization: Rolldown-specific optimizations
+        format: 'es',
+        generatedCode: 'es2022'
+      }
+    },
+    // ✅ 2025 Build Performance: Enhanced for large 3D applications
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        passes: 2,
+        pure_getters: true,
+        unsafe_arrows: true
+      },
+      mangle: {
+        properties: {
+          regex: /^_private/
         }
       }
     }
@@ -39,7 +56,9 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    exclude: ['@babylonjs/core', '@babylonjs/materials']
+    exclude: ['@babylonjs/core', '@babylonjs/materials'],
+    // ✅ 2025 Optimization: Force pre-bundling for performance
+    include: ['react', 'react-dom', 'zustand', 'date-fns']
   },
   worker: {
     format: 'es',

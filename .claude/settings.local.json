@@ -45,7 +45,20 @@
       "Bash(cargo tree:*)",
       "WebFetch(domain:doc.babylonjs.com)",
       "WebFetch(domain:vite.dev)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "WebFetch(domain:www.babylonjs.com)",
+      "WebFetch(domain:www.typescriptlang.org)",
+      "WebFetch(domain:devblogs.microsoft.com)",
+      "WebFetch(domain:vitejs.dev)",
+      "WebFetch(domain:npmjs.com)",
+      "WebFetch(domain:playground.babylonjs.com)",
+      "WebFetch(domain:www.khronos.org)",
+      "WebFetch(domain:gpuweb.github.io)",
+      "WebFetch(domain:web.dev)",
+      "Bash(cargo info:*)",
+      "WebFetch(domain:2025.stateofjs.com)",
+      "WebFetch(domain:developer.mozilla.org)",
+      "WebFetch(domain:webassembly.org)"
     ],
     "deny": []
   }

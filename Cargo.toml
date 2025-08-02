@@ -47,9 +47,9 @@ js-sys = "0.3"
 web-sys = "0.3"
 wasm-bindgen-futures = "0.4"
 
-# Dioxus fullstack (2025 version)
-dioxus = { version = "0.6", features = ["router", "fullstack"] }
-dioxus-web = "0.6"
+# Dioxus fullstack (2025 alpha version)
+dioxus = { version = "0.7.0-alpha.3", features = ["router", "fullstack"] }
+dioxus-web = "0.7.0-alpha.3"
 
 # Astronomical calculations (local copy with bug fixes - DO NOT MODIFY astro-rust/ folder!)
 astro = { path = "./astro-rust" }

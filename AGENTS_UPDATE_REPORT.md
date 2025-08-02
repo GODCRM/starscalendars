@@ -62,7 +62,7 @@
 
 ### 7. **dioxus-expert.md**
 **Основные изменения:**
-- ✅ Обновлена поддержка Dioxus 0.6+ для fullstack WASM приложений
+- ✅ Обновлена поддержка Dioxus 0.7 ALPHA для fullstack WASM приложений (CUTTING-EDGE REWRITTEN)
 - ✅ Добавлена система Server Functions для type-safe RPC
 - ✅ Реализована 10-язычная поддержка с культурными адаптациями
 - ✅ Добавлена система performance optimization для WASM
