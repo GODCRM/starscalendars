@@ -43,7 +43,9 @@
       "Bash(cargo clippy:*)",
       "Bash(cargo search:*)",
       "Bash(cargo tree:*)",
-      "WebFetch(domain:doc.babylonjs.com)"
+      "WebFetch(domain:doc.babylonjs.com)",
+      "WebFetch(domain:vite.dev)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

@@ -61,7 +61,7 @@
 
      i18n-expert - Международнализация Tier 1-2:
      - Создание i18n системы с Fluent (ICU MessageFormat)
-     - Реализация поддержки 5 основных языков (English, Chinese, Spanish, Hindi, Portuguese)
+     - Реализация поддержки 5 основных языков (Russian, English, Chinese, Spanish, Hindi)
      - Cross-platform language synchronization между всеми компонентами
      - Performance optimization для <200ms загрузки языков
 
@@ -82,7 +82,7 @@
      - Создание Telegram бота с teloxide
      - Реализация subscription verification через getChatMember
      - UUID tokens система для account linking
-     - Реализация 12-язычной поддержки для бота
+     - Реализация 10-язычной поддержки для бота
      - Rate limiting и security для bot interactions
      - Cultural adaptations для всех языков
      - Webhook signature verification
@@ -96,8 +96,8 @@
 
      Phase 2.2: Полная многоязычность
 
-     i18n-expert - Расширение до 12 языков:
-     - Добавление Tier 2-3 языков (Portuguese, German, French, Japanese, Russian, Georgian, Armenian)
+     i18n-expert - Расширение до 10 языков:
+     - Добавление Tier 2-3 языков (Portuguese, German, French, Japanese, Armenian)
      - Cultural adaptations для каждого языка
      - Священные календари и региональные форматы
      - Performance optimization для <100ms language switching
@@ -148,7 +148,7 @@
 
      i18n-expert - Localization perfection:
      - Final cultural adaptations review
-     - Native speaker validation для всех 12 языков
+     - Native speaker validation для всех 10 языков
      - Performance fine-tuning
      - Cultural sensitivity audit
      - Complete translation coverage verification
@@ -207,7 +207,7 @@
      Main Features Success Criteria:
 
      - ✅ Full Telegram integration working
-     - ✅ 11-language support complete
+     - ✅ 10-language support complete
      - ✅ Real-time astronomical updates
      - ✅ Subscription system functional
      - ✅ 10,000+ concurrent user support

@@ -1,7 +1,7 @@
 You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.9.2, Babylon.js 8.20.0, Vite 7.0.6, React 19.1.1, and high-performance 3D web development with production-grade Telegram-only authentication.
 
 ## Communication Style
-- DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you 
+- DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you
 can blablabla"
 - Be casual unless otherwise specified
 - Be terse
@@ -9,7 +9,7 @@ can blablabla"
 - Treat me as an expert
 - Be accurate and thorough
 - Give the answer immediately. Provide detailed explanations and restate my query in your own words if necessary after giving the answer
-- Value facts from web search on new programming principles for second half of 2025 over good arguments over authorities, the source is 
+- Value facts from web search on new programming principles for second half of 2025 over good arguments over authorities, the source is
 irrelevant
 - Use web_search for broad/general internet research, and curl for deep/detailed parsing of specific relevant pages (e.g., docs, RFCs, release notes) when needed
 - Consider new technologies and contrarian ideas, not just the conventional wisdom
@@ -18,8 +18,20 @@ irrelevant
 - Discuss safety only when it's crucial and non-obvious
 - If your content policy is an issue, provide the closest acceptable response and expl
 
-## **CRITICAL RULE:**
-**When writing code, be 100% sure you don't break anything existing.**
+## **CRITICAL RULES:**
+**1. When writing code, be 100% sure you don't break anything existing.**
+
+**2. 🚨 MANDATORY RESEARCH REQUIREMENT:**
+**BEFORE writing ANY code, ALL agents MUST:**
+- **WebFetch** official documentation for ALL libraries and frameworks
+- **Study** breaking changes, new APIs, deprecated methods, migration guides
+- **Research** 2025 professional production-ready best practices and patterns
+- **Analyze** latest features, optimization techniques, and memory management
+- **Verify** latest package/crate versions and compatibility matrix
+- **Document** ALL research findings before implementation
+- **Never assume** - always verify current standards and professional practices
+
+**⚠️ This comprehensive research is MANDATORY and comes FIRST for every agent.**
 
 ## Current Project Status
 
@@ -29,7 +41,7 @@ irrelevant
 ### Existing Files
 - `CLAUDE.md` - This guidance document
 - `tz.md` - Comprehensive technical specification (416 lines)
-- `prd.md` - Product requirements document (304 lines)  
+- `prd.md` - Product requirements document (304 lines)
 - `Makefile` - Quality enforcement commands (93 lines)
 - `quality-rules.toml` - Clippy and Rust linting rules (38 lines)
 - `AGENTS_UPDATE_REPORT.md` - Agent configuration status
@@ -39,7 +51,7 @@ The following directory structure will be implemented:
 ```
 starscalendars/
 ├── frontend/          # TypeScript + Vite + Babylon.js
-├── wasm-astro/        # Rust WASM: эфемеридное ядро  
+├── wasm-astro/        # Rust WASM: эфемеридное ядро
 ├── backend/           # Axum HTTP/WS, PostgreSQL, Telegram, JWT
 ├── dioxus-app/        # Dioxus fullstack для auth/profile/admin
 ├── libs/
@@ -51,7 +63,7 @@ starscalendars/
 
 ## Project Overview
 
-StarsCalendars is a spiritual astronomy platform that combines high-precision astronomical calculations with esoteric knowledge. The project integrates 3D visualization using Babylon.js 8, WebAssembly astronomical computations, and spiritual/astrological features for a community of spiritual seekers. The platform uses TELEGRAM-ONLY authentication with 11-language localization system (Tier 1-5 priority: English, Chinese, Spanish, Hindi, Portuguese, German, French, Japanese, Russian, Georgian, Armenian) for global spiritual community access.
+StarsCalendars is a spiritual astronomy platform that combines high-precision astronomical calculations with esoteric knowledge. The project integrates 3D visualization using Babylon.js 8, WebAssembly astronomical computations, and spiritual/astrological features for a community of spiritual seekers. The platform uses TELEGRAM-ONLY authentication with 10-language localization system (Tier 1-5 priority: Russian, English, Chinese, Spanish, Hindi, Portuguese, German, French, Japanese, Armenian) for global spiritual community access.
 
 ## Architecture (Clean Architecture per tz.md)
 
@@ -60,7 +72,7 @@ This project follows clean architecture with clear separation of layers:
 ```
 starscalendars/
 ├── frontend/          # TypeScript + Vite + Babylon.js
-├── wasm-astro/        # Rust WASM: эфемеридное ядро  
+├── wasm-astro/        # Rust WASM: эфемеридное ядро
 ├── backend/           # Axum HTTP/WS, PostgreSQL, Telegram, JWT
 ├── dioxus-app/        # Dioxus fullstack для auth/profile/admin
 ├── libs/
@@ -72,11 +84,11 @@ starscalendars/
 
 ## Key Technologies & Stack
 
-- **Frontend Main Scene**: Babylon.js 8 with pure TypeScript/Vite
-- **Astronomical Calculations**: Rust + WebAssembly using astro-rust library
-- **Backend**: Axum (Rust) with PostgreSQL and WebSockets
+- **Frontend Main Scene**: Babylon.js 8.20.0 with TypeScript 5.9.2/Vite 7.0.6/React 19.1.1
+- **Astronomical Calculations**: Rust + WebAssembly using local astro-rust library (📚 READ-ONLY: astro-rust/ folder must NOT be modified!)
+- **Backend**: Axum (Rust 1.88+) with PostgreSQL and WebSockets
 - **Authentication System**: Telegram-only auth via Teloxide with subscription verification
-- **Multilingual System**: 11-language support with Fluent (ICU MessageFormat)
+- **Multilingual System**: 10-language support with Fluent (ICU MessageFormat)
 - **GUI Strategy**: HTML/CSS overlay for performance, Babylon.js GUI only for 3D-integrated elements
 - **WASM Interface**: Thread-local buffers with Float64Array view for zero-copy data transfer
 - **Database**: PostgreSQL with Telegram user mapping and subscription status
@@ -88,17 +100,18 @@ starscalendars/
 - Each module (frontend, backend, wasm-astro, telegram-bot, i18n) is a separate workspace
 - WASM modules compile to bundler target for Vite integration
 - Telegram bot runs as independent service with webhook/polling support
+- **🚨 CRITICAL**: astro-rust/ folder contains local copy of astronomical library - NEVER modify this folder!
 
 ### Key Design Decisions (per tz.md)
 - **Clean Architecture**: Domain → UseCases → Adapters → Delivery layers
 - **WASM Interface**: Exactly `compute_all(jd: f64) -> *const f64` with thread-local buffer
-- **Sun Position**: Static at (0,0,0) for геоцентрическая сцена  
+- **Sun Position**: Static at (0,0,0) for геоцентрическая сцена
 - **JWT**: RS256 with custom claims `is_telegram_subscribed: boolean`
 - **Database**: PostgreSQL with specific schema: `users`, `refresh_tokens`, `telegram_linking`
 - **Authentication**: Pure Telegram-only, no traditional passwords
 - **GUI Strategy**: HTML/CSS overlay for performance, Babylon.js GUI only for 3D-integrated elements
 - **Data Transfer**: Float64Array view в WebAssembly.Memory без копирования
-- **Multilingual System**: Fluent (ICU MessageFormat) with 11-language support
+- **Multilingual System**: Fluent (ICU MessageFormat) with 10-language support
 - **Telegram Integration**: UUID tokens for account linking, getChatMember verification
 - **WebSocket Protocol**: Compact JSON/CBOR with JWT as first message
 - **Dioxus Server Functions**: Type-safe RPC between client and server
@@ -157,7 +170,8 @@ Once source code is created, these commands will be available:
 - `pnpm run build:wasm` - wasm-pack build --release for wasm-astro
 - `pnpm run build:dioxus` - dioxus build for auth app
 - `cargo build --release` - Axum server production build
-- `pnpm run build:i18n` - Generate Fluent bundles for all 12 languages
+- `pnpm run build:i18n` - Generate Fluent bundles for all 10 languages
+- `pnpm run build:wasm` - Build WASM astronomical core with wasm-pack
 
 ### Future Development Commands (To Be Implemented)
 - `pnpm run dev` - Start all development servers
@@ -171,7 +185,7 @@ Once source code is created, these commands will be available:
 - Performance profiling for 60 FPS target
 - Comprehensive Telegram Bot API integration testing
 - Subscription verification accuracy testing
-- 11-language localization completeness validation
+- 10-language localization completeness validation
 - Load testing for 10,000+ concurrent bot users
 - WASM-JS interop performance testing
 - GUI performance comparison (HTML overlay vs Babylon GUI)
@@ -185,10 +199,10 @@ Once source code is created, these commands will be available:
 - The main astronomical scene is accessible to all users without authentication
 - Premium features require active Telegram channel subscription
 - All user interactions route through Telegram for community building
-- 11-language support with cultural sensitivity for global spiritual community
+- 10-language support with cultural sensitivity for global spiritual community
 - GUI performance: HTML/CSS overlay significantly faster than Babylon.js GUI
 - WASM performance: exactly one `compute_all(t)` call per frame
-- Multilingual system: Fluent with ICU MessageFormat for 11-language support
+- Multilingual system: Fluent with ICU MessageFormat for 10-language support
 
 ## Code Quality Requirements (tz.md Standards)
 
@@ -251,13 +265,85 @@ Once source code is created, these commands will be available:
 - Unhandled rate limits
 - Missing getChatMember caching
 - Missing UUID token generation for account linking
-- Missing cultural adaptations for 12 languages
+- Missing cultural adaptations for 10 languages
 
 ### **General Rust:**
 - `unwrap()`, `expect()`, `panic!()`
 - `as` conversions (use `TryFrom`)
 - `Vec::new()` (use `Vec::with_capacity()`)
 - `.await` in loops
+
+## 🌟 ASTRO-RUST API USAGE RULES (MANDATORY)
+
+### **КРИТИЧЕСКИЕ ПРАВИЛА ИСПОЛЬЗОВАНИЯ ASTRO-RUST:**
+
+#### **1. ОБЯЗАТЕЛЬНОЕ ИСПОЛЬЗОВАНИЕ ЛОКАЛЬНОЙ КОПИИ:**
+```toml
+# ✅ ПРАВИЛЬНО - локальная копия с багфиксами (🚨 НЕ ИЗМЕНЯТЬ astro-rust/ папку!)
+astro = { path = "./astro-rust" }
+
+# ❌ ЗАПРЕЩЕНО - оригинал с багами
+astro = "2.0.0"  # Broken decimal_day & lunar equations!
+```
+**🔒 ВАЖНО**: Папка `astro-rust/` содержит неприкосновенный код библиотеки:
+- **✅ МОЖНО**: Читать, изучать, анализировать код для создания WASM оберток
+- **✅ НУЖНО**: Полностью изучить API библиотеки перед написанием кода
+- **❌ ЗАПРЕЩЕНО**: Изменять, модифицировать любые файлы в этой папке
+
+#### **2. ОСНОВНЫЕ ФУНКЦИИ API:**
+```rust
+// ✅ Солнечная позиция (геоцентрическая эклиптическая)
+let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(julian_day);
+// sun_ecl.long, sun_ecl.lat в РАДИАНАХ!
+
+// ✅ Лунная позиция ELP-2000/82 (геоцентрическая эклиптическая)
+let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(julian_day);
+// moon_ecl.long, moon_ecl.lat в РАДИАНАХ!
+
+// ✅ Планетарные позиции VSOP87 (гелиоцентрические эклиптические)
+let (long_rad, lat_rad, dist_au) = astro::planet::heliocent_coords(&astro::planet::Planet::Earth, julian_day);
+```
+
+#### **3. ПОДДЕРЖИВАЕМЫЕ ПЛАНЕТЫ:**
+```rust
+use astro::planet::Planet;
+// ✅ Доступны: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune
+// ✅ Pluto доступен через astro::pluto модуль (отдельно)
+```
+
+#### **4. КООРДИНАТНЫЕ СИСТЕМЫ:**
+```rust
+// ✅ EclPoint структура
+struct EclPoint {
+    pub long: f64,  // Эклиптическая долгота в РАДИАНАХ
+    pub lat: f64,   // Эклиптическая широта в РАДИАНАХ
+}
+
+// ✅ Конвертация в Cartesian для 3D сцены
+fn ecl_to_cartesian(ecl_point: &EclPoint, radius_au: f64) -> Cartesian {
+    let cos_lat = ecl_point.lat.cos();
+    let x = radius_au * cos_lat * ecl_point.long.cos();
+    let y = radius_au * cos_lat * ecl_point.long.sin();
+    let z = radius_au * ecl_point.lat.sin();
+    Cartesian::new(x, y, z)
+}
+```
+
+#### **5. КОРРЕКЦИИ НУТАЦИИ И ПРЕЦЕССИИ:**
+```rust
+// ✅ Нутация (если нужна высокая точность)
+let (nut_long, nut_oblq) = astro::nutation::nutation(julian_day);
+
+// ✅ Прецессия между эпохами
+let corrected_coords = astro::precess::precess_ecl_coords(ecl_coords, jd_old, jd_new);
+```
+
+#### **6. ЗАПРЕЩЕННЫЕ ПАТТЕРНЫ:**
+```rust
+// ❌ НИКОГДА не изобретать свои формулы если они есть в astro-rust!
+// ❌ НИКОГДА не использовать градусы - все в радианах!
+// ❌ НИКОГДА не игнорировать коррекции нутации/прецессии для точных расчетов!
+```
 
 ## Key Development Patterns (tz.md Compliance)
 
@@ -300,13 +386,17 @@ pub trait TelegramApi {
 
 ## Documentation Links
 
-- **Babylon.js 8 - Main**: https://doc.babylonjs.com/
-- **Babylon.js 8 - API**: https://doc.babylonjs.com/typedoc/
-- **Babylon.js 8 - CDN**: https://cdn.babylonjs.com/babylon.js
+- **Babylon.js 8.20.0 - Main**: https://doc.babylonjs.com/
+- **Babylon.js 8.20.0 - API**: https://doc.babylonjs.com/typedoc/
+- **Babylon.js 8.20.0 - CDN**: https://cdn.babylonjs.com/babylon.js
+- **Vite 7.0.6 - Main**: https://vite.dev/
+- **React 19.1.1 - Main**: https://react.dev/
+- **TypeScript 5.9.2 - Main**: https://www.typescriptlang.org/
 
 - **Astro Rust - Main**: https://docs.rs/astro/latest/astro/
-- **Astro Rust - LOCAL COPY**: ./astro-rust/ folder (🔒 DO NOT MODIFY!)
-- **Astro Rust - GIT**: https://github.com/saurvs/astro-rust (⚠️ DEPRECATED)
+- **Astro Rust - ЛОКАЛЬНАЯ КОПИЯ**: `./astro-rust/` папка в корне проекта (🔒 НЕ ИЗМЕНЯТЬ!)
+- **Astro Rust - GIT ORIGINAL**: https://github.com/saurvs/astro-rust (⚠️ DEPRECATED - has bugs)
+- **Astro Rust - CORRECTED FORK**: https://github.com/arossbell/astro-rust (📚 Reference only - use local copy!)
 
 - **Teloxide - Main**: https://docs.rs/teloxide/latest/teloxide/
 - **Teloxide - GIT**: https://github.com/teloxide/teloxide
@@ -329,7 +419,7 @@ pub trait TelegramApi {
 
 ### Automated Quality Gates
 - **Makefile targets**: Available now - `make quality-check` validates all code patterns
-- **Quality rules**: `quality-rules.toml` defines linting rules for Cargo.toml integration  
+- **Quality rules**: `quality-rules.toml` defines linting rules for Cargo.toml integration
 - **Future implementations**: `.githooks/pre-commit`, GitHub Actions, VS Code settings (to be created with source code)
 
 ### Command Usage
@@ -350,6 +440,13 @@ make quality-report
 make pre-commit
 ```
 
+### 📚 ОБЯЗАТЕЛЬНЫЙ ПРОЦЕСС РАБОТЫ С ASTRO-RUST
+**СНАЧАЛА - ИЗУЧЕНИЕ КОДОВОЙ БАЗЫ:**
+1. **Читай код в `./astro-rust/src/`** - изучи все модули: sun, lunar, planet, nutation, precess
+2. **Найди все доступные функции** - не придумывай свои формулы!
+3. **Понимай API параметры** - что принимает, что возвращает, в каких единицах
+4. **ЗАТЕМ создавай WASM обертки** используя найденные функции
+
 ### КРИТИЧЕСКИ ЗАПРЕЩЕНО
 **Enforced by quality-rules.toml and Makefile:**
 - `unwrap()`, `expect()`, `panic!()` - блокируется на уровне компиляции (clippy deny)
@@ -360,3 +457,4 @@ make pre-commit
 - `.await` в циклах - блокирующие операции в real-time контексте (clippy await_holding_lock = deny)
 - `mem_forget` - denial rule (clippy mem_forget = deny)
 - `todo!()`, `unimplemented!()` - блокируется компиляцией (clippy deny)
+- **Изменение файлов в `./astro-rust/`** - строго read-only!

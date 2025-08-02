@@ -22,8 +22,20 @@ irrelevant
 - Discuss safety only when it's crucial and non-obvious
 - If your content policy is an issue, provide the closest acceptable response and expl
 
-## **CRITICAL RULE:**
-**When writing code, be 100% sure you don't break anything existing.**
+## **CRITICAL RULES:**
+**1. When writing code, be 100% sure you don't break anything existing.**
+
+**2. 🚨 MANDATORY RESEARCH REQUIREMENT:**
+**BEFORE writing ANY code, ALL agents MUST:**
+- **WebFetch** official documentation for ALL libraries and frameworks
+- **Study** breaking changes, new APIs, deprecated methods, migration guides
+- **Research** 2025 professional production-ready best practices and patterns
+- **Analyze** latest features, optimization techniques, and memory management
+- **Verify** latest package/crate versions and compatibility matrix
+- **Document** ALL research findings before implementation
+- **Never assume** - always verify current standards and professional practices
+
+**⚠️ This comprehensive research is MANDATORY and comes FIRST for every agent.**
 
 ## Current Project Status
 
@@ -55,7 +67,7 @@ starscalendars/
 
 ## Project Overview
 
-StarsCalendars is a spiritual astronomy platform that combines high-precision astronomical calculations with esoteric knowledge. The project integrates 3D visualization using Babylon.js 8, WebAssembly astronomical computations, and spiritual/astrological features for a community of spiritual seekers. The platform uses TELEGRAM-ONLY authentication with 11-language localization system (Tier 1-5 priority: English, Chinese, Spanish, Hindi, Portuguese, German, French, Japanese, Russian, Georgian, Armenian) for global spiritual community access.
+StarsCalendars is a spiritual astronomy platform that combines high-precision astronomical calculations with esoteric knowledge. The project integrates 3D visualization using Babylon.js 8, WebAssembly astronomical computations, and spiritual/astrological features for a community of spiritual seekers. The platform uses TELEGRAM-ONLY authentication with 10-language localization system (Tier 1-5 priority: Russian, English, Chinese, Spanish, Hindi, Portuguese, German, French, Japanese, Armenian) for global spiritual community access.
 
 ## Architecture (Clean Architecture per tz.md)
 
@@ -80,7 +92,7 @@ starscalendars/
 - **Astronomical Calculations**: Rust + WebAssembly using local astro-rust library (📚 READ-ONLY: astro-rust/ folder must NOT be modified!)
 - **Backend**: Axum (Rust 1.88+) with PostgreSQL and WebSockets
 - **Authentication System**: Telegram-only auth via Teloxide with subscription verification
-- **Multilingual System**: 11-language support with Fluent (ICU MessageFormat)
+- **Multilingual System**: 10-language support with Fluent (ICU MessageFormat)
 - **GUI Strategy**: HTML/CSS overlay for performance, Babylon.js GUI only for 3D-integrated elements
 - **WASM Interface**: Thread-local buffers with Float64Array view for zero-copy data transfer
 - **Database**: PostgreSQL with Telegram user mapping and subscription status
@@ -103,7 +115,7 @@ starscalendars/
 - **Authentication**: Pure Telegram-only, no traditional passwords
 - **GUI Strategy**: HTML/CSS overlay for performance, Babylon.js GUI only for 3D-integrated elements
 - **Data Transfer**: Float64Array view в WebAssembly.Memory без копирования
-- **Multilingual System**: Fluent (ICU MessageFormat) with 12-language support
+- **Multilingual System**: Fluent (ICU MessageFormat) with 10-language support
 - **Telegram Integration**: UUID tokens for account linking, getChatMember verification
 - **WebSocket Protocol**: Compact JSON/CBOR with JWT as first message
 - **Dioxus Server Functions**: Type-safe RPC between client and server
@@ -162,7 +174,7 @@ Once source code is created, these commands will be available:
 - `pnpm run build:wasm` - wasm-pack build --release for wasm-astro
 - `pnpm run build:dioxus` - dioxus build for auth app
 - `cargo build --release` - Axum server production build
-- `pnpm run build:i18n` - Generate Fluent bundles for all 11 languages
+- `pnpm run build:i18n` - Generate Fluent bundles for all 10 languages
 - `pnpm run build:wasm` - Build WASM astronomical core with wasm-pack
 
 ### Future Development Commands (To Be Implemented)
@@ -177,7 +189,7 @@ Once source code is created, these commands will be available:
 - Performance profiling for 60 FPS target
 - Comprehensive Telegram Bot API integration testing
 - Subscription verification accuracy testing
-- 12-language localization completeness validation
+- 10-language localization completeness validation
 - Load testing for 10,000+ concurrent bot users
 - WASM-JS interop performance testing
 - GUI performance comparison (HTML overlay vs Babylon GUI)
@@ -191,10 +203,10 @@ Once source code is created, these commands will be available:
 - The main astronomical scene is accessible to all users without authentication
 - Premium features require active Telegram channel subscription
 - All user interactions route through Telegram for community building
-- 12-language support with cultural sensitivity for global spiritual community
+- 10-language support with cultural sensitivity for global spiritual community
 - GUI performance: HTML/CSS overlay significantly faster than Babylon.js GUI
 - WASM performance: exactly one `compute_all(t)` call per frame
-- Multilingual system: Fluent with ICU MessageFormat for 11-language support
+- Multilingual system: Fluent with ICU MessageFormat for 10-language support
 
 ## Code Quality Requirements (tz.md Standards)
 
@@ -257,7 +269,7 @@ Once source code is created, these commands will be available:
 - Unhandled rate limits
 - Missing getChatMember caching
 - Missing UUID token generation for account linking
-- Missing cultural adaptations for 12 languages
+- Missing cultural adaptations for 10 languages
 
 ### **General Rust:**
 - `unwrap()`, `expect()`, `panic!()`
