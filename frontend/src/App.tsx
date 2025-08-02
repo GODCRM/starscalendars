@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { WASMModule, initializeWASM, type AstronomicalState, type CelestialPosition } from './wasm/init';
+import { WASMModule, initializeWASM, createPositionsView, extractCelestialPositions, type AstronomicalState } from './wasm/init';
 import BabylonScene from './scene/BabylonScene';
 import './styles/BabylonScene.css';
 
-// ✅ CORRECT - Result type pattern (TypeScript 5.8.3+ strict compliance)
+// ✅ CORRECT - Result type pattern (TypeScript 5.9.2+ strict compliance)
 type Result<T, E> = { success: true; data: T } | { success: false; error: E };
 
 // ✅ CORRECT - Strict interface definitions with readonly properties for immutability
@@ -37,12 +37,6 @@ class PerformanceTimer {
 // ✅ CORRECT - Constants for zero-allocation reference (60fps optimization)
 const FRAME_TARGET_MS = 16.67; // Exactly 60fps requirement
 const JULIAN_DAY_UNIX_EPOCH = 2440587.5; // Julian Day for Unix epoch
-const EARTH_POSITION_STATIC: Readonly<CelestialPosition> = {
-  longitude: 0,
-  latitude: 0, 
-  distance: 0,
-  timestamp: 0
-} as const;
 
 const App: React.FC = () => {
   // ✅ CORRECT - Strict state typing with pre-allocated initial state
@@ -118,34 +112,23 @@ const App: React.FC = () => {
     // ✅ CRITICAL: Exactly ONE compute_all() call per frame
     const positionsPtr = wasmModule.compute_all(julianDay);
     
+    // Check for null pointer (calculation failure)
+    if (positionsPtr === 0) {
+      console.warn('⚠️ WASM calculation returned null pointer');
+      return;
+    }
+    
     // Zero-copy access via Float64Array view to WASM memory
-    const positions = wasmModule.getPositionsView(positionsPtr);
+    const positions = createPositionsView(wasmModule, positionsPtr);
     
-    // Extract celestial positions (pre-allocated access pattern)
-    const sunPosition: CelestialPosition = {
-      longitude: positions[0]!,
-      latitude: positions[1]!,
-      distance: positions[2]!,
-      timestamp: currentTime
-    };
-    
-    const moonPosition: CelestialPosition = {
-      longitude: positions[6]!,
-      latitude: positions[7]!,
-      distance: positions[8]!,
-      timestamp: currentTime
-    };
+    // Extract all celestial positions using the dedicated function
+    const astronomicalData = extractCelestialPositions(positions, currentTime);
     
     // Update state with new astronomical data (single state update per frame)
     setAppState(prevState => ({
       ...prevState,
       currentJulianDay: julianDay,
-      astronomicalData: {
-        sun: sunPosition,
-        earth: EARTH_POSITION_STATIC, // Static Earth at origin (geocentric scene design)
-        moon: moonPosition,
-        quantumResonance: positions[30]! // Spiritual calculation from WASM
-      },
+      astronomicalData,
       frameCount: prevState.frameCount + 1
     }));
     
@@ -267,18 +250,32 @@ const App: React.FC = () => {
             {appState.astronomicalData && (
               <div className="celestial-info">
                 <div className="celestial-body">
-                  <h3>Sun (Static)</h3>
-                  <p>Position: Origin (0, 0, 0)</p>
+                  <h3>Sun (Geocentric)</h3>
+                  <p>X: {appState.astronomicalData.sun.x.toFixed(6)} AU</p>
+                  <p>Y: {appState.astronomicalData.sun.y.toFixed(6)} AU</p>
+                  <p>Z: {appState.astronomicalData.sun.z.toFixed(6)} AU</p>
+                  <p>Distance: {appState.astronomicalData.sun.distance.toFixed(6)} AU</p>
                 </div>
                 <div className="celestial-body">
-                  <h3>Moon</h3>
-                  <p>Longitude: {appState.astronomicalData.moon.longitude.toFixed(6)}°</p>
-                  <p>Latitude: {appState.astronomicalData.moon.latitude.toFixed(6)}°</p>
+                  <h3>Earth (Origin)</h3>
+                  <p>Position: (0, 0, 0) - Geocentric Scene</p>
+                </div>
+                <div className="celestial-body">
+                  <h3>Moon (Geocentric)</h3>
+                  <p>X: {appState.astronomicalData.moon.x.toFixed(6)} AU</p>
+                  <p>Y: {appState.astronomicalData.moon.y.toFixed(6)} AU</p>
+                  <p>Z: {appState.astronomicalData.moon.z.toFixed(6)} AU</p>
                   <p>Distance: {appState.astronomicalData.moon.distance.toFixed(6)} AU</p>
                 </div>
                 <div className="quantum-resonance">
                   <h3>Quantum Resonance</h3>
                   <p>{appState.astronomicalData.quantumResonance.toFixed(4)}</p>
+                  <div className="resonance-bar">
+                    <div 
+                      className="resonance-fill"
+                      style={{ width: `${appState.astronomicalData.quantumResonance * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             )}

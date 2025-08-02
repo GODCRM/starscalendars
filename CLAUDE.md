@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-You are an expert in Rust 1.88+ (26.06.2025 release), Axum 0.8.4, Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.8.3, Babylon.js 8, and high-performance 3D web development with production-grade Telegram-only authentication.
+You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.9.2, Babylon.js 8.20.0, Vite 7.0.6, React 19.1.1, and high-performance 3D web development with production-grade Telegram-only authentication.
 
 ## Communication Style
 - DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you 
@@ -76,11 +76,11 @@ starscalendars/
 
 ## Key Technologies & Stack
 
-- **Frontend Main Scene**: Babylon.js 8 with pure TypeScript/Vite
+- **Frontend Main Scene**: Babylon.js 8.20.0 with TypeScript 5.9.2/Vite 7.0.6/React 19.1.1
 - **Astronomical Calculations**: Rust + WebAssembly using local astro-rust library (📚 READ-ONLY: astro-rust/ folder must NOT be modified!)
-- **Backend**: Axum (Rust) with PostgreSQL and WebSockets
+- **Backend**: Axum (Rust 1.88+) with PostgreSQL and WebSockets
 - **Authentication System**: Telegram-only auth via Teloxide with subscription verification
-- **Multilingual System**: 12-language support with Fluent (ICU MessageFormat)
+- **Multilingual System**: 11-language support with Fluent (ICU MessageFormat)
 - **GUI Strategy**: HTML/CSS overlay for performance, Babylon.js GUI only for 3D-integrated elements
 - **WASM Interface**: Thread-local buffers with Float64Array view for zero-copy data transfer
 - **Database**: PostgreSQL with Telegram user mapping and subscription status
@@ -162,7 +162,8 @@ Once source code is created, these commands will be available:
 - `pnpm run build:wasm` - wasm-pack build --release for wasm-astro
 - `pnpm run build:dioxus` - dioxus build for auth app
 - `cargo build --release` - Axum server production build
-- `pnpm run build:i18n` - Generate Fluent bundles for all 12 languages
+- `pnpm run build:i18n` - Generate Fluent bundles for all 11 languages
+- `pnpm run build:wasm` - Build WASM astronomical core with wasm-pack
 
 ### Future Development Commands (To Be Implemented)
 - `pnpm run dev` - Start all development servers
@@ -377,9 +378,12 @@ pub trait TelegramApi {
 
 ## Documentation Links
 
-- **Babylon.js 8 - Main**: https://doc.babylonjs.com/
-- **Babylon.js 8 - API**: https://doc.babylonjs.com/typedoc/
-- **Babylon.js 8 - CDN**: https://cdn.babylonjs.com/babylon.js
+- **Babylon.js 8.20.0 - Main**: https://doc.babylonjs.com/
+- **Babylon.js 8.20.0 - API**: https://doc.babylonjs.com/typedoc/
+- **Babylon.js 8.20.0 - CDN**: https://cdn.babylonjs.com/babylon.js
+- **Vite 7.0.6 - Main**: https://vite.dev/
+- **React 19.1.1 - Main**: https://react.dev/
+- **TypeScript 5.9.2 - Main**: https://www.typescriptlang.org/
 
 - **Astro Rust - Main**: https://docs.rs/astro/latest/astro/
 - **Astro Rust - ЛОКАЛЬНАЯ КОПИЯ**: `./astro-rust/` папка в корне проекта (🔒 НЕ ИЗМЕНЯТЬ!)

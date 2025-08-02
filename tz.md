@@ -1,7 +1,7 @@
 Ниже — детализированное ТЗ уровня профессионального продакшна для высоконагруженной, низколатентной системы реального времени. Основано на чистой архитектуре, современном Rust 1.88 (26.06.2025), идиоматических практиках, без антипаттернов. Включает ключевые библиотеки на момент подготовки и примеры кода. VR пока не реализуем, но вся архитектура VR-ready.
 
 ## Цель
-Создать кроссплатформенное веб-приложение астрономической визуализации с 3D‑сценой (Babylon.js 8) и покадровыми расчетами эфемерид в Rust/WASM. Бэкенд на Axum обеспечивает аутентификацию (JWT), интеграцию с Telegram (проверка подписки), хранение в PostgreSQL и двунаправленный обмен по WebSocket. Личный кабинет/админка/авторизация вынесены в отдельное Dioxus WASM-приложение. **Система поддерживает 12 языков с культурными адаптациями для глобального духовного сообщества.** Стек и код соответствуют принципам чистой архитектуры, SOLID, явному управлению зависимостями, тестируемости и высокой производительности.
+Создать кроссплатформенное веб-приложение астрономической визуализации с 3D‑сценой (Babylon.js 8) и покадровыми расчетами эфемерид в Rust/WASM. Бэкенд на Axum обеспечивает аутентификацию (JWT), интеграцию с Telegram (проверка подписки), хранение в PostgreSQL и двунаправленный обмен по WebSocket. Личный кабинет/админка/авторизация вынесены в отдельное Dioxus WASM-приложение. **Система поддерживает 11 языков с культурными адаптациями для глобального духовного сообщества.** Стек и код соответствуют принципам чистой архитектуры, SOLID, явному управлению зависимостями, тестируемости и высокой производительности.
 
 Высокоуровневая архитектура (чистая)
 Слои и зависимости (внешние слои зависят от внутренних только через интерфейсы/абстракции):
@@ -23,30 +23,44 @@ domain/ (общие доменные типы и контракты)
 app/ (use-cases, портовые интерфейсы)
 infra/ (клиенты PostgreSQL/Telegram/Cache, реализация портов)
 ops/ (миграции, Helm/compose, CI/CD)
-Версии инструментов и библиотек (пример на дату)
+Версии инструментов и библиотек (актуальные на август 2025)
 Rust: 1.88.0 stable (2025-06-26)
-Cargo edition: 2024.
+Cargo edition: 2024
+
+**Frontend Stack**:
+Vite: 7.0.6 (latest stable, major upgrade from 5.x)
+React: 19.1.1 (latest stable, major upgrade from 18.x)
+TypeScript: 5.9.2 (latest stable)
+@vitejs/plugin-react: 4.7.0 (latest stable)
+Babylon.js: 8.20.0 (latest stable, published 2 days ago)
+@babylonjs/core: 8.20.0
+@babylonjs/materials: 8.20.0
+@babylonjs/loaders: 8.20.0
+@babylonjs/gui: 8.20.0
+
+**Backend Stack**:
 Axum: latest stable
 Tokio: latest stable
-SQLX: latest stable (runtime-tokio-rustls, postgres, macros, offline feature для compile-time проверок)
+SQLX: latest stable (runtime-tokio-rustls, postgres, macros, offline)
 Serde: latest stable
-jsonwebtoken: latest stable (или josekit latest stable для JWK/JWKS при RS256)
+jsonwebtoken: latest stable
 tower-http: latest stable
 tracing/tracing-subscriber: latest stable
 teloxide: latest stable
 time: latest stable
 uuid: latest stable
 anyhow/thiserror: latest stable
-config/figment: latest stable
-bb8/Deadpool (если нужен пул) — но SQLX уже с пулом
-dioxus: latest stable (fullstack)
+
+**WASM Stack**:
 wasm-bindgen: latest stable
 wasm-pack: latest stable
 js-sys/web-sys: latest stable
-babylon.js: 8.x
-vite: latest stable
-vite-plugin-wasm/top-level-await: latest
-typescript: latest stable
+vite-plugin-wasm: 3.3.0
+vite-plugin-top-level-await: 1.4.4
+
+**Fullstack**:
+dioxus: 0.6.3 (latest stable)
+config/figment: latest stable
 
 Принципы производительности и O(1)
 
@@ -332,6 +346,8 @@ VR-ready: экспериментальная ветка с прототипом 
 - **Tier 2** (400M+ носителей): German, French, Japanese  
 - **Tier 3** (специализированные): Russian, Georgian, Armenian
 
+**ИЗМЕНЕНИЕ**: Исключен арабский язык из поддержки. Система поддерживает 11 языков вместо 12.
+
 ### Архитектура i18n
 - **Fluent** для локализации (ICU MessageFormat)
 - **Кроссплатформенная синхронизация**: Dioxus ↔ Babylon.js ↔ HTML overlay
@@ -365,7 +381,7 @@ impl Language {
 - **HTML/CSS overlay** для основного UI (меню, кнопки, формы)
 - **Babylon.js GUI** только для 3D-интегрированных элементов
 - **Производительность**: HTML overlay значительно быстрее Babylon GUI
-- **Локализация**: полная поддержка всех 11 языков
+- **Локализация**: полная поддержка всех 11 языков (без арабского)
 
 ### Telegram интеграция
 - **Многоязычный бот** с культурными адаптациями

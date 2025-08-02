@@ -102,8 +102,43 @@
   font-size: 20px;
   font-weight: 700;
   text-align: center;
-  margin: 0;
+  margin: 0 0 8px 0;
   text-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
+}
+
+/* ✅ Quantum Resonance Visual Bar */
+.resonance-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(138, 43, 226, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(138, 43, 226, 0.3);
+}
+
+.resonance-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8A2BE2 0%, #DDA0DD 50%, #E6E6FA 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(138, 43, 226, 0.6);
+  position: relative;
+}
+
+.resonance-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* ✅ App Header - Floating above 3D scene */

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { Engine, Scene, ArcRotateCamera, HemisphericLight, Vector3, MeshBuilder, StandardMaterial, Color3, DirectionalLight, PointLight } from '@babylonjs/core';
 import type { Mesh } from '@babylonjs/core';
 import type { AstronomicalState } from '../wasm/init';
@@ -160,13 +160,13 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
       // Create Celestial Bodies
       const celestialMeshes = new Map<string, Mesh>();
 
-      // Create Sun (static at origin)
+      // Create Sun (will be positioned by WASM data in geocentric scene)
       const sunConfig = CELESTIAL_BODIES.sun!;
       const sunMesh = MeshBuilder.CreateSphere("sun", {
         diameter: sunConfig.radius * 2,
         segments: 32
       }, scene);
-      sunMesh.position = Vector3.Zero(); // Static Sun position
+      sunMesh.position = Vector3.Zero(); // Initial position - will be updated by WASM data
 
       // Sun material with emission
       const sunMaterial = new StandardMaterial("sunMaterial", scene);
@@ -254,7 +254,12 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
     }
   }, []);
 
-  // ✅ CORRECT - Update celestial positions from WASM data
+  // ✅ CORRECT - Pre-allocated Vector3 objects for zero-allocation updates
+  const sunPositionVector = useMemo(() => Vector3.Zero(), []);
+  const moonPositionVector = useMemo(() => Vector3.Zero(), []);
+  const earthPositionVector = useMemo(() => Vector3.Zero(), []);
+
+  // ✅ CRITICAL - Update celestial positions from WASM Cartesian data (FIXED)
   const updateCelestialPositions = useCallback((astronomicalData: AstronomicalState): void => {
     const sceneState = sceneStateRef.current;
     if (!sceneState.isReady || !sceneState.celestialMeshes) return;
@@ -262,32 +267,39 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
     const positionTimer = new BabylonPerformanceTimer('position_update');
 
     try {
-      // Convert WASM data to Babylon.js positions (astronomical units to scene units)
-      const scaleAU = 5.0; // Scale factor for visualization
+      // ✅ FIXED: Direct Cartesian coordinate usage (no conversion needed)
+      const scaleAU = 10.0; // Artistic scale for visibility (10x for better visualization)
 
-      // Sun remains static at origin (geocentric scene design)
-      // Earth position - this will be dynamic when we get Earth data from WASM
-      const earthMesh = sceneState.celestialMeshes.get('earth');
-      if (earthMesh) {
-        // For now, Earth stays at origin since we have geocentric scene
-        earthMesh.position = Vector3.Zero();
+      // ✅ GEOCENTRIC SCENE: Sun position from WASM (relative to Earth at origin)
+      const sunMesh = sceneState.celestialMeshes.get('sun');
+      if (sunMesh && astronomicalData.sun) {
+        // Direct Cartesian coordinates from WASM (already in correct format)
+        sunPositionVector.set(
+          astronomicalData.sun.x * scaleAU,
+          astronomicalData.sun.y * scaleAU, 
+          astronomicalData.sun.z * scaleAU
+        );
+        sunMesh.position.copyFrom(sunPositionVector);
       }
 
-      // Moon position from WASM data
+      // ✅ GEOCENTRIC SCENE: Earth remains at origin (0,0,0)
+      const earthMesh = sceneState.celestialMeshes.get('earth');
+      if (earthMesh) {
+        // Earth is always at origin in geocentric scene
+        earthPositionVector.set(0, 0, 0);
+        earthMesh.position.copyFrom(earthPositionVector);
+      }
+
+      // ✅ FIXED: Moon position from WASM Cartesian coordinates
       const moonMesh = sceneState.celestialMeshes.get('moon');
       if (moonMesh && astronomicalData.moon) {
-        // Convert astronomical coordinates to 3D position
-        // astronomicalData.moon contains longitude, latitude, distance
-        const moonDistance = astronomicalData.moon.distance * scaleAU;
-        const moonLong = astronomicalData.moon.longitude; // Already in radians from WASM
-        const moonLat = astronomicalData.moon.latitude;   // Already in radians from WASM
-
-        // Convert spherical to Cartesian coordinates
-        const x = moonDistance * Math.cos(moonLat) * Math.cos(moonLong);
-        const y = moonDistance * Math.sin(moonLat);
-        const z = moonDistance * Math.cos(moonLat) * Math.sin(moonLong);
-
-        moonMesh.position = new Vector3(x, y, z);
+        // Direct Cartesian coordinates from WASM (geocentric)
+        moonPositionVector.set(
+          astronomicalData.moon.x * scaleAU,
+          astronomicalData.moon.y * scaleAU,
+          astronomicalData.moon.z * scaleAU
+        );
+        moonMesh.position.copyFrom(moonPositionVector);
       }
 
       positionTimer.mark('positions_updated');
@@ -295,7 +307,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
     } catch (error) {
       console.error('❌ Position Update Failed:', error);
     }
-  }, []);
+  }, [sunPositionVector, moonPositionVector, earthPositionVector]);
 
   // ✅ CORRECT - Scene initialization effect
   useEffect(() => {

@@ -34,7 +34,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': '/src',
-      '@wasm': '/src/wasm'
+      '@wasm': '/src/wasm',
+      '@wasm-pkg': '../wasm-astro/pkg'
     }
   },
   optimizeDeps: {
@@ -42,6 +43,6 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
-    plugins: [wasm(), topLevelAwait()]
+    plugins: () => [wasm(), topLevelAwait()]
   }
 })
