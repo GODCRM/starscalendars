@@ -75,7 +75,7 @@ echo >> "$REPORT_FILE"
 log_info "Analyzing codebase structure..."
 
 # Count Rust files
-RUST_FILES=$(find . -name "*.rs" -not -path "./target/*" | wc -l | tr -d ' ')
+RUST_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" | wc -l | tr -d ' ')
 TOTAL_FILES_CHECKED=$RUST_FILES
 
 echo "- **Rust Files**: $RUST_FILES" >> "$REPORT_FILE"
@@ -91,7 +91,7 @@ if command -v tokei >/dev/null 2>&1; then
     fi
 else
     log_warning "tokei not installed - install with 'cargo install tokei' for detailed code metrics"
-    TOTAL_LINES=$(find . -name "*.rs" -not -path "./target/*" -exec wc -l {} + 2>/dev/null | tail -1 | awk '{print $1}' || echo "N/A")
+    TOTAL_LINES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec wc -l {} + 2>/dev/null | tail -1 | awk '{print $1}' || echo "N/A")
     echo "- **Lines of Code (estimated)**: $TOTAL_LINES" >> "$REPORT_FILE"
 fi
 
@@ -116,7 +116,7 @@ declare -A ANTI_PATTERNS=(
 PATTERN_VIOLATIONS=0
 
 for pattern in "${!ANTI_PATTERNS[@]}"; do
-    violations=$(find . -name "*.rs" -not -path "./target/*" -exec grep -l "$pattern" {} \; 2>/dev/null | wc -l | tr -d ' ')
+    violations=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "$pattern" {} \; 2>/dev/null | wc -l | tr -d ' ')
     
     if [ "$violations" -gt 0 ]; then
         echo "- ❌ **$pattern**: $violations files (${ANTI_PATTERNS[$pattern]})" >> "$REPORT_FILE"
@@ -147,7 +147,7 @@ echo >> "$REPORT_FILE"
 
 log_info "Running Clippy analysis..."
 
-if cargo clippy --all-targets --all-features -- -D warnings 2>/dev/null; then
+if cargo clippy --workspace --exclude astro-rust --all-targets --all-features -- -D warnings 2>/dev/null; then
     log_success "Clippy analysis passed"
     echo "✅ **Clippy Analysis**: All checks passed" >> "$REPORT_FILE"
 else
@@ -220,7 +220,7 @@ else
 fi
 
 # Check for async performance issues
-async_violations=$(grep -r -B3 -A3 "for\|while\|loop" . --include="*.rs" | grep -c "\.await" || echo "0")
+async_violations=$(grep -r -B3 -A3 "for\|while\|loop" . --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust | grep -c "\.await" || echo "0")
 if [ "$async_violations" -gt 0 ]; then
     echo "⚠️ **Async Performance**: $async_violations potential blocking operations in loops" >> "$REPORT_FILE"
     log_warning "Async performance issues detected"

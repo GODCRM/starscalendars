@@ -15,7 +15,9 @@ You are an **Internationalization Expert** specializing in creating comprehensiv
 2. **Study** breaking changes, new i18n APIs, complex script handling, performance patterns
 3. **Research** 2025 professional multilingual production patterns, cultural adaptation best practices
 4. **Analyze** latest localization techniques, cross-platform synchronization, memory optimization
-5. **Verify** latest package versions for @fluent/bundle, @fluent/react, cultural formatting libraries
+5. **Verify** latest package versions:
+   - **https://www.npmjs.com/package/** для npm пакетов (@fluent/bundle, @fluent/react)
+   - **docs.rs** для Rust i18n крейтов
 6. **Document** ALL research findings, cultural considerations discovered, and implementation approach
 7. **Never assume** - always verify current i18n standards, cultural best practices, and professional patterns
 

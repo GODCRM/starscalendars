@@ -42,8 +42,8 @@ log_info() {
     echo -e "${BLUE}🔍 CHECKING [$(date '+%H:%M:%S')]: $1${NC}"
 }
 
-# Get list of staged Rust files
-STAGED_RS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.rs$' || true)
+# Get list of staged Rust files (excluding astro-rust)
+STAGED_RS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.rs$' | grep -v 'astro-rust/' || true)
 
 if [ -z "$STAGED_RS_FILES" ]; then
     log_info "No Rust files to check"

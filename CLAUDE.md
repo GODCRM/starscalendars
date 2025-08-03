@@ -32,9 +32,13 @@ irrelevant
 - **Study** breaking changes, new APIs, deprecated methods, migration guides
 - **Research** 2025 professional production-ready best practices and patterns
 - **Analyze** latest features, optimization techniques, and memory management
-- **🚨 VERIFY EXACT LATEST VERSIONS** - check npm/crates.io for current releases
-- **🚨 NO "latest stable" PLACEHOLDERS** - use specific version numbers like 8.20.0
-- **🚨 ВЕРСИИ БЕЗ PATCH/MINOR** - для стабильных крейтов (≥1.0) используй только major: `tokio = "1"`, `serde = "1"`, `axum = "0.8"` (НЕ 0.8.4!)
+- **🚨 VERIFY EXACT LATEST VERSIONS:**
+  - **Rust крейты**: **docs.rs** как основной источник (там есть документация + версии)  
+  - **npm пакеты**: **https://www.npmjs.com/package/** как основной источник
+  - **crates.io** - как дополнительный источник для Rust
+- **🚨 ДОКУМЕНТАЦИЯ: "latest stable"** - в tz.md, CLAUDE.md указывать минимальные версии для справки
+- **🚨 КОНФИГ ФАЙЛЫ БЕЗ PATCH/MINOR** - в Cargo.toml/package.json: `tokio = "1"`, `serde = "1"`, `axum = "0.8"` (БЕЗ .4!)
+- **🚨 ДЛЯ 0.x ВЕРСИЙ**: `some-crate = "0.1"` (именно так, НЕ "0.1.x"!)
 - **Document** ALL research findings before implementation
 - **Never assume** - always verify current standards and professional practices
 - **🔥 ЭКОНОМИЯ ТОКЕНОВ ПРИВОДИТ К МНОГОДНЕВНЫМ ПРОБЛЕМАМ! 🔥**

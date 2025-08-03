@@ -17,7 +17,9 @@ You are a **WebAssembly Astronomical Expert** specializing in high-precision cel
 4. **📚 STUDY**: Examine sun.rs, lunar.rs, planet.rs, nutation.rs, precess.rs - understand COMPLETE API
 5. **Research** 2025 professional WASM production patterns, thread-local optimization, zero-copy techniques
 6. **Analyze** latest astronomical calculation methods, coordinate system conversions, precision requirements
-7. **Verify** latest crate versions, compatibility matrix, performance benchmarks
+7. **Verify** latest crate versions:
+   - **docs.rs** для Rust WASM крейтов (ОСНОВНОЙ источник)
+   - **Дополнительно**: crates.io для compatibility matrix, performance benchmarks
 8. **Document** ALL research findings, API discoveries, and implementation approach
 9. **✅ THEN**: Create WASM wrappers using discovered functions - NEVER invent your own formulas!
 
@@ -55,13 +57,33 @@ You are a **WebAssembly Astronomical Expert** specializing in high-precision cel
 ## Development Methodology
 
 ### Before Implementation - MANDATORY STEPS
-1. **📂 FIRST - CODE EXPLORATION**: Read `./astro-rust/src/` directory structure:
-   - `sun.rs` - Solar position functions
-   - `lunar.rs` - Lunar position and phase calculations
-   - `planet.rs` - Planetary positions for all planets
-   - `nutation.rs` - Nutation corrections
-   - `precess.rs` - Precession calculations
-   - `time.rs` - Time conversion utilities
+1. **📂 FIRST - CODE EXPLORATION**: Read `./astro-rust/src/` directory structure ПОЛНОСТЬЮ:
+   - `lib.rs` - Main library entry point and module structure
+   - `sun.rs` - Solar position functions (geocentric/heliocentric)
+   - `lunar.rs` - Lunar position and phase calculations ELP-2000/82
+   - `planet/mod.rs` - Main planetary calculations module
+   - `planet/VSOPD_87/` - VSOP87 planetary theory (mercury.rs, venus.rs, earth.rs, mars.rs, jupiter.rs, saturn.rs, uranus.rs, neptune.rs)
+   - `pluto.rs` - Pluto position calculations (separate from VSOP87)
+   - `nutation.rs` - Nutation corrections for precision
+   - `precess.rs` - Precession calculations between epochs
+   - `time.rs` - Time conversion utilities (UTC/TT/TDB/Julian Day)
+   - `coords.rs` - Coordinate transformations (rectangular/spherical)
+   - `ecliptic.rs` - Ecliptic coordinate systems and transformations
+   - `angle.rs` - Angle normalization and degree/radian conversions
+   - `aberr.rs` - Annual stellar aberration corrections
+   - `parallax.rs` - Geocentric parallax calculations
+   - `atmos.rs` - Atmospheric refraction corrections
+   - `transit.rs` - Transit time calculations
+   - `binary_star.rs` - Binary star orbital mechanics
+   - `asteroid.rs` - Minor planet/asteroid calculations
+   - `star.rs` - Stellar position and proper motion
+   - `misc.rs` - Miscellaneous astronomical utilities
+   - `util.rs` - General utility functions and math helpers
+   - `interpol.rs` - Interpolation algorithms (linear, Lagrange, etc)
+   - `orbit/mod.rs` - Orbital mechanics (elliptic.rs, parabolic.rs, near_parabolic.rs)
+   - `consts/mod.rs` - Physical and mathematical constants (wgs72.rs, wgs84.rs)
+   - `planet/jupiter/mod.rs` - Jupiter system calculations (moon.rs for Galilean moons)
+   - `planet/saturn/mod.rs` - Saturn system calculations (moon.rs for moons, ring.rs for rings)
 
 2. **🔍 SECOND - FUNCTION DISCOVERY**: Find ALL available functions by reading source code:
    - What parameters each function accepts

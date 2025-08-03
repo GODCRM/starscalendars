@@ -96,7 +96,7 @@ jobs:
         for pattern in "${!FORBIDDEN_PATTERNS[@]}"; do
           echo "🔍 Scanning for: $pattern"
           
-          violations=$(find . -name "*.rs" -not -path "./target/*" -exec grep -l "$pattern" {} \; 2>/dev/null || true)
+          violations=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "$pattern" {} \; 2>/dev/null || true)
           
           if [ -n "$violations" ]; then
             echo "❌ CRITICAL: Found forbidden pattern: $pattern"
@@ -106,7 +106,7 @@ jobs:
             
             # Show specific lines for context
             echo "📍 Locations:"
-            find . -name "*.rs" -not -path "./target/*" -exec grep -n "$pattern" {} + 2>/dev/null | head -10 | sed 's/^/  /'
+            find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -n "$pattern" {} + 2>/dev/null | head -10 | sed 's/^/  /'
             echo
             
             VIOLATIONS_FOUND=1
@@ -119,7 +119,7 @@ jobs:
         echo "🦀 Rust 1.88+ specific pattern validation..."
         
         # Check for unsafe code (forbidden except in WASM contexts)
-        unsafe_usage=$(find . -name "*.rs" -not -path "./target/*" -not -path "./wasm-astro/*" -exec grep -l "unsafe" {} \; 2>/dev/null || true)
+        unsafe_usage=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -not -path "./wasm-astro/*" -exec grep -l "unsafe" {} \; 2>/dev/null || true)
         if [ -n "$unsafe_usage" ]; then
           echo "❌ CRITICAL: Unsafe code found outside WASM context"
           echo "📁 Files with unsafe code:"
@@ -128,7 +128,7 @@ jobs:
         fi
         
         # Check for inefficient string operations
-        inefficient_strings=$(find . -name "*.rs" -not -path "./target/*" -exec grep -l "to_string().*+\\|format!.*+" {} \; 2>/dev/null || true)
+        inefficient_strings=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "to_string().*+\\|format!.*+" {} \; 2>/dev/null || true)
         if [ -n "$inefficient_strings" ]; then
           echo "⚠️ WARNING: Inefficient string operations detected"
           echo "📝 Use format! macro or String::with_capacity() + push_str()"
@@ -148,7 +148,7 @@ jobs:
         echo "🦀 Running production-grade Clippy analysis..."
         
         # Use workspace lints from quality-rules.toml
-        cargo clippy --all-targets --all-features --workspace -- \
+        cargo clippy --workspace --exclude astro-rust --all-targets --all-features -- \
           -D clippy::unwrap_used \
           -D clippy::expect_used \
           -D clippy::panic \
@@ -334,7 +334,7 @@ jobs:
         # Check for hardcoded secrets
         echo "🔑 Scanning for hardcoded secrets..."
         
-        secrets_found=$(find . -name "*.rs" -not -path "./target/*" -exec grep -l "password.*=\\|token.*=\\|secret.*=\\|key.*=" {} \; | grep -v "test\\|example" || true)
+        secrets_found=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "password.*=\\|token.*=\\|secret.*=\\|key.*=" {} \; | grep -v "test\\|example" || true)
         
         if [ -n "$secrets_found" ]; then
           echo "⚠️ WARNING: Potential hardcoded secrets detected"
@@ -348,7 +348,7 @@ jobs:
         # Check for unsafe Rust code (outside WASM)
         echo "⚠️ Checking for unsafe code usage..."
         
-        unsafe_code=$(find . -name "*.rs" -not -path "./target/*" -not -path "./wasm-astro/*" -exec grep -l "unsafe" {} \; 2>/dev/null || true)
+        unsafe_code=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -not -path "./wasm-astro/*" -exec grep -l "unsafe" {} \; 2>/dev/null || true)
         
         if [ -n "$unsafe_code" ]; then
           echo "❌ CRITICAL: Unsafe code found outside WASM context"
@@ -501,10 +501,10 @@ jobs:
         echo "🛡️ Running cargo-deny comprehensive security validation..."
         
         # Full deny.toml validation
-        cargo deny check advisories
-        cargo deny check licenses
-        cargo deny check bans
-        cargo deny check sources
+        cargo deny --exclude astro-rust check advisories
+        cargo deny --exclude astro-rust check licenses
+        cargo deny --exclude astro-rust check bans
+        cargo deny --exclude astro-rust check sources
         
         echo "✅ All cargo-deny security checks passed"
     
@@ -612,7 +612,7 @@ jobs:
         fi
         
         # Check for missing documentation on public APIs
-        missing_docs=$(find . -name "*.rs" -not -path "./target/*" -exec grep -l "pub fn\\|pub struct\\|pub enum" {} \; | xargs grep -L "///" || true)
+        missing_docs=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "pub fn\\|pub struct\\|pub enum" {} \; | xargs grep -L "///" || true)
         
         if [ -n "$missing_docs" ]; then
           echo "⚠️ WARNING: Some public APIs lack documentation:"

@@ -50,7 +50,8 @@
     "**/node_modules/**": true,
     "**/.git/**": true,
     "**/wasm-astro/pkg/**": true,
-    "**/.dioxus/**": true
+    "**/.dioxus/**": true,
+    "**/astro-rust/**": true
   },
   
   "search.exclude": {
@@ -60,7 +61,8 @@
     "**/wasm-astro/pkg": true,
     "**/.dioxus": true,
     "**/dist": true,
-    "**/build": true
+    "**/build": true,
+    "**/astro-rust": true
   },
   
   // ✏️ EDITOR CONFIGURATION - Consistent formatting and quality

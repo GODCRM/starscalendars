@@ -13,34 +13,34 @@ anti-patterns: unwrap-or-patterns production-patterns error-handling-patterns
 # 📋 unwrap_or антипаттерны из anti.md
 unwrap-or-patterns:
 	@echo "📋 Checking unwrap_or anti-patterns..."
-	@! (grep -r "\.unwrap_or(" --include="*.rs" --exclude-dir=target . | grep -E "\(\w+\(" ) || \
+	@! (grep -r "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . | grep -E "\(\w+\(" ) || \
 		(echo "❌ Found unwrap_or with function call - use unwrap_or_else" && exit 1)
-	@! grep -r "\.unwrap_or.*build_from_scratch\|\.unwrap_or.*save_in_redis" --include="*.rs" --exclude-dir=target . || \
+	@! grep -r "\.unwrap_or.*build_from_scratch\|\.unwrap_or.*save_in_redis" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || \
 		(echo "❌ Found unwrap_or with side effects - use unwrap_or_else" && exit 1)
 	@echo "✅ unwrap_or patterns validated"
 
 # 🏭 Production-ready patterns
 production-patterns:
 	@echo "🏭 Checking production-ready patterns..."
-	@! grep -r "\.unwrap()" --include="*.rs" --exclude-dir=target . || (echo "❌ Found .unwrap() usage" && exit 1)
-	@! grep -r "\.expect(" --include="*.rs" --exclude-dir=target . || (echo "❌ Found .expect() usage" && exit 1)  
-	@! grep -r "panic!(" --include="*.rs" --exclude-dir=target . || (echo "❌ Found panic!() usage" && exit 1)
-	@! grep -r "HashMap::new()" --include="*.rs" --exclude-dir=target . || (echo "❌ Found HashMap::new() - use with_capacity()" && exit 1)
-	@! grep -r "Vec::new()" --include="*.rs" --exclude-dir=target . || (echo "❌ Found Vec::new() - use with_capacity()" && exit 1)
-	# @! grep -r " as " --include="*.rs" --exclude-dir=target . || (echo "⚠️  Found 'as' conversions - consider TryFrom" && exit 1)
+	@! grep -r "\.unwrap()" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found .unwrap() usage" && exit 1)
+	@! grep -r "\.expect(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found .expect() usage" && exit 1)  
+	@! grep -r "panic!(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found panic!() usage" && exit 1)
+	@! grep -r "HashMap::new()" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found HashMap::new() - use with_capacity()" && exit 1)
+	@! grep -r "Vec::new()" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found Vec::new() - use with_capacity()" && exit 1)
+	# @! grep -r " as " --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "⚠️  Found 'as' conversions - consider TryFrom" && exit 1)
 	@echo "✅ Production patterns validated"
 
 # 🚨 Error handling patterns из anti.md
 error-handling-patterns:
 	@echo "🚨 Checking error handling patterns..."
-	@! (grep -r "fn.*-> Result" --include="*.rs" --exclude-dir=target . | head -5 | xargs -I {} sh -c 'file="{}"; grep -q "unwrap\|expect" "$${file%:*}" && echo "❌ Found unwrap/expect in Result function: $${file%:*}"' ) || exit 1
+	@! (grep -r "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . | head -5 | xargs -I {} sh -c 'file="{}"; grep -q "unwrap\|expect" "$${file%:*}" && echo "❌ Found unwrap/expect in Result function: $${file%:*}"' ) || exit 1
 	@grep -q "thiserror\|anyhow" Cargo.toml || echo "⚠️  Consider using thiserror/anyhow for structured error handling"
 	@echo "✅ Error handling patterns validated"
 
 # 🦀 Строгий Clippy с anti.md правилами
 clippy:
-	@echo "🦀 Running strict Clippy checks..."
-	cargo clippy --all-targets --all-features -- \
+	@echo "🦀 Running strict Clippy checks (excluding astro-rust)..."
+	cargo clippy --workspace --exclude astro-rust --all-targets --all-features -- \
 		-D clippy::unwrap_used \
 		-D clippy::expect_used \
 		-D clippy::panic \

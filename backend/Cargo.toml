@@ -54,7 +54,7 @@ once_cell = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
-axum-test = "14.1"
+axum-test = "17"  # Последняя версия 17.3.0
 
 [features]
 default = []
