@@ -1,0 +1,20 @@
+# StarsCalendars Development Configuration
+[server]
+host = "127.0.0.1"
+port = 8080
+
+[database]
+url = "postgresql://postgres:password@localhost:5432/starscalendars"
+max_connections = 20
+
+[redis]
+url = "redis://127.0.0.1:6379"
+
+[telegram]
+bot_token = "YOUR_BOT_TOKEN_HERE"
+channel_username = "@your_channel"
+
+[jwt]
+secret = "development_secret_key_change_in_production"
+access_token_ttl = 900    # 15 minutes
+refresh_token_ttl = 604800 # 7 days

@@ -69,7 +69,7 @@ impl AstronomicalService for AstroCalculationService {
     }
 }
 
-impl AstroCalculationService {
+impl AstronomicalServiceImpl {
     /// Calculate position for a specific celestial body
     fn calculate_body_position(julian_day: JulianDay, body: CelestialBody) -> Result<Cartesian, InfraError> {
         let jd = julian_day.as_f64();

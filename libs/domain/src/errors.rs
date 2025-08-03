@@ -34,6 +34,15 @@ pub enum DomainError {
     #[error("Invalid Telegram user ID: {0}")]
     InvalidTelegramUserId(i64),
     
+    #[error("Invalid Telegram channel ID: {0}")]
+    InvalidTelegramChannelId(i64),
+    
+    #[error("Authentication session expired")]
+    AuthSessionExpired,
+    
+    #[error("Authentication verification not completed")]
+    AuthVerificationNotCompleted,
+    
     #[error("Invalid JWT token format")]
     InvalidJwtToken,
     
@@ -81,6 +90,10 @@ pub enum DomainError {
     
     #[error("Business rule violation: {0}")]
     BusinessRuleViolation(String),
+    
+    // Serialization errors
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
     
     // Generic domain errors
     #[error("Domain operation failed: {0}")]
@@ -137,6 +150,9 @@ impl DomainError {
             
             Self::InvalidUserId(_)
             | Self::InvalidTelegramUserId(_)
+            | Self::InvalidTelegramChannelId(_)
+            | Self::AuthSessionExpired
+            | Self::AuthVerificationNotCompleted
             | Self::InvalidJwtToken
             | Self::JwtTokenExpired(_)
             | Self::InvalidRefreshToken
@@ -155,6 +171,8 @@ impl DomainError {
             
             Self::ValidationFailed { .. }
             | Self::BusinessRuleViolation(_) => "validation",
+            
+            Self::SerializationError(_) => "serialization",
             
             Self::OperationFailed(_)
             | Self::InvalidStateTransition { .. } => "generic",

@@ -11,16 +11,22 @@
 //! - No error-prone operations like unwrap, expect, or panic
 
 pub mod astronomical;
-pub mod auth;
+pub mod telegram;
+pub mod events;
 pub mod spiritual;
 pub mod user;
+pub mod auth;
+pub mod ports;
 pub mod errors;
 
 // Re-export core domain types
 pub use astronomical::*;
-pub use auth::*;
+pub use telegram::*;
+pub use events::*;
 pub use spiritual::*;
 pub use user::*;
+pub use auth::*;
+pub use ports::*;
 pub use errors::*;
 
 /// Domain-wide result type for error handling

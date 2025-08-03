@@ -12,6 +12,8 @@ workspace = true
 [dependencies]
 # Domain layer dependency
 starscalendars-domain = { path = "../domain" }
+# Infrastructure layer (for service types)
+starscalendars-infra = { path = "../infra" }
 
 # Core async and error handling
 tokio = { workspace = true }

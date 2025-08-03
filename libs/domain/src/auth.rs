@@ -107,6 +107,8 @@ impl JwtTokenPair {
 pub struct JwtClaims {
     /// Subject (user ID)
     pub sub: String,
+    /// User ID for structured access
+    pub user_id: UserId,
     /// Issued at timestamp
     pub iat: i64,
     /// Expiration timestamp
@@ -115,6 +117,8 @@ pub struct JwtClaims {
     pub telegram_user_id: Option<i64>,
     /// Telegram subscription status
     pub is_telegram_subscribed: bool,
+    /// User preferred language
+    pub language: Option<String>,
     /// User roles
     pub roles: smallvec::SmallVec<[String; 4]>,
 }
@@ -123,7 +127,7 @@ impl JwtClaims {
     /// Create new JWT claims
     pub fn new(
         user_id: &UserId,
-        telegram_user_id: Option<TelegramUserId>,
+        language: Option<String>,
         is_subscribed: bool,
         roles: &[String],
     ) -> Self {
@@ -132,10 +136,35 @@ impl JwtClaims {
         
         Self {
             sub: user_id.to_string(),
+            user_id: user_id.clone(),
+            iat: now,
+            exp,
+            telegram_user_id: None,
+            is_telegram_subscribed: is_subscribed,
+            language,
+            roles: roles.iter().cloned().collect(),
+        }
+    }
+    
+    /// Create new JWT claims with Telegram integration
+    pub fn new_with_telegram(
+        user_id: &UserId,
+        telegram_user_id: Option<TelegramUserId>,
+        language: Option<String>,
+        is_subscribed: bool,
+        roles: &[String],
+    ) -> Self {
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let exp = now + 900; // 15 minutes
+        
+        Self {
+            sub: user_id.to_string(),
+            user_id: user_id.clone(),
             iat: now,
             exp,
             telegram_user_id: telegram_user_id.map(|id| id.as_i64()),
             is_telegram_subscribed: is_subscribed,
+            language,
             roles: roles.iter().cloned().collect(),
         }
     }

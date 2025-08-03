@@ -134,3 +134,83 @@ impl CacheService for InMemoryCacheService {
         Ok(())
     }
 }
+
+/// Enhanced cache service with Telegram subscription caching
+pub struct TelegramCacheService {
+    cache: Box<dyn CacheService + Send + Sync>,
+}
+
+impl TelegramCacheService {
+    /// Create new Telegram cache service
+    pub fn new(cache: Box<dyn CacheService + Send + Sync>) -> Self {
+        Self { cache }
+    }
+    
+    /// Cache Telegram subscription status
+    pub async fn cache_subscription_status(
+        &self,
+        user_id: i64,
+        is_subscribed: bool,
+    ) -> AppResult<()> {
+        let key = format!("telegram:subscription:{}", user_id);
+        let value = if is_subscribed { "true" } else { "false" };
+        
+        // Cache for 5 minutes to reduce Telegram API calls
+        self.cache.set(&key, value, Duration::from_secs(300)).await
+    }
+    
+    /// Get cached subscription status
+    pub async fn get_subscription_status(&self, user_id: i64) -> AppResult<Option<bool>> {
+        let key = format!("telegram:subscription:{}", user_id);
+        
+        match self.cache.get(&key).await? {
+            Some(value) => Ok(Some(value == "true")),
+            None => Ok(None),
+        }
+    }
+    
+    /// Cache user linking token
+    pub async fn cache_linking_token(
+        &self,
+        token: &uuid::Uuid,
+        user_id: &starscalendars_domain::UserId,
+    ) -> AppResult<()> {
+        let key = format!("telegram:linking:{}", token);
+        let value = user_id.as_uuid().to_string();
+        
+        // Cache for 10 minutes (same as token expiry)
+        self.cache.set(&key, &value, Duration::from_secs(600)).await
+    }
+    
+    /// Get cached linking token
+    pub async fn get_linking_token(
+        &self,
+        token: &uuid::Uuid,
+    ) -> AppResult<Option<starscalendars_domain::UserId>> {
+        let key = format!("telegram:linking:{}", token);
+        
+        match self.cache.get(&key).await? {
+            Some(value) => {
+                let user_uuid = uuid::Uuid::parse_str(&value)
+                    .map_err(|e| InfraError::Internal(format!("Invalid UUID in cache: {}", e)))?;
+                Ok(Some(starscalendars_domain::UserId::from_uuid(user_uuid)))
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+#[async_trait]
+impl CacheService for TelegramCacheService {
+    async fn get(&self, key: &str) -> AppResult<Option<String>> {
+        self.cache.get(key).await
+    }
+    
+    async fn set(&self, key: &str, value: &str, ttl: Duration) -> AppResult<()> {
+        self.cache.set(key, value, ttl).await
+    }
+    
+    async fn delete(&self, key: &str) -> AppResult<()> {
+        self.cache.delete(key).await
+    }
+}

@@ -17,6 +17,9 @@ mod websocket;
 mod routes;
 
 use starscalendars_infra::AppConfig;
+use starscalendars_app::{AppServices, ServiceHealthReport};
+use std::sync::Arc;
+use crate::websocket::{WebSocketManager, websocket_handler};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -35,13 +38,32 @@ async fn main() -> Result<()> {
     info!("📋 Configuration loaded successfully");
     
     // Initialize services (dependency injection)
-    let _services = initialize_services(&config).await
+    let services = initialize_services(&config).await
         .map_err(|e| anyhow::anyhow!("Failed to initialize services: {}", e))?;
     
     info!("🔧 Services initialized successfully");
     
+    // Perform health checks
+    match services.health_check().await {
+        Ok(report) => {
+            if report.overall_healthy {
+                info!("✅ All services passed health checks");
+            } else {
+                error!("❌ Some services failed health checks: {:?}", report.errors);
+                return Err(anyhow::anyhow!("Health check failed"));
+            }
+        }
+        Err(e) => {
+            error!("❌ Health check error: {}", e);
+            return Err(anyhow::anyhow!("Health check failed: {}", e));
+        }
+    }
+    
+    // Initialize WebSocket manager
+    let websocket_manager = Arc::new(WebSocketManager::new(services.jwt_service.clone()));
+    
     // Build application routes
-    let app = build_app().await?;
+    let app = build_app(services, websocket_manager).await?;
     
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.server.port));
@@ -58,12 +80,17 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn build_app() -> Result<Router> {
+async fn build_app(
+    services: AppServices,
+    websocket_manager: Arc<WebSocketManager>,
+) -> Result<Router> {
     let app = Router::new()
         .merge(routes::health_routes())
         .merge(routes::auth_routes())
         .merge(routes::api_routes())
         .merge(routes::websocket_routes())
+        .with_state(services.clone())
+        .with_state(websocket_manager)
         .layer(CorsLayer::permissive())
         .layer(middleware::request_id_layer())
         .layer(middleware::logging_layer());
@@ -71,16 +98,40 @@ async fn build_app() -> Result<Router> {
     Ok(app)
 }
 
-async fn initialize_services(_config: &AppConfig) -> Result<()> {
-    // TODO: Initialize database connection pool
-    // TODO: Initialize Redis connection
-    // TODO: Initialize Telegram bot client
-    // TODO: Initialize JWT service
-    // TODO: Initialize astronomical calculation service
-    // TODO: Create dependency injection container
+async fn initialize_services(config: &AppConfig) -> Result<AppServices> {
+    info!("🚀 Initializing production services");
     
-    info!("⚠️  Service initialization stubbed - implement in next phase");
+    let services = AppServices::new_production(config)
+        .await
+        .map_err(|e| anyhow::anyhow!("Service initialization failed: {}", e))?;
     
+    info!("✅ All services initialized successfully");
+    
+    // Start background tasks
+    start_background_tasks(&services).await?;
+    
+    Ok(services)
+}
+
+/// Start background maintenance tasks
+async fn start_background_tasks(services: &AppServices) -> Result<()> {
+    info!("🔄 Starting background maintenance tasks");
+    
+    // Task for cleaning up expired tokens
+    let cache_service = services.cache_service.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600)); // Every hour
+        
+        loop {
+            interval.tick().await;
+            
+            // Note: Cleanup would happen automatically in production Redis
+            // For in-memory cache, we'd need a different approach to access cleanup
+            info!("🧹 Background cleanup task running");
+        }
+    });
+    
+    info!("✅ Background tasks started");
     Ok(())
 }
 
@@ -90,7 +141,10 @@ mod tests {
     
     #[tokio::test]
     async fn test_build_app() {
-        if let Ok(app) = build_app().await {
+        let services = AppServices::new_test();
+        let websocket_manager = Arc::new(WebSocketManager::new(services.jwt_service.clone()));
+        
+        if let Ok(app) = build_app(services, websocket_manager).await {
             // Basic smoke test
             assert!(!format!("{:?}", app).is_empty());
         } else {

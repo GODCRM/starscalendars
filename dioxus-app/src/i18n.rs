@@ -302,9 +302,11 @@ impl I18nService {
             .unwrap_or(&"%Y-%m-%d".to_string());
         
         // TODO: Implement proper date formatting with cultural patterns
-        date.format(&time::format_description::parse(format_str).unwrap_or_else(|_| {
-            time::format_description::parse("%Y-%m-%d").unwrap()
-        })).unwrap_or_else(|_| date.to_string())
+        let format_desc = time::format_description::parse(format_str)
+            .or_else(|_| time::format_description::parse("%Y-%m-%d"))
+            .unwrap_or_else(|_| time::format_description::well_known::Iso8601::DEFAULT);
+            
+        date.format(&format_desc).unwrap_or_else(|_| date.to_string())
     }
     
     fn initialize_language_metadata(&mut self) -> Result<(), I18nError> {
@@ -596,8 +598,8 @@ impl Default for I18nService {
     fn default() -> Self {
         Self::new("en").unwrap_or_else(|_| Self {
             current_language: "en".to_string(),
-            translations: HashMap::new(),
-            language_metadata: HashMap::new(),
+            translations: HashMap::with_capacity(10), // 10 supported languages
+            language_metadata: HashMap::with_capacity(50), // Estimated metadata entries
             fallback_language: "en".to_string(),
         })
     }

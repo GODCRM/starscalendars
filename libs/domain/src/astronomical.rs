@@ -39,6 +39,30 @@ impl JulianDay {
     pub fn days_since_j2000(self) -> f64 {
         self.0 - Self::J2000.0
     }
+    
+    /// Convert Julian Day to OffsetDateTime
+    pub fn to_datetime(self) -> time::OffsetDateTime {
+        // Julian Day epoch is January 1, 4713 BCE
+        // Unix epoch is January 1, 1970 CE
+        // JD of Unix epoch is 2440587.5
+        let unix_epoch_jd = 2440587.5;
+        let days_since_unix_epoch = self.0 - unix_epoch_jd;
+        let seconds_since_unix_epoch = days_since_unix_epoch * 86400.0;
+        
+        time::OffsetDateTime::from_unix_timestamp(seconds_since_unix_epoch as i64)
+            .unwrap_or_else(|_| time::OffsetDateTime::UNIX_EPOCH)
+    }
+    
+    /// Convert OffsetDateTime to Julian Day
+    pub fn from_datetime(dt: time::OffsetDateTime) -> Self {
+        let unix_epoch_jd = 2440587.5;
+        let seconds_since_unix_epoch = dt.unix_timestamp() as f64;
+        let days_since_unix_epoch = seconds_since_unix_epoch / 86400.0;
+        let jd = unix_epoch_jd + days_since_unix_epoch;
+        
+        // Safe unwrap: calculated JD should always be valid
+        Self::new(jd).unwrap_or_else(|_| Self::J2000)
+    }
 }
 
 impl Add<f64> for JulianDay {
@@ -221,6 +245,33 @@ impl EphemerisData {
         }
         
         result
+    }
+}
+
+/// Position of a celestial body at a specific time
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CelestialBodyPosition {
+    /// The celestial body
+    pub body: CelestialBody,
+    /// 3D position in space
+    pub position: Cartesian,
+    /// Time of calculation
+    pub julian_day: JulianDay,
+}
+
+impl CelestialBodyPosition {
+    /// Create new celestial body position
+    pub fn new(body: CelestialBody, position: Cartesian, julian_day: JulianDay) -> Self {
+        Self {
+            body,
+            position,
+            julian_day,
+        }
+    }
+    
+    /// Get distance from origin in AU
+    pub fn distance_au(&self) -> f64 {
+        self.position.magnitude()
     }
 }
 

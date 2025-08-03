@@ -1,7 +1,32 @@
 //! User management domain types
 
 use serde::{Deserialize, Serialize};
-use crate::auth::{UserId, TelegramUserId};
+use crate::telegram::TelegramUserId;
+use uuid::Uuid;
+
+/// Unique identifier for users in the system
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct UserId(pub Uuid);
+
+impl UserId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+    
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+    
+    pub fn uuid(self) -> Uuid {
+        self.0
+    }
+}
+
+impl Default for UserId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// User profile information
 #[derive(Debug, Clone, Serialize, Deserialize)]

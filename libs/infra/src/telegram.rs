@@ -6,20 +6,96 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use starscalendars_app::*;
-use crate::InfraError;
+use crate::{InfraError, TelegramCacheService};
+use std::sync::Arc;
+use std::time::Duration;
+use tracing::{info, error};
 
-/// Telegram Bot API implementation
+/// Production Telegram service implementation with caching
+pub struct TelegramServiceImpl {
+    api_service: TelegramApiService,
+    channel_username: String,
+    cache_service: Arc<TelegramCacheService>,
+}
+
+/// Low-level Telegram Bot API implementation
 pub struct TelegramApiService {
     client: Client,
     bot_token: String,
     base_url: String,
 }
 
+impl TelegramServiceImpl {
+    /// Create new production Telegram service with caching
+    pub async fn new(
+        bot_token: &str,
+        channel_username: &str,
+        cache_service: Arc<TelegramCacheService>,
+    ) -> Result<Self, InfraError> {
+        let api_service = TelegramApiService::new(bot_token.to_string());
+        
+        // Test connection
+        match api_service.get_me().await {
+            Ok(bot_info) => {
+                info!("✅ Telegram bot connected: {}", bot_info.username.unwrap_or_else(|| "Unknown".to_string()));
+            }
+            Err(e) => {
+                error!("❌ Failed to connect to Telegram: {}", e);
+                return Err(InfraError::TelegramApi(format!("Bot connection failed: {}", e)));
+            }
+        }
+        
+        Ok(Self {
+            api_service,
+            channel_username: channel_username.to_string(),
+            cache_service,
+        })
+    }
+}
+
+#[async_trait]
+impl TelegramService for TelegramServiceImpl {
+    async fn is_member_of_channel(&self, user_id: i64, channel: &str) -> AppResult<bool> {
+        // Check cache first
+        if let Ok(Some(cached_status)) = self.cache_service.get_subscription_status(user_id).await {
+            return Ok(cached_status);
+        }
+        
+        // Query Telegram API
+        let is_member = self.api_service.is_member_of_channel(user_id, channel).await?;
+        
+        // Cache result
+        if let Err(e) = self.cache_service.cache_subscription_status(user_id, is_member).await {
+            error!("Failed to cache subscription status: {}", e);
+        }
+        
+        Ok(is_member)
+    }
+    
+    async fn send_message(&self, user_id: i64, message: &str) -> AppResult<()> {
+        self.api_service.send_message(user_id, message).await
+    }
+    
+    async fn get_user_info(&self, user_id: i64) -> AppResult<TelegramUserInfo> {
+        self.api_service.get_user_info(user_id).await
+    }
+    
+    async fn health_check(&self) -> AppResult<()> {
+        match self.api_service.get_me().await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(AppError::ExternalService(format!("Telegram health check failed: {}", e))),
+        }
+    }
+}
+
 impl TelegramApiService {
     /// Create new Telegram API service
     pub fn new(bot_token: String) -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .timeout(Duration::from_secs(30))
+                .build()
+                .unwrap_or_else(|_| Client::new()),
             bot_token,
             base_url: "https://api.telegram.org".to_string(),
         }
@@ -38,6 +114,44 @@ impl TelegramApiService {
     fn api_url(&self, method: &str) -> String {
         format!("{}/bot{}/{}", self.base_url, self.bot_token, method)
     }
+    
+    /// Get bot information (for health checks)
+    async fn get_me(&self) -> Result<BotInfo, InfraError> {
+        #[derive(Deserialize)]
+        struct GetMeResponse {
+            ok: bool,
+            result: Option<BotInfo>,
+            description: Option<String>,
+        }
+        
+        let response = self.client
+            .get(&self.api_url("getMe"))
+            .send()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        let get_me_response: GetMeResponse = response
+            .json()
+            .await
+            .map_err(|e| InfraError::Http(e))?;
+        
+        if !get_me_response.ok {
+            let error_msg = get_me_response.description
+                .unwrap_or_else(|| "Failed to get bot info".to_string());
+            return Err(InfraError::TelegramApi(error_msg));
+        }
+        
+        get_me_response.result
+            .ok_or_else(|| InfraError::TelegramApi("No bot info in response".to_string()))
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct BotInfo {
+    id: i64,
+    is_bot: bool,
+    first_name: String,
+    username: Option<String>,
 }
 
 #[async_trait]
@@ -245,5 +359,10 @@ impl TelegramService for MockTelegramService {
             .get(&user_id)
             .map(|info| info.clone())
             .ok_or_else(|| InfraError::TelegramApi("User not found".to_string()).into())
+    }
+    
+    async fn health_check(&self) -> AppResult<()> {
+        // Mock always succeeds
+        Ok(())
     }
 }

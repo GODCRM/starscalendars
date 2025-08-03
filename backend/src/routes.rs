@@ -1,7 +1,10 @@
 //! Route definitions for the backend server
 
-use axum::{Router, routing::{get, post}, response::Json};
+use axum::{Router, routing::{get, post}, response::Json, extract::State};
 use serde_json::{json, Value};
+use starscalendars_app::AppServices;
+use crate::websocket::{WebSocketManager, websocket_handler};
+use std::sync::Arc;
 
 /// Health check routes
 pub fn health_routes() -> Router {
@@ -29,7 +32,7 @@ pub fn api_routes() -> Router {
 /// WebSocket routes
 pub fn websocket_routes() -> Router {
     Router::new()
-        .route("/ws", get(|| async { "WebSocket upgrade endpoint" }))
+        .route("/ws", get(websocket_handler))
 }
 
 async fn health_check() -> Json<Value> {
@@ -41,17 +44,26 @@ async fn health_check() -> Json<Value> {
     }))
 }
 
-async fn readiness_check() -> Json<Value> {
-    // TODO: Check database connectivity
-    // TODO: Check Redis connectivity
-    // TODO: Check Telegram API connectivity
+async fn readiness_check(
+    State(services): State<AppServices>,
+) -> Json<Value> {
+    let health_report = match services.health_check().await {
+        Ok(report) => report,
+        Err(e) => {
+            return Json(json!({
+                "status": "not_ready",
+                "error": e.to_string()
+            }));
+        }
+    };
     
     Json(json!({
-        "status": "ready",
+        "status": if health_report.overall_healthy { "ready" } else { "not_ready" },
         "checks": {
-            "database": "not_implemented",
-            "redis": "not_implemented",
-            "telegram": "not_implemented"
-        }
+            "cache": if health_report.cache_healthy { "healthy" } else { "unhealthy" },
+            "jwt": if health_report.jwt_healthy { "healthy" } else { "unhealthy" },
+            "telegram": if health_report.telegram_healthy { "healthy" } else { "unhealthy" }
+        },
+        "errors": health_report.errors
     }))
 }

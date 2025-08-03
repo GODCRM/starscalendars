@@ -54,6 +54,15 @@ web-sys = { version = "0.3", features = [
 default = ["wasm"]
 wasm = []
 
-# wasm-pack optimization settings
+# wasm-pack optimization settings for <100KB target
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = false  # Disable wasm-opt for compatibility with new WASM features
+wasm-opt = false  # Disable wasm-opt for compatibility with modern WASM features
+
+[profile.release]
+# Maximum optimization for <100KB WASM target
+opt-level = "z"      # Maximum size optimization
+lto = "fat"          # Full link-time optimization
+codegen-units = 1    # Single codegen unit for better optimization
+panic = "abort"      # Remove panic infrastructure
+strip = true         # Remove debug symbols
+rpath = false        # No runtime path info

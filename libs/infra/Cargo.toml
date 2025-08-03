@@ -10,9 +10,8 @@ license = "UNLICENSED"
 workspace = true
 
 [dependencies]
-# Application and domain layers
+# Domain layer only (Clean Architecture)
 starscalendars-domain = { path = "../domain" }
-starscalendars-app = { path = "../app" }
 
 # Database and caching
 sqlx = { workspace = true }

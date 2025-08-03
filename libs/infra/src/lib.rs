@@ -9,6 +9,7 @@ pub mod telegram;
 pub mod jwt;
 pub mod astronomical;
 pub mod config;
+pub mod mocks;
 
 // Re-export implementations
 pub use database::*;
@@ -17,6 +18,7 @@ pub use telegram::*;
 pub use jwt::*;
 pub use astronomical::*;
 pub use config::*;
+pub use mocks::*;
 
 /// Infrastructure layer errors
 #[derive(Debug, thiserror::Error)]

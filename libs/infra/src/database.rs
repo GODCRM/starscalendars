@@ -3,10 +3,77 @@
 //! Repository adapters implementing the port interfaces using SQLx.
 
 use async_trait::async_trait;
-use sqlx::PgPool;
-use starscalendars_app::*;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use starscalendars_domain::*;
-use crate::InfraError;
+use crate::{InfraError, DatabaseConfig};
+use std::time::Duration;
+use tracing::{info, error};
+
+/// Database service for managing PostgreSQL connections
+pub struct DatabaseService {
+    pool: PgPool,
+}
+
+impl DatabaseService {
+    /// Create a new database service with optimized connection pool
+    pub async fn new(config: &DatabaseConfig) -> Result<Self, InfraError> {
+        info!("🔗 Initializing PostgreSQL connection pool");
+        
+        let pool = PgPoolOptions::new()
+            .max_connections(config.max_connections)
+            .min_connections(5) // Keep minimum connections alive
+            .acquire_timeout(Duration::from_secs(3))
+            .idle_timeout(Duration::from_secs(600)) // 10 minutes
+            .max_lifetime(Duration::from_secs(1800)) // 30 minutes
+            .test_before_acquire(true) // Validate connections
+            .connect(&config.url)
+            .await
+            .map_err(|e| {
+                error!("❌ Failed to connect to PostgreSQL: {}", e);
+                InfraError::Database(e)
+            })?;
+        
+        info!("✅ PostgreSQL connection pool initialized with {} max connections", config.max_connections);
+        
+        Ok(Self { pool })
+    }
+    
+    /// Run database migrations
+    pub async fn run_migrations(&self) -> Result<(), InfraError> {
+        info!("🔧 Running database migrations");
+        
+        sqlx::migrate!("../../ops/migrations")
+            .run(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("❌ Migration failed: {}", e);
+                InfraError::Database(e)
+            })?;
+        
+        info!("✅ Database migrations completed successfully");
+        Ok(())
+    }
+    
+    /// Get the connection pool
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+    
+    /// Health check for database connectivity
+    pub async fn health_check(&self) -> Result<(), InfraError> {
+        sqlx::query!("SELECT 1 as health_check")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
+        
+        Ok(())
+    }
+    
+    /// Get connection pool statistics
+    pub fn pool_stats(&self) -> (u32, u32) {
+        (self.pool.size(), self.pool.num_idle())
+    }
+}
 
 /// PostgreSQL implementation of UserRepository
 pub struct PostgresUserRepository {
@@ -22,7 +89,7 @@ impl PostgresUserRepository {
 
 #[async_trait]
 impl UserRepository for PostgresUserRepository {
-    async fn create_user(&self, user: User) -> AppResult<()> {
+    async fn create_user(&self, user: User) -> PortResult<()> {
         sqlx::query!(
             r#"
             INSERT INTO users (id, username, email, telegram_user_id, created_at, updated_at, is_active)
@@ -38,26 +105,26 @@ impl UserRepository for PostgresUserRepository {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         Ok(())
     }
     
-    async fn get_user_by_id(&self, id: &UserId) -> AppResult<Option<User>> {
+    async fn get_user_by_id(&self, id: &UserId) -> PortResult<Option<User>> {
         let row = sqlx::query!(
             "SELECT id, username, email, telegram_user_id, created_at, updated_at, is_active FROM users WHERE id = $1",
             id.as_uuid()
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         match row {
             Some(row) => {
                 let telegram_user_id = row.telegram_user_id
                     .map(|id| TelegramUserId::new(id))
                     .transpose()
-                    .map_err(|e| InfraError::Internal(format!("Invalid telegram user ID: {}", e)))?;
+                    .map_err(|e| DomainError::OperationFailed(format!("Invalid telegram user ID: {}", e)))?;
                 
                 Ok(Some(User {
                     id: UserId::from_uuid(row.id),
@@ -73,21 +140,21 @@ impl UserRepository for PostgresUserRepository {
         }
     }
     
-    async fn get_user_by_username(&self, username: &str) -> AppResult<Option<User>> {
+    async fn get_user_by_username(&self, username: &str) -> PortResult<Option<User>> {
         let row = sqlx::query!(
             "SELECT id, username, email, telegram_user_id, created_at, updated_at, is_active FROM users WHERE username = $1",
             username
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         match row {
             Some(row) => {
                 let telegram_user_id = row.telegram_user_id
                     .map(|id| TelegramUserId::new(id))
                     .transpose()
-                    .map_err(|e| InfraError::Internal(format!("Invalid telegram user ID: {}", e)))?;
+                    .map_err(|e| DomainError::OperationFailed(format!("Invalid telegram user ID: {}", e)))?;
                 
                 Ok(Some(User {
                     id: UserId::from_uuid(row.id),
@@ -103,7 +170,7 @@ impl UserRepository for PostgresUserRepository {
         }
     }
     
-    async fn update_user(&self, user: &User) -> AppResult<()> {
+    async fn update_user(&self, user: &User) -> PortResult<()> {
         sqlx::query!(
             r#"
             UPDATE users 
@@ -119,19 +186,19 @@ impl UserRepository for PostgresUserRepository {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         Ok(())
     }
     
-    async fn delete_user(&self, id: &UserId) -> AppResult<()> {
+    async fn delete_user(&self, id: &UserId) -> PortResult<()> {
         sqlx::query!(
             "DELETE FROM users WHERE id = $1",
             id.as_uuid()
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         Ok(())
     }
@@ -151,7 +218,7 @@ impl PostgresTokenRepository {
 
 #[async_trait]
 impl TokenRepository for PostgresTokenRepository {
-    async fn store_refresh_token(&self, token: &RefreshToken) -> AppResult<()> {
+    async fn store_refresh_token(&self, token: &RefreshToken) -> PortResult<()> {
         sqlx::query!(
             r#"
             INSERT INTO refresh_tokens (id, user_id, token_hash, created_at, expires_at, is_revoked)
@@ -166,19 +233,19 @@ impl TokenRepository for PostgresTokenRepository {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         Ok(())
     }
     
-    async fn get_refresh_token(&self, token_hash: &str) -> AppResult<Option<RefreshToken>> {
+    async fn get_refresh_token(&self, token_hash: &str) -> PortResult<Option<RefreshToken>> {
         let row = sqlx::query!(
             "SELECT id, user_id, token_hash, created_at, expires_at, is_revoked FROM refresh_tokens WHERE token_hash = $1",
             token_hash
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         match row {
             Some(row) => Ok(Some(RefreshToken {
@@ -193,19 +260,19 @@ impl TokenRepository for PostgresTokenRepository {
         }
     }
     
-    async fn revoke_refresh_token(&self, token_hash: &str) -> AppResult<()> {
+    async fn revoke_refresh_token(&self, token_hash: &str) -> PortResult<()> {
         sqlx::query!(
             "UPDATE refresh_tokens SET is_revoked = true WHERE token_hash = $1",
             token_hash
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         Ok(())
     }
     
-    async fn store_linking_token(&self, token: &LinkingToken) -> AppResult<()> {
+    async fn store_linking_token(&self, token: &LinkingToken) -> PortResult<()> {
         sqlx::query!(
             r#"
             INSERT INTO linking_tokens (token, user_id, created_at, expires_at, is_used)
@@ -219,19 +286,19 @@ impl TokenRepository for PostgresTokenRepository {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         Ok(())
     }
     
-    async fn get_linking_token(&self, token: &uuid::Uuid) -> AppResult<Option<LinkingToken>> {
+    async fn get_linking_token(&self, token: &uuid::Uuid) -> PortResult<Option<LinkingToken>> {
         let row = sqlx::query!(
             "SELECT token, user_id, created_at, expires_at, is_used FROM linking_tokens WHERE token = $1",
             token
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         match row {
             Some(row) => Ok(Some(LinkingToken {
@@ -245,14 +312,14 @@ impl TokenRepository for PostgresTokenRepository {
         }
     }
     
-    async fn mark_linking_token_used(&self, token: &uuid::Uuid) -> AppResult<()> {
+    async fn mark_linking_token_used(&self, token: &uuid::Uuid) -> PortResult<()> {
         sqlx::query!(
             "UPDATE linking_tokens SET is_used = true WHERE token = $1",
             token
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| InfraError::Database(e))?;
+        .map_err(|e| DomainError::OperationFailed(format!("Database error: {}", e)))?;
         
         Ok(())
     }

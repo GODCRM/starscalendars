@@ -58,7 +58,9 @@
       "Bash(cargo info:*)",
       "WebFetch(domain:2025.stateofjs.com)",
       "WebFetch(domain:developer.mozilla.org)",
-      "WebFetch(domain:webassembly.org)"
+      "WebFetch(domain:webassembly.org)",
+      "WebFetch(domain:react.dev)",
+      "Bash(true)"
     ],
     "deny": []
   }

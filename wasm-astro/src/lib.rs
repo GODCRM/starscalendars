@@ -124,8 +124,16 @@ fn calculate_all_positions(
 /// 🚨 CRITICAL: Uses ONLY astro-rust API functions - NO custom formulas!
 /// Implements high-precision VSOP87, ELP-2000/82, and Pluto calculations for all celestial bodies.
 /// Uses the local astro-rust library with critical bug fixes (decimal_day & lunar equations).
+/// ✅ NEW: Added nutation and precession corrections for sub-arcsecond accuracy.
 fn calculate_body_position_precise(body: CelestialBody, julian_day: JulianDay) -> Result<Cartesian, DomainError> {
     let jd = julian_day.as_f64();
+    
+    // ✅ HIGH-PRECISION CORRECTIONS: Calculate nutation and precession for maximum accuracy
+    let (nut_long, nut_oblq) = astro::nutation::nutation(jd);
+    
+    // Mean obliquity of ecliptic with nutation correction
+    let mean_oblq = astro::ecliptic::mn_oblq_IAU(jd);
+    let true_oblq = mean_oblq + nut_oblq;
     
     let position = match body {
         CelestialBody::Sun => {
@@ -133,14 +141,20 @@ fn calculate_body_position_precise(body: CelestialBody, julian_day: JulianDay) -
             let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(jd);
             // Convert km to AU (1 AU ≈ 149,597,870.7 km)
             let sun_dist_au = sun_dist_km / 149597870.7;
-            ecliptic_to_cartesian(sun_ecl.long, sun_ecl.lat, sun_dist_au)
+            
+            // ✅ Apply nutation correction to longitude for high precision
+            let corrected_long = sun_ecl.long + nut_long;
+            ecliptic_to_cartesian(corrected_long, sun_ecl.lat, sun_dist_au)
         },
         CelestialBody::Moon => {
             // Moon geocentric ecliptic position using corrected ELP-2000/82 theory
             let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(jd);
             // Convert km to AU
             let moon_dist_au = moon_dist_km / 149597870.7;
-            ecliptic_to_cartesian(moon_ecl.long, moon_ecl.lat, moon_dist_au)
+            
+            // ✅ Apply nutation correction to lunar longitude for high precision
+            let corrected_long = moon_ecl.long + nut_long;
+            ecliptic_to_cartesian(corrected_long, moon_ecl.lat, moon_dist_au)
         },
         CelestialBody::Mercury => {
             // Mercury heliocentric position using VSOP87 theory

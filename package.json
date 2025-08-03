@@ -6,17 +6,21 @@
   "type": "module",
   "workspaces": [
     "frontend",
-    "dioxus-app"
+    "wasm-astro", 
+    "dioxus-app",
+    "i18n"
   ],
   "scripts": {
-    "build": "pnpm run -r build",
+    "build": "pnpm run build:wasm && pnpm run build:frontend && pnpm run build:dioxus && cargo build --release",
     "build:frontend": "pnpm --filter frontend build",
     "build:dioxus": "pnpm --filter dioxus-app build",
-    "build:wasm": "cd wasm-astro && wasm-pack build --release --target web -- --features wasm",
+    "build:wasm": "pnpm --filter wasm-astro build",
     "build:i18n": "pnpm run -r build:i18n",
-    "dev": "pnpm run -r --parallel dev",
+    "dev": "concurrently \"pnpm run dev:frontend\" \"pnpm run dev:backend\" \"pnpm run dev:dioxus\" \"pnpm run dev:telegram\"",
     "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "cargo run -p backend",
     "dev:dioxus": "pnpm --filter dioxus-app dev",
+    "dev:telegram": "cargo run -p telegram-bot",
     "type-check": "pnpm run -r type-check",
     "lint": "pnpm run -r lint",
     "format": "pnpm run -r format",
@@ -27,8 +31,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
-    "typescript": "^5.8.3",
-    "vite": "^5.4.8",
+    "typescript": "^5.9.2",
+    "vite": "^7.0.6",
+    "concurrently": "^9.1.0",
+    "simple-git-hooks": "^2.12.0",
     "prettier": "^3.3.3",
     "eslint": "^9.12.0",
     "@typescript-eslint/eslint-plugin": "^8.8.0",
