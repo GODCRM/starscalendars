@@ -592,9 +592,9 @@ export default defineConfig({
     "typescript": "^5.8.3"
   },
   "devDependencies": {
-    "vite": "^5.0.0",
+    "vite": "^7.0.6",
     "vite-plugin-wasm": "^3.3.0",
-    "vite-plugin-top-level-await": "^3.3.0"
+    "vite-plugin-top-level-await": "^1.6.0"
   }
 }
 ```

@@ -62,9 +62,9 @@ fi
 RUST_VERSION=$(rustc --version | cut -d' ' -f2)
 log_success "Rust $RUST_VERSION detected"
 
-# Check for minimum Rust version (1.75+ recommended)
-if ! rustc --version | grep -E "1\.(7[5-9]|8[0-9]|9[0-9])" >/dev/null; then
-    log_warning "Rust 1.75+ recommended for best quality enforcement features"
+# Check for minimum Rust version (1.88+ required for edition 2024 features)
+if ! rustc --version | grep -E "1\.(8[0-9]|9[0-9])" >/dev/null; then
+    log_warning "Rust 1.88+ required for edition 2024 features and production deployment"
 fi
 
 # Step 2: Install quality tools
@@ -74,9 +74,9 @@ log_step "2/8: Installing quality enforcement tools..."
 TOOLS=(
     "cargo-clippy:Latest Clippy linting"
     "cargo-deny@0.18.3:Security and license scanning"
-    "cargo-audit@0.21.0:Vulnerability auditing"
-    "cargo-tarpaulin@0.31.0:Code coverage analysis"
-    "wasm-pack@0.12.1:WASM build and optimization"
+    "cargo-audit@0.21.2:Vulnerability auditing"
+    "cargo-tarpaulin@0.32.8:Code coverage analysis"
+    "wasm-pack:WASM build and optimization (latest stable)"
 )
 
 for tool_info in "${TOOLS[@]}"; do
@@ -99,7 +99,7 @@ done
 # Optional but recommended tools
 OPTIONAL_TOOLS=(
     "tokei:Code line counting and statistics"
-    "cargo-criterion@1.1.0:Performance benchmarking"
+    "cargo-criterion@1.0.0-alpha3:Performance benchmarking"
     "cargo-udeps:Unused dependency detection"
 )
 

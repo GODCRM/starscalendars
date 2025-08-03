@@ -1,3 +1,5 @@
+# 🚨 NO DOCKER POLICY: Manual deployment to AlmaLinux 9.4 server only!
+# Each package builds to static artifacts for manual deployment
 packages:
   - 'frontend'
   - 'dioxus-app'

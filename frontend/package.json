@@ -1,7 +1,7 @@
 {
   "name": "starscalendars-frontend",
   "version": "0.1.0",
-  "description": "Frontend for StarsCalendars - 3D astronomical visualization with Babylon.js and WASM",
+  "description": "Frontend for StarsCalendars - 3D astronomical visualization with Babylon.js and WASM (NO DOCKER - builds to static files for AlmaLinux deployment)",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -41,7 +41,7 @@
     "typescript": "^5.9.2",
     "vite": "^7.0.6",
     "vite-plugin-wasm": "^3.3.0",
-    "vite-plugin-top-level-await": "^1.4.4",
+    "vite-plugin-top-level-await": "^1.6.0",
     "vitest": "^2.1.2"
   },
   "engines": {

@@ -1,3 +1,6 @@
+# 🚨 NO DOCKER POLICY: Manual deployment to AlmaLinux 9.4 server only!
+# Frontend builds to static files, backend compiles on production server
+
 [workspace]
 resolver = "2"
 members = [

@@ -1,7 +1,7 @@
 {
   "name": "starscalendars",
   "version": "0.1.0",
-  "description": "Spiritual astronomy platform with 3D visualization, WASM calculations, and Telegram integration",
+  "description": "Spiritual astronomy platform with 3D visualization, WASM calculations, and Telegram integration (NO DOCKER - manual AlmaLinux 9.4 deployment)",
   "private": true,
   "type": "module",
   "workspaces": [

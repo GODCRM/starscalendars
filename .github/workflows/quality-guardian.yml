@@ -2,6 +2,7 @@ name: 🛡️ Quality Guardian
 
 # Comprehensive quality enforcement for StarsCalendars spiritual platform
 # Zero tolerance for anti-patterns, performance regressions, and security issues
+# 🚨 NO DOCKER POLICY: Manual deployment to AlmaLinux 9.4 server only!
 
 on:
   push:
@@ -63,11 +64,11 @@ jobs:
       run: |
         # Latest security and quality tools
         cargo install cargo-deny@0.18.3 --locked
-        cargo install cargo-audit@0.21.0 --locked
-        cargo install cargo-tarpaulin@0.31.0 --locked
+        cargo install cargo-audit@0.21.2 --locked
+        cargo install cargo-tarpaulin@0.32.8 --locked
         
         # WASM tools for performance validation
-        cargo install wasm-pack@0.12.1 --locked
+        cargo install wasm-pack --locked
         
         echo "📦 Installed security and performance validation tools"
     
@@ -397,10 +398,10 @@ jobs:
     - name: 🔧 Install Performance Tools
       run: |
         # Performance measurement tools
-        cargo install cargo-criterion@1.1.0 --locked
+        cargo install cargo-criterion@1.0.0-alpha3 --locked
         
         # WASM performance tools
-        cargo install wasm-pack@0.12.1 --locked
+        cargo install wasm-pack --locked
         
         echo "📦 Performance measurement tools installed"
     
@@ -481,7 +482,7 @@ jobs:
       run: |
         # Latest security audit tools
         cargo install cargo-deny@0.18.3 --locked
-        cargo install cargo-audit@0.21.0 --locked
+        cargo install cargo-audit@0.21.2 --locked
         
         echo "🔒 Security audit tools installed"
     

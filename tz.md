@@ -1,4 +1,4 @@
-Ниже — детализированное ТЗ уровня профессионального продакшна для высоконагруженной, низколатентной системы реального времени. Основано на чистой архитектуре, современном Rust 1.88 (26.06.2025), идиоматических практиках, без антипаттернов. Включает ключевые библиотеки на момент подготовки и примеры кода. VR пока не реализуем, но вся архитектура VR-ready.
+Ниже — детализированное ТЗ уровня профессионального продакшна для высоконагруженной, низколатентной системы реального времени. Основано на чистой архитектуре, современном Rust 1.88+ (минимальная версия для edition 2024), идиоматических практиках, без антипаттернов. Включает ключевые библиотеки на момент подготовки и примеры кода. VR пока не реализуем, но вся архитектура VR-ready.
 
 ## Цель
 Создать кроссплатформенное веб-приложение астрономической визуализации с 3D‑сценой (Babylon.js 8) и покадровыми расчетами эфемерид в Rust/WASM. Бэкенд на Axum обеспечивает аутентификацию (JWT), интеграцию с Telegram (проверка подписки), хранение в PostgreSQL и двунаправленный обмен по WebSocket. Личный кабинет/админка/авторизация вынесены в отдельное Dioxus WASM-приложение. **Система поддерживает 10 языков с культурными адаптациями для глобального духовного сообщества.** Стек и код соответствуют принципам чистой архитектуры, SOLID, явному управлению зависимостями, тестируемости и высокой производительности.
@@ -24,7 +24,7 @@ app/ (use-cases, портовые интерфейсы)
 infra/ (клиенты PostgreSQL/Telegram/Cache, реализация портов)
 ops/ (миграции, Helm/compose, CI/CD) - МЫ НЕ ИСПОЛЬЗУЕМ ДОКЕР И РУКАМИ РАЗВОРАЧИВАЕМ НА СЕРВЕР Almalinux 9.4 уже скомпилированны фронт и только сарвер компилируем на своем сервере линукс для продакшна к которому копируем скомпилированный фронт!!!
 Версии инструментов и библиотек (актуальные на август 2025)
-Rust: 1.88.0 stable (2025-06-26)
+Rust: 1.88+ (минимальная версия от 2025-06-26, compatible with stable channel)
 Cargo edition: 2024
 
 **Frontend Stack**:
@@ -39,28 +39,28 @@ Babylon.js: 8.20.0 (latest stable, published 2 days ago)
 @babylonjs/gui: 8.20.0
 
 **Backend Stack**:
-Axum: latest stable
-Tokio: latest stable
-SQLX: latest stable (runtime-tokio-rustls, postgres, macros, offline)
-Serde: latest stable
-jsonwebtoken: latest stable
-tower-http: latest stable
-tracing/tracing-subscriber: latest stable
-teloxide: latest stable
-time: latest stable
-uuid: latest stable
-anyhow/thiserror: latest stable
+Axum: 0.8.4 (latest stable)
+Tokio: 1.47.0 (latest stable)
+SQLX: 0.8.6 (latest stable - runtime-tokio-rustls, postgres, macros, offline)
+Serde: 1.0.210 (latest stable)
+jsonwebtoken: 9.3.0 (latest stable)
+tower-http: 0.6.2 (latest stable)
+tracing/tracing-subscriber: 0.3.19 (latest stable)
+teloxide: 0.13.0 (latest stable)
+time: 0.3.37 (latest stable)
+uuid: 1.11.0 (latest stable)
+anyhow: 1.0.94 / thiserror: 2.0.3 (latest stable)
 
 **WASM Stack**:
-wasm-bindgen: latest stable
-wasm-pack: latest stable
-js-sys/web-sys: latest stable
-vite-plugin-wasm: 3.3.0
-vite-plugin-top-level-await: 1.4.4
+wasm-bindgen: 0.2.99 (latest stable)
+wasm-pack: 0.13.0 (latest stable)
+js-sys: 0.3.76 / web-sys: 0.3.76 (latest stable)
+vite-plugin-wasm: 3.5.0 (latest stable)
+vite-plugin-top-level-await: 1.6.0 (latest stable)
 
 **Fullstack**:
-dioxus: 0.7 (ALPHA - cutting-edge, completely rewritten)
-config/figment: latest stable
+dioxus: 0.7.0-alpha.8 (ALPHA - cutting-edge, completely rewritten)
+config: 0.14.1 / figment: 0.10.21 (latest stable)
 
 Принципы производительности и O(1)
 
@@ -118,7 +118,7 @@ async fn is_member_of_channel(&self, user_id: i64) -> anyhow::Result<bool>;
 WASM модуль (wasm-astro/)
 Требования:
 
-Rust 1.88, no_std не требуется (web-target), но без лишних аллокаций в горячем пути.
+Rust 1.88+, no_std не требуется (web-target), но без лишних аллокаций в горячем пути.
 Только числовые данные через общий буфер; никакой сериализации/JSON в кадре.
 Один предвыделенный буфер с фиксированной раскладкой.
 Экспорт указателя и длины; JS создаёт Float64Array(memory.buffer, ptr, len).
@@ -320,7 +320,7 @@ Health endpoints /healthz, /readyz.
 
 Vite build для frontend; wasm-pack build --release для wasm-astro; dioxus build.
 Axum как единая точка статики и API.
-Docker multi-stage, минимальные слои (FROM rust:slim для build → FROM gcr.io/distroless/cc для run, если подходит).
+**НЕ ИСПОЛЬЗУЕМ DOCKER**: Ручное развертывание на AlmaLinux 9.4 server. Frontend компилируется заранее, backend компилируется на продакшн сервере.
 CI: форматирование (rustfmt), clippy (deny(warnings) для критичного кода), cargo-audit, sqlx prepare.
 VR-ready пометки
 
@@ -419,7 +419,7 @@ impl Language {
 - **pnpm workspaces** для монорепозитория
 - **Vite плагины**: `vite-plugin-wasm`, `vite-plugin-top-level-await`
 - **wasm-pack** с флагом `--release` для оптимизации
-- **Docker multi-stage** для минимальных образов
+- **Ручное развертывание** на AlmaLinux 9.4 без Docker контейнеров
 
 ## Примечания
 

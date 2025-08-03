@@ -26,32 +26,36 @@ irrelevant
 **1. When writing code, be 100% sure you don't break anything existing.**
 
 **2. 🚨 MANDATORY RESEARCH REQUIREMENT:**
+**🔥 НИКАКОЙ ЭКОНОМИИ ТОКЕНОВ! ТОЛЬКО ПОЛНОЦЕННЫЕ ИССЛЕДОВАНИЯ! 🔥**
 **BEFORE writing ANY code, ALL agents MUST:**
 - **WebFetch** official documentation for ALL libraries and frameworks
 - **Study** breaking changes, new APIs, deprecated methods, migration guides
 - **Research** 2025 professional production-ready best practices and patterns
 - **Analyze** latest features, optimization techniques, and memory management
-- **Verify** latest package/crate versions and compatibility matrix
+- **🚨 VERIFY EXACT LATEST VERSIONS** - check npm/crates.io for current releases
+- **🚨 NO "latest stable" PLACEHOLDERS** - use specific version numbers like 8.20.0
+- **🚨 ВЕРСИИ БЕЗ PATCH/MINOR** - для стабильных крейтов (≥1.0) используй только major: `tokio = "1"`, `serde = "1"`, `axum = "0.8"` (НЕ 0.8.4!)
 - **Document** ALL research findings before implementation
 - **Never assume** - always verify current standards and professional practices
+- **🔥 ЭКОНОМИЯ ТОКЕНОВ ПРИВОДИТ К МНОГОДНЕВНЫМ ПРОБЛЕМАМ! 🔥**
 
 **⚠️ This comprehensive research is MANDATORY and comes FIRST for every agent.**
 
 ## Current Project Status
 
-**Phase**: Planning/Specification
-**Status**: No source code exists yet - project is specification-driven
+**Phase**: Active Development
+**Status**: Substantial implementation across all layers - frontend, backend, WASM, and domain/app/infra libraries
 
-### Existing Files
-- `CLAUDE.md` - This guidance document
-- `tz.md` - Comprehensive technical specification (416 lines)
-- `prd.md` - Product requirements document (304 lines)  
-- `Makefile` - Quality enforcement commands (93 lines)
-- `quality-rules.toml` - Clippy and Rust linting rules (38 lines)
-- `AGENTS_UPDATE_REPORT.md` - Agent configuration status
+### Implemented Components
+- **Frontend**: React 19 + Babylon.js 8 + TypeScript 5.9 with Vite 7 (needs TypeScript config fixes)
+- **Backend**: Axum server with clean architecture layers implemented (needs SQLX database setup)  
+- **WASM Module**: Astronomical calculations core with astro-rust integration (working)
+- **Domain/App/Infra Libraries**: Clean architecture implementation (some import issues)
+- **Dioxus App**: Authentication and profile management (configured)
+- **Quality System**: Comprehensive Makefile and quality rules (fully working)
+- **Build System**: pnpm workspaces with Rust workspace integration (mostly working)
 
-### To Be Created
-The following directory structure will be implemented:
+### Directory Structure (Implemented)
 ```
 starscalendars/
 ├── frontend/          # TypeScript + Vite + Babylon.js
@@ -62,7 +66,7 @@ starscalendars/
 │   ├── domain/        # Чистые типы и бизнес-правила
 │   ├── app/           # Use-cases, портовые интерфейсы
 │   └── infra/         # Клиенты PostgreSQL/Telegram/Cache
-└── ops/               # Миграции, Helm/compose, CI/CD - МЫ НЕ ИСПОЛЬЗУЕМ ДОКЕР И РУКАМИ РАЗВОРАЧИВАЕМ НА СЕРВЕР Almalinux 9.4 уже скомпилированны фронт и только сарвер компилируем на своем сервере линукс для продакшна к которому копируем скомпилированный фронт!!!
+└── ops/               # Миграции, ручное развертывание, скрипты CI/CD
 ```
 
 ## Project Overview
@@ -83,7 +87,7 @@ starscalendars/
 │   ├── domain/        # Чистые типы и бизнес-правила
 │   ├── app/           # Use-cases, портовые интерфейсы
 │   └── infra/         # Клиенты PostgreSQL/Telegram/Cache
-└── ops/               # Миграции, Helm/compose, CI/CD - МЫ НЕ ИСПОЛЬЗУЕМ ДОКЕР И РУКАМИ РАЗВОРАЧИВАЕМ НА СЕРВЕР Almalinux 9.4 уже скомпилированны фронт и только сарвер компилируем на своем сервере линукс для продакшна к которому копируем скомпилированный фронт!!!
+└── ops/               # Миграции, ручное развертывание, скрипты CI/CD
 ```
 
 ## Key Technologies & Stack
@@ -154,9 +158,7 @@ starscalendars/
 
 ## Common Development Tasks
 
-**Current Status: Planning Phase** - The project is currently in specification phase. The following commands are available now:
-
-### Quality Assurance Commands (Available Now)
+### Quality Assurance Commands (Fully Working)
 - `make quality-check` - Run all quality checks (anti-patterns, clippy, security, architecture)
 - `make anti-patterns` - Scan for forbidden patterns (unwrap, expect, panic, etc.)
 - `make clippy` - Run strict Clippy checks with denial rules
@@ -167,22 +169,81 @@ starscalendars/
 - `make pre-commit` - Full pre-commit validation
 - `make fmt` - Format all code
 
-### Future Build Commands (To Be Implemented)
-Once source code is created, these commands will be available:
-- `pnpm run build` - Build all workspaces
-- `pnpm run build:frontend` - Vite build for frontend
-- `pnpm run build:wasm` - wasm-pack build --release for wasm-astro
-- `pnpm run build:dioxus` - dioxus build for auth app
-- `cargo build --release` - Axum server production build
-- `pnpm run build:i18n` - Generate Fluent bundles for all 10 languages
-- `pnpm run build:wasm` - Build WASM astronomical core with wasm-pack
+### Build Commands (Working with Known Issues)
+- `pnpm run build` - Build all workspaces (⚠️ requires fixing TypeScript errors)
+- `pnpm run build:frontend` - Vite build for frontend (⚠️ needs TS config fixes)
+- `pnpm run build:wasm` - wasm-pack build --release for wasm-astro (✅ working)
+- `pnpm run build:dioxus` - dioxus build for auth app (partially working)
+- `cargo build --release` - Axum server production build (⚠️ needs DATABASE_URL for SQLX)
+- `time cargo check --workspace --exclude starscalendars-infra` - Quick Rust compilation check (✅ working)
 
-### Future Development Commands (To Be Implemented)
-- `pnpm run dev` - Start all development servers
-- `pnpm run dev:frontend` - Vite dev server
-- `cargo run -p backend` - Axum server with hot reload
-- `cargo run -p telegram-bot` - If separate telegram service
-- `dioxus serve` - Dioxus development mode
+### Development Commands (Partially Working)
+- `pnpm run dev` - Start all development servers (⚠️ requires fixes)
+- `pnpm run dev:frontend` - Vite dev server (⚠️ TypeScript issues)
+- `cargo run -p backend` - Axum server (⚠️ needs DATABASE_URL setup)
+- `pnpm run dev:dioxus` - Dioxus development mode
+- `pnpm run type-check` - TypeScript checking (⚠️ currently failing)
+
+### Current Issues to Resolve
+1. **Frontend TypeScript**: Config errors in tsconfig.json (ES2025 target, verbatimModuleSyntax)
+2. **SQLX Database**: Need DATABASE_URL env var or `cargo sqlx prepare` for compile-time checks  
+3. **Library Dependencies**: Some import errors in infra layer referencing starscalendars_app
+
+### Quick Development Commands (What Works Now)
+```bash
+# Quality checks (always run first!)
+make quality-check
+
+# WASM compilation (works perfectly)
+cd wasm-astro && wasm-pack build --release --target web
+
+# Rust workspace check (excludes problematic infra for now)
+time cargo check --workspace --exclude starscalendars-infra
+
+# Format code
+make fmt
+
+# Monitor code quality
+make quality-summary
+```
+
+### Priority Fixes Needed
+1. Fix TypeScript target in `frontend/tsconfig.json` (change ES2025 to ES2024)
+2. Add DATABASE_URL to environment or prepare SQLX offline mode
+3. Fix import statements in `libs/infra/src/*.rs` files
+4. Resolve Babylon.js API compatibility issues in frontend
+
+## Deployment Strategy (NO DOCKER!)
+
+### **🚨 CRITICAL DEPLOYMENT POLICY:**
+**МЫ НЕ ИСПОЛЬЗУЕМ DOCKER И РУКАМИ РАЗВОРАЧИВАЕМ НА СЕРВЕР AlmaLinux 9.4**
+
+### Production Deployment Flow
+1. **Frontend**: Компилируется заранее в `frontend/dist/` с помощью `pnpm run build:prod`
+2. **Backend**: Компилируется ТОЛЬКО на продакшн сервере AlmaLinux 9.4 с `cargo build --release`
+3. **WASM**: Компилируется заранее с `wasm-pack build --release --target web`
+4. **Deployment**: Скомпилированный фронт копируется на сервер к уже скомпилированному серверу
+
+### AlmaLinux 9.4 Server Setup
+```bash
+# Установка Rust на сервере
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup update stable
+rustup default stable
+
+# Установка системных зависимостей
+sudo dnf install -y gcc openssl-devel postgresql-devel
+
+# Компиляция сервера на продакшн машине
+cargo build --release --target-cpu=native
+
+# Копирование статических файлов фронтенда
+rsync -av frontend/dist/ /var/www/starscalendars/
+```
+
+### Deployment Agents
+- **project-coordinator**: Отвечает за координацию сборки всех компонентов
+- **quality-guardian**: Отвечает за тестирование и качество перед развертыванием
 
 ### Testing
 - Focus on astronomical calculation accuracy testing

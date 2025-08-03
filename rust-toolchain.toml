@@ -1,6 +1,6 @@
 [toolchain]
-# Rust 1.88+ for StarsCalendars production environment
-channel = "1.88.0"
+# Latest stable Rust for StarsCalendars production environment (targeting 1.88+ when released)
+channel = "stable"
 components = [
     "cargo",
     "clippy",

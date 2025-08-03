@@ -40,7 +40,7 @@ max_line_length = 100
 [*.json]
 indent_size = 2
 
-# YAML files - GitHub Actions, Docker, etc.
+# YAML files - GitHub Actions, CI/CD configs (NO DOCKER!)
 [*.{yml,yaml}]
 indent_size = 2
 
@@ -65,9 +65,7 @@ indent_size = 2
 [*.sql]
 indent_size = 2
 
-# Docker files
-[Dockerfile*]
-indent_size = 2
+# 🚨 NO DOCKER POLICY: We manually deploy to AlmaLinux 9.4, no containerization!
 
 # Make files - our quality enforcement Makefile
 [{Makefile,*.mk}]

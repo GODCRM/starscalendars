@@ -86,8 +86,8 @@ secrets.toml
 # Testing
 .pytest_cache/
 
-# Docker
-.docker/
+# 🚨 NO DOCKER POLICY: Manual deployment to AlmaLinux 9.4 only!
+# (no Docker-related files or folders should exist)
 
 # Backup files
 *.bak
