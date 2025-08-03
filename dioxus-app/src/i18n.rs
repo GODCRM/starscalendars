@@ -1,18 +1,17 @@
 //! # Internationalization Service for Dioxus 0.7
 //!
-//! Comprehensive 12-language support with cultural adaptations
+//! Comprehensive 10-language support with cultural adaptations
 //! for the global spiritual community. Uses efficient caching
 //! and O(1) language switching for optimal performance.
 //!
 //! ## Supported Languages (Priority Tiers)
-//! **Tier 1 (Primary)**: English, Chinese, Spanish, Hindi, Arabic
+//! **Tier 1 (Primary)**: Russian, English, Chinese, Spanish, Hindi
 //! **Tier 2 (Secondary)**: Portuguese, German, French, Japanese
-//! **Tier 3 (Extended)**: Russian, Georgian, Armenian
+//! **Tier 3 (Extended)**: Armenian
 //!
 //! ## Performance Requirements
 //! - Language switching < 100ms
 //! - Translation lookup O(1)
-//! - RTL support for Arabic
 //! - Cultural adaptations for spiritual content
 
 use serde::{Deserialize, Serialize};
@@ -202,8 +201,8 @@ impl I18nService {
         
         let mut service = Self {
             current_language: default_language.to_string(),
-            translations: HashMap::with_capacity(12), // Pre-allocated for 12 languages
-            language_metadata: HashMap::with_capacity(12),
+            translations: HashMap::with_capacity(10), // Pre-allocated for 10 languages
+            language_metadata: HashMap::with_capacity(10),
             fallback_language: "en".to_string(),
         };
         
@@ -380,24 +379,41 @@ impl I18nService {
                 ].iter().cloned().collect(),
             }),
             
-            ("ar", "Arabic", "العربية", true, LanguageTier::Primary, CulturalAdaptations {
-                date_format: "%d %B %Y".to_string(),
+            ("ru", "Russian", "Русский", false, LanguageTier::Primary, CulturalAdaptations {
+                date_format: "%d %B %Y г.".to_string(),
                 time_format: "%H:%M".to_string(),
-                number_format: "1,234.56".to_string(),
-                spiritual_greeting: "مرحباً بك في رحلتك الكونية".to_string(),
+                number_format: "1 234,56".to_string(),
+                spiritual_greeting: "Добро пожаловать в ваше космическое путешествие".to_string(),
                 moon_phase_names: vec![
-                    "المحاق".to_string(), "الهلال".to_string(),
-                    "التربيع الأول".to_string(), "الأحدب المتزايد".to_string(),
-                    "البدر".to_string(), "الأحدب المتناقص".to_string(),
-                    "التربيع الثاني".to_string(), "الهلال المتناقص".to_string(),
+                    "Новолуние".to_string(), "Растущий серп".to_string(),
+                    "Первая четверть".to_string(), "Растущая луна".to_string(),
+                    "Полнолуние".to_string(), "Убывающая луна".to_string(),
+                    "Последняя четверть".to_string(), "Убывающий серп".to_string(),
                 ],
                 cosmic_terms: [
-                    ("alignment".to_string(), "التوافق الكوني".to_string()),
-                    ("energy".to_string(), "الطاقة الروحية".to_string()),
+                    ("alignment".to_string(), "космическое выравнивание".to_string()),
+                    ("energy".to_string(), "духовная энергия".to_string()),
                 ].iter().cloned().collect(),
             }),
             
-            // TODO: Add Tier 2 and Tier 3 languages
+            ("hy", "Armenian", "Հայերեն", false, LanguageTier::Extended, CulturalAdaptations {
+                date_format: "%Y թ. %B %d".to_string(),
+                time_format: "%H:%M".to_string(),
+                number_format: "1,234.56".to_string(),
+                spiritual_greeting: "Բարի գալուստ ձեր տիեզերական ճանապարհորդությունը".to_string(),
+                moon_phase_names: vec![
+                    "Նորալուսին".to_string(), "Աճող մահիկ".to_string(),
+                    "Առաջին քառորդ".to_string(), "Աճող լուսին".to_string(),
+                    "Լիալուսին".to_string(), "Նվազող լուսին".to_string(),
+                    "Վերջին քառորդ".to_string(), "Նվազող մահիկ".to_string(),
+                ],
+                cosmic_terms: [
+                    ("alignment".to_string(), "տիեզերական հավասարակշռություն".to_string()),
+                    ("energy".to_string(), "հոգևոր էներգիա".to_string()),
+                ].iter().cloned().collect(),
+            }),
+            
+            // TODO: Add Tier 2 languages (Portuguese, German, French, Japanese)
         ];
         
         for (code, name, native_name, rtl, tier, adaptations) in languages {

@@ -3,7 +3,7 @@
  * Implements performance-optimized overlay strategy over Babylon.js 3D scene
  * 
  * ✅ CORRECT Pattern: HTML/CSS overlay >> Babylon.js GUI for performance
- * ✅ 12-Language Support with RTL layout for Arabic
+ * ✅ 10-Language Support
  * ✅ Zero-allocation updates for 60fps compatibility
  */
 
@@ -59,17 +59,15 @@ const LanguageSelector: React.FC = React.memo(() => {
     return supportedLanguages.map(lang => {
       // Language display names with native script
       const displayNames: Record<SupportedLanguage, string> = {
+        ru: '🇷🇺 Русский',
         en: '🇺🇸 English',
         zh: '🇨🇳 中文',
         es: '🇪🇸 Español', 
         hi: '🇮🇳 हिन्दी',
-        ar: '🇸🇦 العربية',
         pt: '🇵🇹 Português',
         de: '🇩🇪 Deutsch',
         fr: '🇫🇷 Français',
         ja: '🇯🇵 日本語',
-        ru: '🇷🇺 Русский',
-        ka: '🇬🇪 ქართული',
         hy: '🇦🇲 Հայերեն'
       };
       

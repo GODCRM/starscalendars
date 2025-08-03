@@ -1,20 +1,20 @@
 /**
- * 12-Language Internationalization System for StarsCalendars
+ * 10-Language Internationalization System for StarsCalendars
  * Implements Fluent ICU MessageFormat with cultural adaptations
  * 
- * Tier 1-5 Languages (Priority Order):
- * - English, Chinese, Spanish, Hindi, Arabic (RTL)
- * - Portuguese, German, French, Japanese, Russian
- * - Georgian, Armenian
+ * Tier 1-3 Languages (Priority Order):
+ * - Russian, English, Chinese, Spanish, Hindi
+ * - Portuguese, German, French, Japanese
+ * - Armenian
  */
 
 import { FluentBundle, FluentResource } from '@fluent/bundle';
 
 // ✅ CORRECT - Strict language code type for compile-time safety
 export type SupportedLanguage = 
-  | 'en' | 'zh' | 'es' | 'hi' | 'ar'  // Tier 1-2
-  | 'pt' | 'de' | 'fr' | 'ja' | 'ru'  // Tier 3-4
-  | 'ka' | 'hy';                      // Tier 5
+  | 'ru' | 'en' | 'zh' | 'es' | 'hi'  // Tier 1
+  | 'pt' | 'de' | 'fr' | 'ja'         // Tier 2
+  | 'hy';                             // Tier 3
 
 // ✅ CORRECT - Spiritual/Astronomical translation keys with strict typing
 export interface TranslationKeys {
@@ -77,12 +77,23 @@ interface LanguageConfig {
   readonly culturalAdaptations: {
     readonly spiritualTradition: string;
     readonly calendarSystem: string;
-    readonly numeralSystem: 'western' | 'arabic' | 'devanagari' | 'chinese' | 'japanese';
+    readonly numeralSystem: 'western' | 'devanagari' | 'chinese' | 'japanese';
   };
 }
 
 // ✅ CORRECT - Complete language configuration with cultural sensitivity
 const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
+  ru: {
+    code: 'ru',
+    name: 'Russian',
+    nativeName: 'Русский',
+    isRTL: false,
+    culturalAdaptations: {
+      spiritualTradition: 'slavic_astrology',
+      calendarSystem: 'gregorian',
+      numeralSystem: 'western'
+    }
+  },
   en: {
     code: 'en',
     name: 'English',
@@ -127,17 +138,6 @@ const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
       numeralSystem: 'devanagari'
     }
   },
-  ar: {
-    code: 'ar',
-    name: 'Arabic',
-    nativeName: 'العربية',
-    isRTL: true, // ✅ RTL support requirement
-    culturalAdaptations: {
-      spiritualTradition: 'islamic_astronomy',
-      calendarSystem: 'hijri',
-      numeralSystem: 'arabic'
-    }
-  },
   pt: {
     code: 'pt',
     name: 'Portuguese',
@@ -180,28 +180,6 @@ const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
       spiritualTradition: 'japanese_astrology',
       calendarSystem: 'japanese_lunar',
       numeralSystem: 'japanese'
-    }
-  },
-  ru: {
-    code: 'ru',
-    name: 'Russian',
-    nativeName: 'Русский',
-    isRTL: false,
-    culturalAdaptations: {
-      spiritualTradition: 'slavic_astrology',
-      calendarSystem: 'gregorian',
-      numeralSystem: 'western'
-    }
-  },
-  ka: {
-    code: 'ka',
-    name: 'Georgian',
-    nativeName: 'ქართული',
-    isRTL: false,
-    culturalAdaptations: {
-      spiritualTradition: 'georgian_astrology',
-      calendarSystem: 'georgian',
-      numeralSystem: 'western'
     }
   },
   hy: {

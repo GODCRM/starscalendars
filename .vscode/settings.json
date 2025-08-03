@@ -239,7 +239,7 @@
     "strings": "on"
   },
   
-  // 🌍 INTERNATIONALIZATION - Support for 12-language spiritual platform
+  // 🌍 INTERNATIONALIZATION - Support for 10-language spiritual platform
   "i18n-ally.localesPaths": [
     "frontend/src/i18n",
     "backend/src/i18n",

@@ -433,7 +433,7 @@ interface NavigationTranslations {
 class HtmlOverlayI18nService {
     private currentLocale: string = 'en';
     private translations: Map<string, HtmlOverlayTranslationSchema> = new Map(10); // Pre-allocated
-    private supportedLanguages: Set<string> = new Set(['en', 'zh', 'es', 'hi', 'pt', 'de', 'fr', 'ja', 'ru', 'hy']); // 10 supported languages
+    private supportedLanguages: Set<string> = new Set(['ru', 'en', 'zh', 'es', 'hi', 'pt', 'de', 'fr', 'ja', 'hy']); // 10 supported languages
     
     // ✅ CORRECT - O(1) HTML overlay locale switching with RTL layout
     public async setLocale(localeCode: string): Promise<void> {

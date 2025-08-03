@@ -1,7 +1,7 @@
 //! # StarsCalendars Dioxus Authentication App
 //!
 //! Fullstack Dioxus 0.7 application with Telegram-only authentication,
-//! user profile management, admin interfaces, and 12-language i18n support.
+//! user profile management, admin interfaces, and 10-language i18n support.
 //!
 //! ## Architecture
 //! - Signals-based reactivity (Dioxus 0.7 alpha)

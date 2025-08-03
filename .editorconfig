@@ -86,7 +86,7 @@ indent_size = 2
 [.vscode/*.json]
 indent_size = 2
 
-# Fluent localization files (for 12-language support)
+# Fluent localization files (for 10-language support)
 [*.ftl]
 indent_size = 2
 charset = utf-8

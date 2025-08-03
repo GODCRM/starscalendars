@@ -166,7 +166,7 @@ log_info "Validating i18n compliance..."
 if git diff --cached | grep -o '"[A-Za-z ]{10,}"' | grep -v "test\\|debug\\|error\\|log" >/dev/null 2>&1; then
     log_warning "Potential hardcoded English strings detected"
     echo "  📝 Requirement: Use t!() macro for all user-facing text"
-    echo "  🔧 Pattern: t!(\"key\", args) for 12-language support"
+    echo "  🔧 Pattern: t!(\"key\", args) for 10-language support"
 fi
 
 # 📊 PERFORMANCE MONITORING
