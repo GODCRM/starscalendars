@@ -30,50 +30,74 @@ pub struct SpiritualProfile {
     pub interests: smallvec::SmallVec<[String; 8]>,
 }
 
-/// Spiritual event (e.g., Full Moon, New Moon, planetary alignment)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SpiritualEvent {
-    /// Unique event ID
-    pub id: Uuid,
-    /// Type of spiritual event
-    pub event_type: String,
-    /// Human-readable title
-    pub title: String,
-    /// Detailed description
-    pub description: Option<String>,
-    /// When the event occurs
-    pub occurs_at: time::OffsetDateTime,
-    /// Associated astronomical data
-    pub astronomical_data: serde_json::Value,
-    /// Quantum resonance level (0.0 - 1.0)
-    pub quantum_resonance: Option<f64>,
+/// Types of spiritual events
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SpiritualEventType {
+    /// New Moon phase
+    NewMoon,
+    /// Full Moon phase
+    FullMoon,
+    /// First Quarter Moon
+    FirstQuarter,
+    /// Last Quarter Moon
+    LastQuarter,
+    /// Solar Eclipse
+    SolarEclipse,
+    /// Lunar Eclipse
+    LunarEclipse,
+    /// Planetary Conjunction
+    PlanetaryConjunction,
+    /// Planetary Opposition
+    PlanetaryOpposition,
+    /// Equinox
+    Equinox,
+    /// Solstice
+    Solstice,
+    /// Meteor Shower
+    MeteorShower,
+    /// Custom spiritual event
+    Custom,
 }
 
-impl SpiritualEvent {
-    /// Create new spiritual event
+/// Spiritual recommendation based on astronomical data
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpiritualRecommendation {
+    /// Event type
+    pub event_type: SpiritualEventType,
+    /// Event title
+    pub title: String,
+    /// Event description
+    pub description: String,
+    /// Recommended practices
+    pub practices: Vec<String>,
+    /// Astrological significance
+    pub significance: String,
+    /// Astronomical data for the event
+    pub astronomical_data: serde_json::Value,
+}
+
+impl SpiritualRecommendation {
+    /// Create new spiritual recommendation
     pub fn new(
-        event_type: String,
+        event_type: SpiritualEventType,
         title: String,
-        occurs_at: time::OffsetDateTime,
+        description: String,
+        practices: Vec<String>,
+        significance: String,
     ) -> Self {
         Self {
-            id: Uuid::new_v4(),
             event_type,
             title,
-            description: None,
-            occurs_at,
+            description,
+            practices,
+            significance,
             astronomical_data: serde_json::Value::Null,
-            quantum_resonance: None,
         }
     }
     
-    /// Check if event is in the future
-    pub fn is_upcoming(&self) -> bool {
-        self.occurs_at > time::OffsetDateTime::now_utc()
-    }
-    
-    /// Check if event has high spiritual significance
-    pub fn is_significant(&self) -> bool {
-        self.quantum_resonance.map_or(false, |r| r > 0.8)
+    /// Add astronomical data to the recommendation
+    pub fn with_astronomical_data(mut self, data: serde_json::Value) -> Self {
+        self.astronomical_data = data;
+        self
     }
 }

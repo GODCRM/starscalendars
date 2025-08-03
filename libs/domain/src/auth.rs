@@ -2,78 +2,50 @@
 //!
 //! JWT-based authentication with Telegram integration and subscription verification
 
-use serde::{Deserialize, Serialize};
-use std::fmt;
+use serde::{Serialize, Deserialize};
+use crate::{DomainResult, DomainError};
+use crate::telegram::{TelegramUserId, LinkingToken};
+use crate::user::UserId;
+use time::{OffsetDateTime, Duration};
 use uuid::Uuid;
 
-/// User identifier type
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct UserId(Uuid);
-
-impl UserId {
-    /// Generate a new random user ID
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-    
-    /// Create from UUID
-    pub fn from_uuid(id: Uuid) -> Self {
-        Self(id)
-    }
-    
-    /// Parse a user ID from a string
-    /// 
-    /// # Errors
-    /// Returns `DomainError::InvalidUserId` if the string is not a valid UUID
-    pub fn parse(s: &str) -> crate::DomainResult<Self> {
-        Uuid::parse_str(s)
-            .map(Self)
-            .map_err(|_parse_error| crate::DomainError::InvalidUserId(s.to_string()))
-    }
-    
-    /// Get the underlying UUID
-    pub fn as_uuid(&self) -> Uuid {
-        self.0
-    }
+/// JWT claims for authentication
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JwtClaims {
+    /// Subject (user ID)
+    pub sub: String,
+    /// Expiration time (Unix timestamp)
+    pub exp: i64,
+    /// Issued at (Unix timestamp)
+    pub iat: i64,
+    /// Is Telegram subscribed (custom claim)
+    pub is_telegram_subscribed: bool,
+    /// Telegram user ID (optional)
+    pub telegram_user_id: Option<i64>,
+    /// User role
+    pub role: UserRole,
 }
 
-impl fmt::Display for UserId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
+/// User role for authorization
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UserRole {
+    /// Free tier user
+    Free,
+    /// Premium subscriber
+    Premium,
+    /// Administrator
+    Admin,
 }
 
-impl Default for UserId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Telegram user identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TelegramUserId(i64);
-
-impl TelegramUserId {
-    /// Create a new TelegramUserId
-    /// 
-    /// # Errors
-    /// Returns `DomainError::InvalidTelegramUserId` if the ID is invalid (e.g., negative)
-    pub fn new(id: i64) -> crate::DomainResult<Self> {
-        if id <= 0 {
-            return Err(crate::DomainError::InvalidTelegramUserId(id));
-        }
-        Ok(Self(id))
+impl UserRole {
+    /// Check if role has premium access
+    pub fn has_premium_access(&self) -> bool {
+        matches!(self, UserRole::Premium | UserRole::Admin)
     }
     
-    /// Get the underlying i64 value
-    pub fn as_i64(self) -> i64 {
-        self.0
-    }
-}
-
-impl fmt::Display for TelegramUserId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+    /// Check if role has admin access
+    pub fn has_admin_access(&self) -> bool {
+        matches!(self, UserRole::Admin)
     }
 }
 
@@ -102,90 +74,6 @@ impl JwtTokenPair {
     }
 }
 
-/// JWT claims for access tokens
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JwtClaims {
-    /// Subject (user ID)
-    pub sub: String,
-    /// User ID for structured access
-    pub user_id: UserId,
-    /// Issued at timestamp
-    pub iat: i64,
-    /// Expiration timestamp
-    pub exp: i64,
-    /// Telegram user ID (if linked)
-    pub telegram_user_id: Option<i64>,
-    /// Telegram subscription status
-    pub is_telegram_subscribed: bool,
-    /// User preferred language
-    pub language: Option<String>,
-    /// User roles
-    pub roles: smallvec::SmallVec<[String; 4]>,
-}
-
-impl JwtClaims {
-    /// Create new JWT claims
-    pub fn new(
-        user_id: &UserId,
-        language: Option<String>,
-        is_subscribed: bool,
-        roles: &[String],
-    ) -> Self {
-        let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let exp = now + 900; // 15 minutes
-        
-        Self {
-            sub: user_id.to_string(),
-            user_id: user_id.clone(),
-            iat: now,
-            exp,
-            telegram_user_id: None,
-            is_telegram_subscribed: is_subscribed,
-            language,
-            roles: roles.iter().cloned().collect(),
-        }
-    }
-    
-    /// Create new JWT claims with Telegram integration
-    pub fn new_with_telegram(
-        user_id: &UserId,
-        telegram_user_id: Option<TelegramUserId>,
-        language: Option<String>,
-        is_subscribed: bool,
-        roles: &[String],
-    ) -> Self {
-        let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let exp = now + 900; // 15 minutes
-        
-        Self {
-            sub: user_id.to_string(),
-            user_id: user_id.clone(),
-            iat: now,
-            exp,
-            telegram_user_id: telegram_user_id.map(|id| id.as_i64()),
-            is_telegram_subscribed: is_subscribed,
-            language,
-            roles: roles.iter().cloned().collect(),
-        }
-    }
-    
-    /// Check if token is expired
-    pub fn is_expired(&self) -> bool {
-        let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        now >= self.exp
-    }
-    
-    /// Check if user has required role
-    pub fn has_role(&self, role: &str) -> bool {
-        self.roles.iter().any(|r| r == role)
-    }
-    
-    /// Check if user has premium subscription
-    pub fn has_premium_access(&self) -> bool {
-        self.is_telegram_subscribed || self.has_role("premium") || self.has_role("admin")
-    }
-}
-
 /// Refresh token information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RefreshToken {
@@ -196,9 +84,9 @@ pub struct RefreshToken {
     /// Token hash (for security)
     pub token_hash: String,
     /// Creation timestamp
-    pub created_at: time::OffsetDateTime,
+    pub created_at: OffsetDateTime,
     /// Expiration timestamp
-    pub expires_at: time::OffsetDateTime,
+    pub expires_at: OffsetDateTime,
     /// Whether token is revoked
     pub is_revoked: bool,
 }
@@ -206,8 +94,8 @@ pub struct RefreshToken {
 impl RefreshToken {
     /// Create new refresh token
     pub fn new(user_id: UserId, token_hash: String) -> Self {
-        let now = time::OffsetDateTime::now_utc();
-        let expires_at = now + time::Duration::days(30);
+        let now = OffsetDateTime::now_utc();
+        let expires_at = now + Duration::days(30);
         
         Self {
             id: Uuid::new_v4(),
@@ -221,53 +109,12 @@ impl RefreshToken {
     
     /// Check if refresh token is valid
     pub fn is_valid(&self) -> bool {
-        !self.is_revoked && self.expires_at > time::OffsetDateTime::now_utc()
+        !self.is_revoked && self.expires_at > OffsetDateTime::now_utc()
     }
     
     /// Revoke the refresh token
     pub fn revoke(&mut self) {
         self.is_revoked = true;
-    }
-}
-
-/// Account linking token for Telegram integration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LinkingToken {
-    /// Token UUID
-    pub token: Uuid,
-    /// Associated user ID
-    pub user_id: UserId,
-    /// Creation timestamp
-    pub created_at: time::OffsetDateTime,
-    /// Expiration timestamp (5 minutes)
-    pub expires_at: time::OffsetDateTime,
-    /// Whether token was used
-    pub is_used: bool,
-}
-
-impl LinkingToken {
-    /// Create new linking token
-    pub fn new(user_id: UserId) -> Self {
-        let now = time::OffsetDateTime::now_utc();
-        let expires_at = now + time::Duration::minutes(5);
-        
-        Self {
-            token: Uuid::new_v4(),
-            user_id,
-            created_at: now,
-            expires_at,
-            is_used: false,
-        }
-    }
-    
-    /// Check if linking token is valid
-    pub fn is_valid(&self) -> bool {
-        !self.is_used && self.expires_at > time::OffsetDateTime::now_utc()
-    }
-    
-    /// Mark token consumed
-    pub fn mark_used(&mut self) {
-        self.is_used = true;
     }
 }
 
