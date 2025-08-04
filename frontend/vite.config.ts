@@ -11,7 +11,7 @@ export default defineConfig({
     topLevelAwait()
   ],
   server: {
-    port: 3001,
+    port: 3000,
     host: '0.0.0.0',
     fs: {
       // Allow serving files from wasm-astro workspace
@@ -27,7 +27,7 @@ export default defineConfig({
           'babylon': ['@babylonjs/core'],
           'react-vendor': ['react', 'react-dom']
         },
-        // ✅ 2025 Optimization: Rollup-specific optimizations  
+        // ✅ 2025 Optimization: Rollup-specific optimizations
         format: 'es',
         generatedCode: 'es2015'
       }
