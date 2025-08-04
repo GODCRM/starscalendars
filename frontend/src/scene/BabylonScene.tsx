@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Engine, Scene, ArcRotateCamera, HemisphericLight, Vector3, MeshBuilder, 
-  StandardMaterial, Color3, DirectionalLight, PointLight, WebGPUEngine,
-  CreateGround, CreateSphere, CreateBox, Texture, CubeTexture,
-  // ✅ Babylon.js 8.20.0 Features: Enhanced lighting and rendering
-  IBLShadowGenerator, NodeMaterial, EngineStore
+  StandardMaterial, Color3, Color4, DirectionalLight, PointLight, WebGPUEngine
 } from '@babylonjs/core';
 import type { Mesh } from '@babylonjs/core';
 import type { AstronomicalState } from '../wasm/init';
@@ -67,7 +64,7 @@ class BabylonPerformanceTimer {
 
 // ✅ CORRECT - Scene management state interface
 interface SceneState {
-  readonly engine: Engine | null;
+  readonly engine: Engine | WebGPUEngine | null;
   readonly scene: Scene | null;
   readonly camera: ArcRotateCamera | null;
   readonly celestialMeshes: Map<string, Mesh>;
@@ -93,7 +90,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
 
     try {
       // ✅ Enhanced Engine Creation with Babylon.js 8.20.0 optimizations
-      let engine: Engine;
+      let engine: Engine | WebGPUEngine;
       
       // Try WebGPU first for maximum performance (2025 best practice)
       if (await WebGPUEngine.IsSupportedAsync) {
@@ -305,7 +302,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
         // Frame rate limiting for exactly 60fps with adaptive timing
         if (currentTime - lastUpdateTimeRef.current >= 16.67) { // 1000/60 = 16.67ms
           // ✅ 2025 Performance: Manual scene clearing for astronomical scenes
-          engine.clear(new Color3(0.02, 0.02, 0.05), true, true, true);
+          engine.clear(new Color4(0.02, 0.02, 0.05, 1.0), true, true, true);
           
           scene.render();
           lastUpdateTimeRef.current = currentTime;

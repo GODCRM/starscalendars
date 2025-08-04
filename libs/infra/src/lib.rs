@@ -48,16 +48,17 @@ pub enum InfraError {
     Internal(String),
 }
 
-/// Convert infrastructure errors to application errors
-impl From<InfraError> for starscalendars_app::AppError {
+/// Convert infrastructure errors to domain errors (Clean Architecture)
+impl From<InfraError> for starscalendars_domain::DomainError {
     fn from(err: InfraError) -> Self {
         match err {
-            InfraError::Database(_) => starscalendars_app::AppError::Repository(err.to_string()),
-            InfraError::Redis(_) => starscalendars_app::AppError::ExternalService(err.to_string()),
-            InfraError::Http(_) => starscalendars_app::AppError::ExternalService(err.to_string()),
-            InfraError::TelegramApi(_) => starscalendars_app::AppError::ExternalService(err.to_string()),
-            InfraError::Configuration(_) => starscalendars_app::AppError::Configuration(err.to_string()),
-            _ => starscalendars_app::AppError::Internal(err.to_string()),
+            InfraError::Database(_) => starscalendars_domain::DomainError::ExternalServiceError(err.to_string()),
+            InfraError::Redis(_) => starscalendars_domain::DomainError::ExternalServiceError(err.to_string()),
+            InfraError::Http(_) => starscalendars_domain::DomainError::ExternalServiceError(err.to_string()),
+            InfraError::TelegramApi(_) => starscalendars_domain::DomainError::ExternalServiceError(err.to_string()),
+            InfraError::Configuration(_) => starscalendars_domain::DomainError::ConfigurationError(err.to_string()),
+            InfraError::Serialization(_) => starscalendars_domain::DomainError::SerializationError(err.to_string()),
+            _ => starscalendars_domain::DomainError::InternalError(err.to_string()),
         }
     }
 }

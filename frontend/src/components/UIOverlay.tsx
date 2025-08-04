@@ -345,7 +345,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         <aside className="right-panel">
           <PerformancePanel 
             frameCount={frameCount}
-            wasmVersion={wasmVersion}
+            {...(wasmVersion !== undefined && { wasmVersion })}
           />
           
           {showSettings && (

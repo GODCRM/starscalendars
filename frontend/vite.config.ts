@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import wasm from 'vite-plugin-wasm'
+import { defineConfig } from 'vite'
 import topLevelAwait from 'vite-plugin-top-level-await'
+import wasm from 'vite-plugin-wasm'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -24,35 +24,22 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'babylon': ['@babylonjs/core', '@babylonjs/materials', '@babylonjs/loaders'],
-          'react-vendor': ['react', 'react-dom'],
-          'wasm-astro': ['../wasm-astro/pkg']
+          'babylon': ['@babylonjs/core'],
+          'react-vendor': ['react', 'react-dom']
         },
-        // ✅ 2025 Optimization: Rolldown-specific optimizations
+        // ✅ 2025 Optimization: Rollup-specific optimizations  
         format: 'es',
-        generatedCode: 'es2022'
+        generatedCode: 'es2015'
       }
     },
     // ✅ 2025 Build Performance: Enhanced for large 3D applications
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        passes: 2,
-        pure_getters: true,
-        unsafe_arrows: true
-      },
-      mangle: {
-        properties: {
-          regex: /^_private/
-        }
-      }
-    }
+    minify: 'esbuild'
   },
   resolve: {
     alias: {
       '@': '/src',
       '@wasm': '/src/wasm',
-      '@wasm-pkg': '../wasm-astro/pkg'
+      '@wasm-pkg': '/wasm-astro/pkg'
     }
   },
   optimizeDeps: {

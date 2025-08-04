@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::{TelegramUserId, JulianDay, CelestialBody};
+use crate::{TelegramId, JulianDay, CelestialBody};
 
 /// Unique identifier for domain events
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -45,7 +45,7 @@ pub enum UserEvent {
     TelegramVerificationCompleted {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        telegram_user_id: TelegramUserId,
+        telegram_user_id: TelegramId,
         linking_token: crate::LinkingToken,
     },
     
@@ -53,14 +53,14 @@ pub enum UserEvent {
     SessionEstablished {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        telegram_user_id: TelegramUserId,
+        telegram_user_id: TelegramId,
     },
     
     /// User subscription status changed
     SubscriptionStatusChanged {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        telegram_user_id: TelegramUserId,
+        telegram_user_id: TelegramId,
         old_status: crate::SubscriptionStatus,
         new_status: crate::SubscriptionStatus,
     },
@@ -69,7 +69,7 @@ pub enum UserEvent {
     PremiumFeatureAccessed {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        telegram_user_id: TelegramUserId,
+        telegram_user_id: TelegramId,
         feature_name: String,
     },
 }
@@ -170,7 +170,7 @@ pub enum SpiritualEvent {
     RecommendationGenerated {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        telegram_user_id: TelegramUserId,
+        telegram_user_id: TelegramId,
         julian_day: JulianDay,
         recommendation_type: String,
         content: String,
@@ -180,7 +180,7 @@ pub enum SpiritualEvent {
     SpiritualContentEngaged {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        telegram_user_id: TelegramUserId,
+        telegram_user_id: TelegramId,
         content_type: String,
         engagement_type: String, // viewed, shared, saved, etc.
     },
@@ -189,7 +189,7 @@ pub enum SpiritualEvent {
     CommunityInteraction {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        telegram_user_id: TelegramUserId,
+        telegram_user_id: TelegramId,
         interaction_type: String,
         channel_id: Option<crate::TelegramChannelId>,
     },
@@ -279,7 +279,7 @@ mod tests {
         let event = UserEvent::SessionEstablished {
             event_id: EventId::new(),
             occurred_at: OffsetDateTime::now_utc(),
-            telegram_user_id: TelegramUserId::new(123456789).expect("test user ID should be valid"),
+            telegram_user_id: TelegramId::new(123456789).expect("test user ID should be valid"),
         };
         
         assert_eq!(event.event_type(), "UserSessionEstablished");

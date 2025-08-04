@@ -4,8 +4,9 @@
 //! but with predictable behavior for testing.
 
 use async_trait::async_trait;
-use starscalendars_app::*;
+// Use only domain types for Clean Architecture
 use starscalendars_domain::*;
+use crate::InfraError;
 use std::sync::Arc;
 
 /// Mock user repository for testing
@@ -33,27 +34,27 @@ impl Default for MockUserRepository {
 
 #[async_trait]
 impl UserRepository for MockUserRepository {
-    async fn create_user(&self, user: User) -> AppResult<()> {
+    async fn create_user(&self, user: User) -> PortResult<()> {
         self.users.insert(user.id.clone(), user);
         Ok(())
     }
     
-    async fn get_user_by_id(&self, id: &UserId) -> AppResult<Option<User>> {
+    async fn get_user_by_id(&self, id: &UserId) -> PortResult<Option<User>> {
         Ok(self.users.get(id).map(|user| user.clone()))
     }
     
-    async fn get_user_by_username(&self, username: &str) -> AppResult<Option<User>> {
+    async fn get_user_by_username(&self, username: &str) -> PortResult<Option<User>> {
         Ok(self.users.iter()
             .find(|entry| entry.username == username)
             .map(|entry| entry.clone()))
     }
     
-    async fn update_user(&self, user: &User) -> AppResult<()> {
+    async fn update_user(&self, user: &User) -> PortResult<()> {
         self.users.insert(user.id.clone(), user.clone());
         Ok(())
     }
     
-    async fn delete_user(&self, id: &UserId) -> AppResult<()> {
+    async fn delete_user(&self, id: &UserId) -> PortResult<()> {
         self.users.remove(id);
         Ok(())
     }
@@ -82,32 +83,32 @@ impl Default for MockTokenRepository {
 
 #[async_trait]
 impl TokenRepository for MockTokenRepository {
-    async fn store_refresh_token(&self, token: &RefreshToken) -> AppResult<()> {
+    async fn store_refresh_token(&self, token: &RefreshToken) -> PortResult<()> {
         self.refresh_tokens.insert(token.token_hash.clone(), token.clone());
         Ok(())
     }
     
-    async fn get_refresh_token(&self, token_hash: &str) -> AppResult<Option<RefreshToken>> {
+    async fn get_refresh_token(&self, token_hash: &str) -> PortResult<Option<RefreshToken>> {
         Ok(self.refresh_tokens.get(token_hash).map(|token| token.clone()))
     }
     
-    async fn revoke_refresh_token(&self, token_hash: &str) -> AppResult<()> {
+    async fn revoke_refresh_token(&self, token_hash: &str) -> PortResult<()> {
         if let Some(mut token) = self.refresh_tokens.get_mut(token_hash) {
             token.is_revoked = true;
         }
         Ok(())
     }
     
-    async fn store_linking_token(&self, token: &LinkingToken) -> AppResult<()> {
+    async fn store_linking_token(&self, token: &LinkingToken) -> PortResult<()> {
         self.linking_tokens.insert(token.token, token.clone());
         Ok(())
     }
     
-    async fn get_linking_token(&self, token: &uuid::Uuid) -> AppResult<Option<LinkingToken>> {
+    async fn get_linking_token(&self, token: &uuid::Uuid) -> PortResult<Option<LinkingToken>> {
         Ok(self.linking_tokens.get(token).map(|token| token.clone()))
     }
     
-    async fn mark_linking_token_used(&self, token: &uuid::Uuid) -> AppResult<()> {
+    async fn mark_linking_token_used(&self, token: &uuid::Uuid) -> PortResult<()> {
         if let Some(mut linking_token) = self.linking_tokens.get_mut(token) {
             linking_token.is_used = true;
         }
@@ -155,7 +156,7 @@ impl Default for MockAstronomicalService {
 
 #[async_trait]
 impl AstronomicalService for MockAstronomicalService {
-    async fn calculate_planetary_positions(&self, _julian_day: JulianDay) -> AppResult<Vec<CelestialBodyPosition>> {
+    async fn calculate_planetary_positions(&self, _julian_day: JulianDay) -> PortResult<Vec<CelestialBodyPosition>> {
         if let Ok(positions) = self.mock_positions.lock() {
             Ok(positions.clone())
         } else {
@@ -163,19 +164,15 @@ impl AstronomicalService for MockAstronomicalService {
         }
     }
     
-    async fn calculate_spiritual_events(&self, _start: time::OffsetDateTime, _end: time::OffsetDateTime) -> AppResult<Vec<SpiritualEvent>> {
+    async fn calculate_spiritual_events(&self, _start: time::OffsetDateTime, _end: time::OffsetDateTime) -> PortResult<Vec<EventSpiritualEvent>> {
         // Mock spiritual event
-        let event = SpiritualEvent {
-            id: uuid::Uuid::new_v4(),
-            event_type: "Full Moon".to_string(),
-            title: "Mock Full Moon Meditation".to_string(),
-            description: Some("A powerful time for spiritual reflection".to_string()),
-            occurs_at: time::OffsetDateTime::now_utc(),
-            astronomical_data: serde_json::json!({
-                "moon_phase": "full",
-                "illumination": 100.0
-            }),
-            quantum_resonance: Some(0.95),
+        let event = EventSpiritualEvent::RecommendationGenerated {
+            event_id: EventId::new(),
+            occurred_at: time::OffsetDateTime::now_utc(),
+            telegram_user_id: TelegramId(12345),
+            julian_day: JulianDay::new(2460000.0).map_err(|e| InfraError::Internal(format!("Invalid julian day: {}", e)))?,
+            recommendation_type: "Full Moon".to_string(),
+            content: "Mock Full Moon Meditation: A powerful time for spiritual reflection".to_string(),
         };
         
         Ok(vec![event])

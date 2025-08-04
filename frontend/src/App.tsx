@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { WASMModule, initializeWASM, createPositionsView, extractCelestialPositions, type AstronomicalState } from './wasm/init';
+import { initializeWASM, createPositionsView, extractCelestialPositions, type WASMModule, type AstronomicalState } from './wasm/init';
 import BabylonScene from './scene/BabylonScene';
 import './styles/BabylonScene.css';
 
@@ -119,10 +119,13 @@ const App: React.FC = () => {
     }
     
     // Zero-copy access via Float64Array view to WASM memory
-    const positions = createPositionsView(wasmModule, positionsPtr);
+    const positionsResult = createPositionsView(wasmModule, positionsPtr);
+    if (!positionsResult.success) {
+      throw new Error(`Failed to create positions view: ${positionsResult.error.message}`);
+    }
     
     // Extract all celestial positions using the dedicated function
-    const astronomicalData = extractCelestialPositions(positions, currentTime);
+    const astronomicalData = extractCelestialPositions(positionsResult.data, currentTime);
     
     // Update state with new astronomical data (single state update per frame)
     setAppState(prevState => ({

@@ -21,28 +21,28 @@
     "@babylonjs/loaders": "^8",
     "@babylonjs/gui": "^8",
     "@babylonjs/inspector": "^8",
-    "@fluent/bundle": "^0.19",  // Последняя версия 0.19.1
-    "@fluent/react": "^0.15",  // Последняя версия 0.15.2
+    "@fluent/bundle": "^0.19",
+    "@fluent/react": "^0.15",
     "react": "^19",
     "react-dom": "^19",
     "zustand": "^5",
     "date-fns": "^4"
   },
   "devDependencies": {
-    "@types/react": "^19",  // Последняя версия 19.1.9
-    "@types/react-dom": "^19",  // Последняя версия 19.1.7
-    "@typescript-eslint/eslint-plugin": "^8",  // Последняя версия 8.38.0
-    "@typescript-eslint/parser": "^8",  // Последняя версия 8.38.0
-    "@vitejs/plugin-react": "^4",  // Последняя версия 4.7.0
-    "eslint": "^9",  // Последняя версия 9.32.0
-    "eslint-plugin-react-hooks": "^5.2",  // Последняя версия 5.2.0 (убрали rc)
-    "eslint-plugin-react-refresh": "^0.4",  // Последняя версия 0.4.20
-    "prettier": "^3",  // Последняя версия 3.6.2
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "@vitejs/plugin-react": "^4",
+    "eslint": "^9",
+    "eslint-plugin-react-hooks": "^5",
+    "eslint-plugin-react-refresh": "^0.4",
+    "prettier": "^3",
     "typescript": "^5",
     "vite": "^7",
-    "vite-plugin-wasm": "^3",  // Последняя версия 3.5.0
+    "vite-plugin-wasm": "^3",
     "vite-plugin-top-level-await": "^1.6",
-    "vitest": "^3"  // Обновили с 2 на 3 (последняя версия 3.2.4)
+    "vitest": "^3"
   },
   "engines": {
     "node": ">=20.0.0",

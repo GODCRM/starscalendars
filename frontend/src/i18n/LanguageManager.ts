@@ -77,7 +77,7 @@ interface LanguageConfig {
   readonly culturalAdaptations: {
     readonly spiritualTradition: string;
     readonly calendarSystem: string;
-    readonly numeralSystem: 'western' | 'devanagari' | 'chinese' | 'japanese';
+    readonly numeralSystem: 'western' | 'devanagari' | 'chinese' | 'japanese' | 'arabic';
   };
 }
 

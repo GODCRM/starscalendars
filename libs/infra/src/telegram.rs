@@ -5,7 +5,7 @@
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use starscalendars_app::*;
+use starscalendars_domain::*;
 use crate::{InfraError, TelegramCacheService};
 use std::sync::Arc;
 use std::time::Duration;
@@ -55,7 +55,7 @@ impl TelegramServiceImpl {
 
 #[async_trait]
 impl TelegramService for TelegramServiceImpl {
-    async fn is_member_of_channel(&self, user_id: i64, channel: &str) -> AppResult<bool> {
+    async fn is_member_of_channel(&self, user_id: i64, channel: &str) -> PortResult<bool> {
         // Check cache first
         if let Ok(Some(cached_status)) = self.cache_service.get_subscription_status(user_id).await {
             return Ok(cached_status);
@@ -72,18 +72,18 @@ impl TelegramService for TelegramServiceImpl {
         Ok(is_member)
     }
     
-    async fn send_message(&self, user_id: i64, message: &str) -> AppResult<()> {
+    async fn send_message(&self, user_id: i64, message: &str) -> PortResult<()> {
         self.api_service.send_message(user_id, message).await
     }
     
-    async fn get_user_info(&self, user_id: i64) -> AppResult<TelegramUserInfo> {
+    async fn get_user_info(&self, user_id: i64) -> PortResult<TelegramUserInfo> {
         self.api_service.get_user_info(user_id).await
     }
     
-    async fn health_check(&self) -> AppResult<()> {
+    async fn health_check(&self) -> PortResult<()> {
         match self.api_service.get_me().await {
             Ok(_) => Ok(()),
-            Err(e) => Err(AppError::ExternalService(format!("Telegram health check failed: {}", e))),
+            Err(e) => Err(InfraError::TelegramApi(format!("Telegram health check failed: {}", e)).into()),
         }
     }
 }
@@ -156,7 +156,7 @@ struct BotInfo {
 
 #[async_trait]
 impl TelegramService for TelegramApiService {
-    async fn is_member_of_channel(&self, user_id: i64, channel: &str) -> AppResult<bool> {
+    async fn is_member_of_channel(&self, user_id: i64, channel: &str) -> PortResult<bool> {
         #[derive(Serialize)]
         struct GetChatMemberRequest {
             chat_id: String,
@@ -204,7 +204,7 @@ impl TelegramService for TelegramApiService {
         }
     }
     
-    async fn send_message(&self, user_id: i64, message: &str) -> AppResult<()> {
+    async fn send_message(&self, user_id: i64, message: &str) -> PortResult<()> {
         #[derive(Serialize)]
         struct SendMessageRequest {
             chat_id: i64,
@@ -245,7 +245,7 @@ impl TelegramService for TelegramApiService {
         Ok(())
     }
     
-    async fn get_user_info(&self, user_id: i64) -> AppResult<TelegramUserInfo> {
+    async fn get_user_info(&self, user_id: i64) -> PortResult<TelegramUserInfo> {
         #[derive(Serialize)]
         struct GetChatRequest {
             chat_id: i64,
@@ -301,6 +301,13 @@ impl TelegramService for TelegramApiService {
             None => Err(InfraError::TelegramApi("User not found".to_string()).into()),
         }
     }
+    
+    async fn health_check(&self) -> PortResult<()> {
+        match self.get_me().await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(InfraError::TelegramApi(format!("Telegram health check failed: {}", e)).into()),
+        }
+    }
 }
 
 /// Mock Telegram service for testing
@@ -342,26 +349,26 @@ impl Default for MockTelegramService {
 
 #[async_trait]
 impl TelegramService for MockTelegramService {
-    async fn is_member_of_channel(&self, user_id: i64, _channel: &str) -> AppResult<bool> {
+    async fn is_member_of_channel(&self, user_id: i64, _channel: &str) -> PortResult<bool> {
         Ok(self.user_subscriptions
             .get(&user_id)
             .map(|v| *v)
             .unwrap_or(self.default_subscription_status))
     }
     
-    async fn send_message(&self, _user_id: i64, _message: &str) -> AppResult<()> {
+    async fn send_message(&self, _user_id: i64, _message: &str) -> PortResult<()> {
         // Mock implementation - just succeed
         Ok(())
     }
     
-    async fn get_user_info(&self, user_id: i64) -> AppResult<TelegramUserInfo> {
+    async fn get_user_info(&self, user_id: i64) -> PortResult<TelegramUserInfo> {
         self.user_info
             .get(&user_id)
             .map(|info| info.clone())
             .ok_or_else(|| InfraError::TelegramApi("User not found".to_string()).into())
     }
     
-    async fn health_check(&self) -> AppResult<()> {
+    async fn health_check(&self) -> PortResult<()> {
         // Mock always succeeds
         Ok(())
     }

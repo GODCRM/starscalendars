@@ -4,7 +4,10 @@
 //! These belong to the domain layer in Clean Architecture.
 
 use async_trait::async_trait;
-use crate::*;
+use crate::{
+    DomainError, User, UserId, TelegramId, JulianDay, CelestialBodyPosition,
+    LinkingToken, JwtClaims, RefreshToken, EventSpiritualEvent
+};
 
 /// Domain-wide result type for ports
 pub type PortResult<T> = Result<T, DomainError>;
@@ -105,7 +108,7 @@ pub trait AstronomicalService: Send + Sync {
         &self,
         start: time::OffsetDateTime,
         end: time::OffsetDateTime,
-    ) -> PortResult<Vec<SpiritualEvent>>;
+    ) -> PortResult<Vec<EventSpiritualEvent>>;
 }
 
 /// Telegram user information

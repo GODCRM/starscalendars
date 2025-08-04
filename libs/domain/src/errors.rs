@@ -95,6 +95,16 @@ pub enum DomainError {
     #[error("Serialization error: {0}")]
     SerializationError(String),
     
+    // External service errors (for infrastructure layer)
+    #[error("External service error: {0}")]
+    ExternalServiceError(String),
+    
+    #[error("Configuration error: {0}")]
+    ConfigurationError(String),
+    
+    #[error("Internal error: {0}")]
+    InternalError(String),
+    
     // Generic domain errors
     #[error("Domain operation failed: {0}")]
     OperationFailed(String),
@@ -173,6 +183,10 @@ impl DomainError {
             | Self::BusinessRuleViolation(_) => "validation",
             
             Self::SerializationError(_) => "serialization",
+            
+            Self::ExternalServiceError(_)
+            | Self::ConfigurationError(_)
+            | Self::InternalError(_) => "infrastructure",
             
             Self::OperationFailed(_)
             | Self::InvalidStateTransition { .. } => "generic",

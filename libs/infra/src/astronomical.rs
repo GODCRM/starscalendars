@@ -3,7 +3,7 @@
 //! High-precision ephemeris calculations using the astro crate.
 
 use async_trait::async_trait;
-use starscalendars_app::*;
+// Use only domain types for Clean Architecture
 use starscalendars_domain::*;
 use crate::InfraError;
 use smallvec::SmallVec;
@@ -31,35 +31,20 @@ impl Default for AstroCalculationService {
 
 #[async_trait]
 impl AstronomicalService for AstroCalculationService {
-    async fn calculate_ephemeris(&self, julian_day: JulianDay) -> AppResult<EphemerisData> {
-        // Spawn blocking task for CPU-intensive calculations
+    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> PortResult<Vec<CelestialBodyPosition>> {
         let jd = julian_day;
         
         tokio::task::spawn_blocking(move || {
-            let mut ephemeris = EphemerisData::new(jd);
-            
-            // Calculate positions for all celestial bodies
-            for &body in CelestialBody::ALL {
-                let position = Self::calculate_body_position(jd, body)?;
-                ephemeris.add_position(body, position)
-                    .map_err(|e| InfraError::Internal(e.to_string()))?;
-            }
-            
-            Ok(ephemeris)
-        })
-        .await
-        .map_err(|e| InfraError::Internal(format!("Task join error: {}", e)))?
-    }
-    
-    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> AppResult<SmallVec<[Cartesian; 11]>> {
-        let jd = julian_day;
-        
-        tokio::task::spawn_blocking(move || {
-            let mut positions = SmallVec::with_capacity(11);
+            let mut positions = Vec::with_capacity(11);
             
             for &body in CelestialBody::ALL {
                 let position = Self::calculate_body_position(jd, body)?;
-                positions.push(position);
+                
+                positions.push(CelestialBodyPosition {
+                    body,
+                    position,
+                    julian_day: jd,
+                });
             }
             
             Ok(positions)
@@ -67,9 +52,37 @@ impl AstronomicalService for AstroCalculationService {
         .await
         .map_err(|e| InfraError::Internal(format!("Task join error: {}", e)))?
     }
+    
+    async fn calculate_spiritual_events(
+        &self,
+        start: time::OffsetDateTime,
+        end: time::OffsetDateTime,
+    ) -> PortResult<Vec<EventSpiritualEvent>> {
+        // Simple mock implementation for spiritual events
+        let mut events = Vec::with_capacity(10);
+        
+        // Generate some mock spiritual events between start and end
+        let duration = end - start;
+        let days = duration.whole_days();
+        
+        for i in 0..std::cmp::min(days, 10) {
+            let event_time = start + time::Duration::days(i);
+            let event = EventSpiritualEvent::RecommendationGenerated {
+                event_id: EventId::new(),
+                occurred_at: event_time,
+                telegram_user_id: TelegramId(12345), // mock id
+                julian_day: JulianDay::new(2460000.0 + i as f64).map_err(|e| InfraError::Internal(format!("Invalid julian day: {}", e)))?,
+                recommendation_type: "Full Moon Meditation".to_string(),
+                content: format!("Spiritual Event {}: A time for spiritual reflection and cosmic alignment", i + 1),
+            };
+            events.push(event);
+        }
+        
+        Ok(events)
+    }
 }
 
-impl AstronomicalServiceImpl {
+impl AstroCalculationService {
     /// Calculate position for a specific celestial body
     fn calculate_body_position(julian_day: JulianDay, body: CelestialBody) -> Result<Cartesian, InfraError> {
         let jd = julian_day.as_f64();
@@ -81,17 +94,17 @@ impl AstronomicalServiceImpl {
             }
             CelestialBody::Moon => {
                 // Calculate Moon position relative to Earth
-                Self::calculate_moon_position(jd)
+                AstroCalculationService::calculate_moon_position(jd)
             }
-            CelestialBody::Mercury => Self::calculate_planet_position(jd, 0),
-            CelestialBody::Venus => Self::calculate_planet_position(jd, 1),
-            CelestialBody::Earth => Self::calculate_planet_position(jd, 2),
-            CelestialBody::Mars => Self::calculate_planet_position(jd, 3),
-            CelestialBody::Jupiter => Self::calculate_planet_position(jd, 4),
-            CelestialBody::Saturn => Self::calculate_planet_position(jd, 5),
-            CelestialBody::Uranus => Self::calculate_planet_position(jd, 6),
-            CelestialBody::Neptune => Self::calculate_planet_position(jd, 7),
-            CelestialBody::Pluto => Self::calculate_planet_position(jd, 8),
+            CelestialBody::Mercury => AstroCalculationService::calculate_planet_position(jd, 0),
+            CelestialBody::Venus => AstroCalculationService::calculate_planet_position(jd, 1),
+            CelestialBody::Earth => AstroCalculationService::calculate_planet_position(jd, 2),
+            CelestialBody::Mars => AstroCalculationService::calculate_planet_position(jd, 3),
+            CelestialBody::Jupiter => AstroCalculationService::calculate_planet_position(jd, 4),
+            CelestialBody::Saturn => AstroCalculationService::calculate_planet_position(jd, 5),
+            CelestialBody::Uranus => AstroCalculationService::calculate_planet_position(jd, 6),
+            CelestialBody::Neptune => AstroCalculationService::calculate_planet_position(jd, 7),
+            CelestialBody::Pluto => AstroCalculationService::calculate_planet_position(jd, 8),
         }
     }
     
@@ -217,36 +230,59 @@ impl Default for MockAstronomicalService {
 
 #[async_trait]
 impl AstronomicalService for MockAstronomicalService {
-    async fn calculate_ephemeris(&self, julian_day: JulianDay) -> AppResult<EphemerisData> {
-        let mut ephemeris = EphemerisData::new(julian_day);
-        
+    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> PortResult<Vec<CelestialBodyPosition>> {
         if self.deterministic {
             // Create deterministic test positions
+            let mut positions = Vec::with_capacity(11);
             for (i, &body) in CelestialBody::ALL.iter().enumerate() {
                 let x = (i as f64) * 0.1;
                 let y = (i as f64) * 0.2;
                 let z = (i as f64) * 0.05;
                 
-                ephemeris.add_position(body, Cartesian::new(x, y, z))
-                    .map_err(|e| InfraError::Internal(e.to_string()))?;
+                positions.push(CelestialBodyPosition {
+                    body,
+                    position: Cartesian::new(x, y, z),
+                    julian_day,
+                });
             }
+            Ok(positions)
         } else {
-            // Random positions for stress testing
-            for &body in CelestialBody::ALL {
-                let x = (julian_day.as_f64() * 0.001) % 10.0;
-                let y = (julian_day.as_f64() * 0.002) % 10.0;
-                let z = (julian_day.as_f64() * 0.0005) % 2.0;
+            // Random test positions
+            let mut positions = Vec::with_capacity(11);
+            for (i, &body) in CelestialBody::ALL.iter().enumerate() {
+                // Use a simple deterministic calculation based on index and julian day
+                let jd_int = julian_day.as_f64() as u64;
+                let seed = (i as u64) * 1000 + (jd_int % 1000);
                 
-                ephemeris.add_position(body, Cartesian::new(x, y, z))
-                    .map_err(|e| InfraError::Internal(e.to_string()))?;
+                let x = ((seed % 1000) as f64) / 1000.0;
+                let y = (((seed >> 10) % 1000) as f64) / 1000.0;
+                let z = (((seed >> 20) % 1000) as f64) / 1000.0;
+                
+                positions.push(CelestialBodyPosition {
+                    body,
+                    position: Cartesian::new(x, y, z),
+                    julian_day,
+                });
             }
+            Ok(positions)
         }
-        
-        Ok(ephemeris)
     }
     
-    async fn calculate_planetary_positions(&self, julian_day: JulianDay) -> AppResult<SmallVec<[Cartesian; 11]>> {
-        let ephemeris = self.calculate_ephemeris(julian_day).await?;
-        Ok(ephemeris.positions.into())
+    async fn calculate_spiritual_events(
+        &self,
+        start: time::OffsetDateTime,
+        end: time::OffsetDateTime,
+    ) -> PortResult<Vec<EventSpiritualEvent>> {
+        // Mock spiritual event
+        let event = EventSpiritualEvent::RecommendationGenerated {
+            event_id: EventId::new(),
+            occurred_at: start + (end - start) / 2, // Middle of the period
+            telegram_user_id: TelegramId(54321), // mock id
+            julian_day: JulianDay::new(2460000.0).map_err(|e| InfraError::Internal(format!("Invalid julian day: {}", e)))?,
+            recommendation_type: "Full Moon".to_string(),
+            content: "Mock Full Moon Meditation: A powerful time for spiritual reflection".to_string(),
+        };
+        
+        Ok(vec![event])
     }
 }

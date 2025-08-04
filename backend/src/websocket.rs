@@ -208,7 +208,10 @@ impl WebSocketManager {
     /// Cleanup inactive connections
     pub async fn cleanup_inactive(&self, timeout_secs: i64) {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let mut to_remove = Vec::new();
+        // ✅ QUALITY: Pre-allocate capacity for connection cleanup
+        // Estimated capacity: assume max 10% of connections might be inactive at once
+        let estimated_inactive = self.connections.read().await.len() / 10 + 1;
+        let mut to_remove = Vec::with_capacity(estimated_inactive);
         
         {
             let connections = self.connections.read().await;

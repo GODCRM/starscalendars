@@ -60,7 +60,22 @@
       "WebFetch(domain:developer.mozilla.org)",
       "WebFetch(domain:webassembly.org)",
       "WebFetch(domain:react.dev)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(cargo --version)",
+      "Bash(pnpm:*)",
+      "Bash(wasm-pack:*)",
+      "Bash(rustc:*)",
+      "Bash(./scripts/anti-patterns.sh:*)",
+      "Bash(./test_detection.sh:*)",
+      "Bash(./test_function.sh:*)",
+      "Bash(./debug_scan.sh:*)",
+      "Bash(./debug_main.sh)",
+      "Bash(./clean_test.sh)",
+      "Bash(node:*)",
+      "Bash(timeout 30s pnpm run type-check)",
+      "Bash(cargo sqlx prepare:*)",
+      "Bash(cargo install:*)",
+      "Bash(SQLX_OFFLINE=true cargo check --workspace --exclude starscalendars-infra)"
     ],
     "deny": []
   }

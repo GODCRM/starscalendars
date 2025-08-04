@@ -4,7 +4,7 @@
 
 use async_trait::async_trait;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation, Algorithm};
-use starscalendars_app::*;
+// Use only domain types for Clean Architecture
 use starscalendars_domain::*;
 use uuid::Uuid;
 use crate::InfraError;
@@ -82,14 +82,14 @@ wIDAQAB
 
 #[async_trait]
 impl JwtService for JwtServiceImpl {
-    async fn create_access_token(&self, claims: &JwtClaims) -> AppResult<String> {
+    async fn create_access_token(&self, claims: &JwtClaims) -> PortResult<String> {
         let header = Header::new(self.algorithm);
         
         encode(&header, claims, &self.encoding_key)
             .map_err(|e| InfraError::Jwt(e).into())
     }
     
-    async fn validate_access_token(&self, token: &str) -> AppResult<JwtClaims> {
+    async fn validate_access_token(&self, token: &str) -> PortResult<JwtClaims> {
         let mut validation = Validation::new(self.algorithm);
         validation.validate_exp = true;
         
@@ -102,7 +102,7 @@ impl JwtService for JwtServiceImpl {
                         let infra_error = InfraError::Internal(
                             DomainError::JwtTokenExpired(exp_time).to_string()
                         );
-                        AppError::from(infra_error)
+                        DomainError::from(infra_error)
                     }
                     _ => InfraError::Jwt(e).into(),
                 }
@@ -111,7 +111,7 @@ impl JwtService for JwtServiceImpl {
         Ok(token_data.claims)
     }
     
-    async fn create_refresh_token(&self) -> AppResult<String> {
+    async fn create_refresh_token(&self) -> PortResult<String> {
         // Create a cryptographically secure random token
         Ok(Uuid::new_v4().to_string())
     }
@@ -153,11 +153,11 @@ impl Default for MockJwtService {
 
 #[async_trait]
 impl JwtService for MockJwtService {
-    async fn create_access_token(&self, _claims: &JwtClaims) -> AppResult<String> {
+    async fn create_access_token(&self, _claims: &JwtClaims) -> PortResult<String> {
         Ok("mock_access_token".to_string())
     }
     
-    async fn validate_access_token(&self, _token: &str) -> AppResult<JwtClaims> {
+    async fn validate_access_token(&self, _token: &str) -> PortResult<JwtClaims> {
         if !self.tokens_valid {
             return Err(InfraError::Internal("Invalid token".to_string()).into());
         }
@@ -165,13 +165,13 @@ impl JwtService for MockJwtService {
         match &self.mock_claims {
             Some(claims) => Ok(claims.clone()),
             None => {
-                let user_id = UserId::new();
+                let user_id = starscalendars_domain::auth::UserId::new();
                 Ok(JwtClaims::new(&user_id, None, false, &[]))
             }
         }
     }
     
-    async fn create_refresh_token(&self) -> AppResult<String> {
+    async fn create_refresh_token(&self) -> PortResult<String> {
         Ok("mock_refresh_token".to_string())
     }
 }

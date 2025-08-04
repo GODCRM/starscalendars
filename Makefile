@@ -6,9 +6,9 @@
 quality-check: anti-patterns clippy security arch
 	@echo "✅ All quality checks passed!"
 
-# 🔍 Проверка антипаттернов
-anti-patterns: unwrap-or-patterns production-patterns error-handling-patterns
-	@echo "✅ No anti-patterns found"
+# 🔍 Проверка антипаттернов (with enhanced test code exclusion)
+anti-patterns:
+	@./scripts/anti-patterns.sh
 
 # 📋 unwrap_or антипаттерны из anti.md
 unwrap-or-patterns:
@@ -19,16 +19,9 @@ unwrap-or-patterns:
 		(echo "❌ Found unwrap_or with side effects - use unwrap_or_else" && exit 1)
 	@echo "✅ unwrap_or patterns validated"
 
-# 🏭 Production-ready patterns
+# 🏭 Production-ready patterns (excluding test code per CLAUDE.md)
 production-patterns:
-	@echo "🏭 Checking production-ready patterns..."
-	@! grep -r "\.unwrap()" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found .unwrap() usage" && exit 1)
-	@! grep -r "\.expect(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found .expect() usage" && exit 1)  
-	@! grep -r "panic!(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found panic!() usage" && exit 1)
-	@! grep -r "HashMap::new()" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found HashMap::new() - use with_capacity()" && exit 1)
-	@! grep -r "Vec::new()" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "❌ Found Vec::new() - use with_capacity()" && exit 1)
-	# @! grep -r " as " --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || (echo "⚠️  Found 'as' conversions - consider TryFrom" && exit 1)
-	@echo "✅ Production patterns validated"
+	@./scripts/production-patterns.sh
 
 # 🚨 Error handling patterns из anti.md
 error-handling-patterns:

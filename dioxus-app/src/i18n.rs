@@ -297,9 +297,10 @@ impl I18nService {
     
     /// Format date according to cultural preferences
     pub fn format_date(&self, date: &time::OffsetDateTime) -> String {
+        // ✅ QUALITY: Use string literal default to avoid allocation
         let format_str = self.current_language_metadata()
-            .map(|meta| &meta.cultural_adaptations.date_format)
-            .unwrap_or(&"%Y-%m-%d".to_string());
+            .map(|meta| meta.cultural_adaptations.date_format.as_str())
+            .unwrap_or("%Y-%m-%d");
         
         // TODO: Implement proper date formatting with cultural patterns
         let format_desc = time::format_description::parse(format_str)

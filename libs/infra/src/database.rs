@@ -5,6 +5,7 @@
 use async_trait::async_trait;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use starscalendars_domain::*;
+use starscalendars_domain::telegram::TelegramUserId;
 use crate::{InfraError, DatabaseConfig};
 use std::time::Duration;
 use tracing::{info, error};
@@ -47,7 +48,7 @@ impl DatabaseService {
             .await
             .map_err(|e| {
                 error!("❌ Migration failed: {}", e);
-                InfraError::Database(e)
+                InfraError::Internal(format!("Migration error: {}", e))
             })?;
         
         info!("✅ Database migrations completed successfully");
@@ -71,7 +72,7 @@ impl DatabaseService {
     
     /// Get connection pool statistics
     pub fn pool_stats(&self) -> (u32, u32) {
-        (self.pool.size(), self.pool.num_idle())
+        (self.pool.size(), self.pool.num_idle() as u32)
     }
 }
 
@@ -250,7 +251,7 @@ impl TokenRepository for PostgresTokenRepository {
         match row {
             Some(row) => Ok(Some(RefreshToken {
                 id: row.id,
-                user_id: UserId::from_uuid(row.user_id),
+                user_id: starscalendars_domain::auth::UserId::from_uuid(row.user_id),
                 token_hash: row.token_hash,
                 created_at: row.created_at,
                 expires_at: row.expires_at,
@@ -303,7 +304,7 @@ impl TokenRepository for PostgresTokenRepository {
         match row {
             Some(row) => Ok(Some(LinkingToken {
                 token: row.token,
-                user_id: UserId::from_uuid(row.user_id),
+                user_id: starscalendars_domain::auth::UserId::from_uuid(row.user_id),
                 created_at: row.created_at,
                 expires_at: row.expires_at,
                 is_used: row.is_used,

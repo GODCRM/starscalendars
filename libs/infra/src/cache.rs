@@ -5,7 +5,7 @@
 use async_trait::async_trait;
 use redis::aio::MultiplexedConnection;
 use redis::{AsyncCommands, RedisResult};
-use starscalendars_app::*;
+use starscalendars_domain::*;
 use std::time::Duration;
 use crate::InfraError;
 
@@ -23,7 +23,7 @@ impl RedisCacheService {
 
 #[async_trait]
 impl CacheService for RedisCacheService {
-    async fn get(&self, key: &str) -> AppResult<Option<String>> {
+    async fn get(&self, key: &str) -> PortResult<Option<String>> {
         let mut conn = self.conn.clone();
         let result: RedisResult<Option<String>> = conn.get(key).await;
         
@@ -33,7 +33,7 @@ impl CacheService for RedisCacheService {
         }
     }
     
-    async fn set(&self, key: &str, value: &str, ttl: Duration) -> AppResult<()> {
+    async fn set(&self, key: &str, value: &str, ttl: Duration) -> PortResult<()> {
         let mut conn = self.conn.clone();
         let ttl_secs = ttl.as_secs();
         
@@ -48,7 +48,7 @@ impl CacheService for RedisCacheService {
         Ok(())
     }
     
-    async fn delete(&self, key: &str) -> AppResult<()> {
+    async fn delete(&self, key: &str) -> PortResult<()> {
         let mut conn = self.conn.clone();
         let _: () = conn.del(key).await
             .map_err(|e| InfraError::Redis(e))?;
@@ -94,7 +94,7 @@ impl Default for InMemoryCacheService {
 
 #[async_trait]
 impl CacheService for InMemoryCacheService {
-    async fn get(&self, key: &str) -> AppResult<Option<String>> {
+    async fn get(&self, key: &str) -> PortResult<Option<String>> {
         let now = std::time::Instant::now();
         
         match self.cache.get(key) {
@@ -113,7 +113,7 @@ impl CacheService for InMemoryCacheService {
         }
     }
     
-    async fn set(&self, key: &str, value: &str, ttl: Duration) -> AppResult<()> {
+    async fn set(&self, key: &str, value: &str, ttl: Duration) -> PortResult<()> {
         let expires_at = if ttl.as_secs() > 0 {
             Some(std::time::Instant::now() + ttl)
         } else {
@@ -129,7 +129,7 @@ impl CacheService for InMemoryCacheService {
         Ok(())
     }
     
-    async fn delete(&self, key: &str) -> AppResult<()> {
+    async fn delete(&self, key: &str) -> PortResult<()> {
         self.cache.remove(key);
         Ok(())
     }
@@ -151,7 +151,7 @@ impl TelegramCacheService {
         &self,
         user_id: i64,
         is_subscribed: bool,
-    ) -> AppResult<()> {
+    ) -> PortResult<()> {
         let key = format!("telegram:subscription:{}", user_id);
         let value = if is_subscribed { "true" } else { "false" };
         
@@ -160,7 +160,7 @@ impl TelegramCacheService {
     }
     
     /// Get cached subscription status
-    pub async fn get_subscription_status(&self, user_id: i64) -> AppResult<Option<bool>> {
+    pub async fn get_subscription_status(&self, user_id: i64) -> PortResult<Option<bool>> {
         let key = format!("telegram:subscription:{}", user_id);
         
         match self.cache.get(&key).await? {
@@ -174,9 +174,9 @@ impl TelegramCacheService {
         &self,
         token: &uuid::Uuid,
         user_id: &starscalendars_domain::UserId,
-    ) -> AppResult<()> {
+    ) -> PortResult<()> {
         let key = format!("telegram:linking:{}", token);
-        let value = user_id.as_uuid().to_string();
+        let value = user_id.uuid().to_string();
         
         // Cache for 10 minutes (same as token expiry)
         self.cache.set(&key, &value, Duration::from_secs(600)).await
@@ -186,7 +186,7 @@ impl TelegramCacheService {
     pub async fn get_linking_token(
         &self,
         token: &uuid::Uuid,
-    ) -> AppResult<Option<starscalendars_domain::UserId>> {
+    ) -> PortResult<Option<starscalendars_domain::UserId>> {
         let key = format!("telegram:linking:{}", token);
         
         match self.cache.get(&key).await? {
@@ -202,15 +202,15 @@ impl TelegramCacheService {
 
 #[async_trait]
 impl CacheService for TelegramCacheService {
-    async fn get(&self, key: &str) -> AppResult<Option<String>> {
+    async fn get(&self, key: &str) -> PortResult<Option<String>> {
         self.cache.get(key).await
     }
     
-    async fn set(&self, key: &str, value: &str, ttl: Duration) -> AppResult<()> {
+    async fn set(&self, key: &str, value: &str, ttl: Duration) -> PortResult<()> {
         self.cache.set(key, value, ttl).await
     }
     
-    async fn delete(&self, key: &str) -> AppResult<()> {
+    async fn delete(&self, key: &str) -> PortResult<()> {
         self.cache.delete(key).await
     }
 }

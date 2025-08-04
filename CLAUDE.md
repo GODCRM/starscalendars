@@ -107,6 +107,65 @@ starscalendars/
 
 ## Development Approach
 
+### Environment Setup (Required Tools)
+
+#### Prerequisites
+```bash
+# 1. Rust 1.88+ (managed automatically via rust-toolchain.toml)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+
+# 2. Node.js 20+ and pnpm 9+
+# Install Node.js via nvm or package manager
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 20
+nvm use 20
+
+# Install pnpm
+curl -fsSL https://get.pnpm.io/install.sh | sh
+
+# 3. wasm-pack for WebAssembly builds
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+# 4. PostgreSQL 17+ (for development)
+# macOS: brew install postgresql@17
+# Ubuntu: sudo apt install postgresql-17
+# AlmaLinux: sudo dnf install postgresql17-server
+
+# 5. Redis (for caching)
+# macOS: brew install redis
+# Ubuntu: sudo apt install redis-server
+# AlmaLinux: sudo dnf install redis
+```
+
+#### Environment Variables
+```bash
+# Create .env file in project root
+DATABASE_URL="postgresql://username:password@localhost:5432/starscalendars"
+REDIS_URL="redis://localhost:6379"
+TELEGRAM_BOT_TOKEN="your_bot_token_here"
+JWT_SECRET="your_jwt_secret_here"
+```
+
+#### First-Time Setup
+```bash
+# 1. Clone and enter project
+git clone <repository-url>
+cd starscalendars
+
+# 2. Install all dependencies
+pnpm install
+
+# 3. Build WASM astronomical core first
+pnpm run build:wasm
+
+# 4. Run quality checks (should pass)
+make quality-check
+
+# 5. Start development environment
+pnpm run dev
+```
+
 ### Project Setup
 - Use pnpm workspaces for monorepo management
 - Each module (frontend, backend, wasm-astro, telegram-bot, i18n) is a separate workspace
@@ -173,25 +232,106 @@ starscalendars/
 - `make pre-commit` - Full pre-commit validation
 - `make fmt` - Format all code
 
-### Build Commands (Working with Known Issues)
-- `pnpm run build` - Build all workspaces (⚠️ requires fixing TypeScript errors)
-- `pnpm run build:frontend` - Vite build for frontend (⚠️ needs TS config fixes)
-- `pnpm run build:wasm` - wasm-pack build --release for wasm-astro (✅ working)
-- `pnpm run build:dioxus` - dioxus build for auth app (partially working)
+### Build Commands (Actual package.json scripts)
+- `pnpm run build` - Build all workspaces (WASM → Frontend → Dioxus → Backend)
+- `pnpm run build:frontend` - Vite build for frontend  
+- `pnpm run build:wasm` - Execute ./scripts/build-wasm.sh (✅ working)
+- `pnpm run build:wasm:debug` - WASM debug build for development
+- `pnpm run build:dioxus` - Dioxus build for auth app
+- `pnpm run build:i18n` - Build internationalization files
 - `cargo build --release` - Axum server production build (⚠️ needs DATABASE_URL for SQLX)
 - `time cargo check --workspace --exclude starscalendars-infra` - Quick Rust compilation check (✅ working)
 
-### Development Commands (Partially Working)
-- `pnpm run dev` - Start all development servers (⚠️ requires fixes)
-- `pnpm run dev:frontend` - Vite dev server (⚠️ TypeScript issues)
-- `cargo run -p backend` - Axum server (⚠️ needs DATABASE_URL setup)
+### Development Commands (Actual package.json scripts)
+- `pnpm run dev` - Start all development servers concurrently
+- `pnpm run dev:frontend` - Vite dev server with hot reload
+- `pnpm run dev:backend` - Axum server with cargo run -p backend
 - `pnpm run dev:dioxus` - Dioxus development mode
-- `pnpm run type-check` - TypeScript checking (⚠️ currently failing)
+- `pnpm run dev:telegram` - Telegram bot development server
+- `pnpm run type-check` - TypeScript checking across all workspaces
+- `pnpm run lint` - Run linting across all workspaces
+- `pnpm run format` - Format code across all workspaces
+- `pnpm run test` - Run tests across all workspaces
+- `pnpm run test:wasm` - Test WASM module loading (node scripts/test-wasm.js)
 
-### Current Issues to Resolve
-1. **Frontend TypeScript**: Config errors in tsconfig.json (ES2025 target, verbatimModuleSyntax)
-2. **SQLX Database**: Need DATABASE_URL env var or `cargo sqlx prepare` for compile-time checks  
-3. **Library Dependencies**: Some import errors in infra layer referencing starscalendars_app
+### Database Setup
+
+#### PostgreSQL Schema Setup
+```bash
+# 1. Start PostgreSQL service
+# macOS: brew services start postgresql@17
+# Ubuntu: sudo systemctl start postgresql
+# AlmaLinux: sudo systemctl start postgresql
+
+# 2. Create database and user
+createdb starscalendars
+psql starscalendars
+
+# 3. Run migrations
+psql -d starscalendars -f ops/migrations/001_initial_schema.sql
+
+# 4. For SQLX compile-time checks (choose one):
+# Option A: Set DATABASE_URL
+export DATABASE_URL="postgresql://username:password@localhost:5432/starscalendars"
+
+# Option B: Use offline mode for development
+cargo sqlx prepare --workspace
+```
+
+#### Redis Setup (for caching)
+```bash
+# Start Redis server
+# macOS: brew services start redis
+# Ubuntu/AlmaLinux: sudo systemctl start redis
+
+# Test connection
+redis-cli ping  # Should return "PONG"
+```
+
+### Current Issues & Solutions
+
+#### 1. TypeScript Configuration
+**Issue**: ES2025 target not supported  
+**Solution**: Change `"target": "ES2025"` to `"target": "esnext"` in `frontend/tsconfig.json`
+
+#### 2. SQLX Database Connection  
+**Issue**: Missing DATABASE_URL for compile-time checks  
+**Solution**: Use database setup above or `cargo sqlx prepare` for offline mode
+
+#### 3. Library Import Issues
+**Issue**: Some import errors in infra layer  
+**Solution**: Check import paths in `libs/infra/src/*.rs` files - should reference relative paths
+
+#### 4. Quality Check Test Code
+**Status**: ✅ Resolved - `.expect()` usage in `#[cfg(test)]` modules is acceptable per CLAUDE.md rules
+
+### Scripts and Tools Usage
+
+#### Quality System Scripts
+```bash
+# Core quality checking (comprehensive)
+./scripts/anti-patterns.sh           # Enhanced anti-pattern scanning with test exclusion
+./scripts/production-patterns.sh     # Production-ready pattern validation  
+./scripts/quality-monitor.sh         # Quality monitoring and reporting
+./scripts/validate-quality-system.sh # Validate quality system integrity
+
+# Quality shortcuts via Makefile
+make quality-check                   # Run all quality checks
+make anti-patterns                   # Scan for forbidden patterns only
+make quality-report                  # Generate comprehensive quality report
+make quality-summary                 # Quick quality status overview
+```
+
+#### Build and Development Scripts
+```bash
+# WASM build with verification
+./scripts/build-wasm.sh              # Complete WASM build with size analysis
+./scripts/test-wasm.js               # Test WASM module loading in Node.js
+
+# Development workflow
+pnpm run clean                       # Clean all build artifacts
+pnpm run clean:wasm                  # Clean only WASM build files
+```
 
 ### Quick Development Commands (What Works Now)
 ```bash
@@ -199,7 +339,7 @@ starscalendars/
 make quality-check
 
 # WASM compilation (works perfectly)
-cd wasm-astro && wasm-pack build --release --target web
+pnpm run build:wasm                  # Uses ./scripts/build-wasm.sh
 
 # Rust workspace check (excludes problematic infra for now)
 time cargo check --workspace --exclude starscalendars-infra
@@ -209,13 +349,67 @@ make fmt
 
 # Monitor code quality
 make quality-summary
+
+# Test WASM integration
+pnpm run test:wasm                   # Uses node scripts/test-wasm.js
 ```
 
-### Priority Fixes Needed
-1. Fix TypeScript target in `frontend/tsconfig.json` (change ES2025 to ES2024)
-2. Add DATABASE_URL to environment or prepare SQLX offline mode
-3. Fix import statements in `libs/infra/src/*.rs` files
-4. Resolve Babylon.js API compatibility issues in frontend
+### Common Development Workflows
+
+#### Starting a new feature
+```bash
+# 1. Ensure clean state
+make quality-check
+pnpm run test
+
+# 2. Create feature branch
+git checkout -b feature/astronomical-calculations
+
+# 3. Make changes following architecture
+# Domain → App → Infra → Delivery layers
+
+# 4. Validate before commit
+make pre-commit
+pnpm run test
+
+# 5. Commit with proper format
+git commit -m "feat: implement high-precision ephemeris calculations
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+#### Debugging WASM issues
+```bash
+# 1. Check WASM build
+pnpm run build:wasm:debug
+
+# 2. Test loading
+pnpm run test:wasm
+
+# 3. Check for WASM-JS integration issues
+# Look at frontend/src/wasm/init.ts
+# Verify Float64Array usage patterns
+
+# 4. Performance debugging
+make wasm-perf
+```
+
+#### Quality check failures
+```bash
+# 1. Run specific quality checks
+make anti-patterns          # Check for forbidden patterns
+make clippy                 # Strict Rust linting
+make security              # Security validation
+
+# 2. View detailed violations
+make find-patterns         # Show detailed anti-pattern locations
+
+# 3. Fix test vs production code issues
+# Ensure .expect() only in #[cfg(test)] modules
+./scripts/anti-patterns.sh # Shows test code exclusions
+```
 
 ## Deployment Strategy (NO DOCKER!)
 
@@ -249,16 +443,59 @@ rsync -av frontend/dist/ /var/www/starscalendars/
 - **project-coordinator**: Отвечает за координацию сборки всех компонентов
 - **quality-guardian**: Отвечает за тестирование и качество перед развертыванием
 
-### Testing
-- Focus on astronomical calculation accuracy testing
-- Performance profiling for 60 FPS target
-- Comprehensive Telegram Bot API integration testing
-- Subscription verification accuracy testing
-- 10-language localization completeness validation
-- Load testing for 10,000+ concurrent bot users
-- WASM-JS interop performance testing
-- GUI performance comparison (HTML overlay vs Babylon GUI)
-- Cross-platform language rendering testing
+### Testing Strategy & Commands
+
+#### Unit Testing
+```bash
+# Run all tests across workspaces
+pnpm run test
+
+# Rust tests only
+cargo test --workspace
+
+# Rust tests with release optimizations
+cargo test --workspace --release
+
+# Individual workspace tests
+cargo test -p backend
+cargo test -p wasm-astro
+cargo test -p starscalendars-domain
+cargo test -p starscalendars-app
+cargo test -p starscalendars-infra
+```
+
+#### WASM Testing
+```bash
+# Test WASM module compilation and loading
+pnpm run test:wasm
+
+# Manual WASM build testing
+cd wasm-astro && wasm-pack build --dev --target web
+node ../scripts/test-wasm.js
+```
+
+#### Performance Testing
+```bash
+# Rust benchmarks
+cargo bench
+
+# Quality-assured benchmarks (with quality checks first)
+make perf
+
+# Performance profiling
+cargo test --release -- --ignored bench_
+```
+
+#### Testing Focus Areas
+- **Astronomical Calculations**: High-precision ephemeris accuracy testing
+- **Performance**: 60 FPS target validation and WASM-JS interop timing
+- **Telegram Integration**: Bot API responses, subscription verification, webhook processing
+- **Authentication**: JWT validation, token refresh, session management
+- **Localization**: 10-language completeness and cultural adaptation validation
+- **Load Testing**: 10,000+ concurrent bot users simulation
+- **WASM Performance**: Zero-copy data transfer validation
+- **GUI Performance**: HTML overlay vs Babylon.js GUI comparison
+- **Cross-platform**: Language rendering and browser compatibility
 
 ## Important Notes
 
@@ -526,3 +763,72 @@ make pre-commit
 - `mem_forget` - denial rule (clippy mem_forget = deny)
 - `todo!()`, `unimplemented!()` - блокируется компиляцией (clippy deny)
 - **Изменение файлов в `./astro-rust/`** - строго read-only!
+- **JavaScript-style comments in JSON** - use pure JSON syntax only
+
+## Troubleshooting Guide
+
+### Common Build Issues
+
+#### 1. JSON Parsing Errors in package.json
+**Error**: `Expected double-quoted property name in JSON`
+**Solution**: Remove JavaScript-style comments (`//`) from package.json files - use pure JSON syntax only
+
+#### 2. Quality Check Failures
+**Error**: `❌ Found .expect() usage`
+**Cause**: `.expect()` usage in test files vs production code
+**Solution**: 
+- **Production code**: Always use proper error handling (`Result<T, E>`, `?` operator)
+- **Test code**: `.expect()` is acceptable for test assertions and setup
+- **Pattern**: Test files should use `.expect("descriptive test failure message")`
+
+#### 3. TypeScript ES2025 Target Issue
+**Error**: TypeScript compilation failures
+**Solution**: Change `"target": "ES2025"` to `"target": "esnext"` in `frontend/tsconfig.json`
+
+#### 4. WASM Build Failures
+**Error**: wasm-pack build failures
+**Solution**: 
+```bash
+# Ensure wasm-pack is installed
+cargo install wasm-pack
+
+# Build with correct target
+cd wasm-astro && wasm-pack build --release --target web
+```
+
+#### 5. Database Connection Issues
+**Error**: SQLX compile-time check failures
+**Solution**: Set DATABASE_URL or use offline mode:
+```bash
+export DATABASE_URL="postgresql://user:pass@localhost/starscalendars"
+# OR for offline development:
+cargo sqlx prepare
+```
+
+### Test Code Patterns (Exception to Anti-Pattern Rules)
+
+```rust
+// ✅ ACCEPTABLE in test files only
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_user_creation() {
+        let user_id = TelegramUserId::new(123456789)
+            .expect("test user ID should be valid");
+        // Test assertions can use .expect() with descriptive messages
+    }
+}
+
+// ❌ FORBIDDEN in production code
+fn create_user(id: i64) -> User {
+    let user_id = TelegramUserId::new(id).expect("user ID failed"); // NEVER!
+}
+
+// ✅ CORRECT in production code  
+fn create_user(id: i64) -> Result<User, UserError> {
+    let user_id = TelegramUserId::new(id)?;
+    Ok(User::new(user_id))
+}
+```

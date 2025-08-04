@@ -39,7 +39,7 @@ time = { workspace = true }
 thiserror = { workspace = true }
 
 # Thread-local storage for buffer management
-thread_local = "1.1"
+thread_local = "1"
 
 # Utilities
 once_cell = { workspace = true }

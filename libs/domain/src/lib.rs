@@ -19,15 +19,20 @@ pub mod auth;
 pub mod ports;
 pub mod errors;
 
-// Re-export core domain types
+// Re-export core domain types (specific imports to avoid ambiguity)
 pub use astronomical::*;
-pub use telegram::*;
-pub use events::*;
-pub use spiritual::*;
-pub use user::*;
-pub use auth::*;
+pub use telegram::{TelegramChannelId, SubscriptionStatus, TelegramProfile};
+pub use events::{DomainEvent, UserEvent, AstronomicalEvent, Event, EventId, EventPublisher};
+pub use spiritual::{SpiritualProfile};
+pub use user::{User, UserId};
+pub use auth::{JwtClaims, RefreshToken, LinkingToken};
 pub use ports::*;
 pub use errors::*;
+
+// Explicit re-exports to avoid ambiguity
+pub use telegram::TelegramUserId as TelegramId;
+pub use events::SpiritualEvent as EventSpiritualEvent;
+pub use spiritual::SpiritualEvent as SpiritualEventData;
 
 /// Domain-wide result type for error handling
 pub type DomainResult<T> = Result<T, DomainError>;

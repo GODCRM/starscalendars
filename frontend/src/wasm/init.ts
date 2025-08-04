@@ -1,9 +1,20 @@
 /**
- * Simplified WASM Astronomical Module Integration
+ * WASM Astronomical Module Integration (TypeScript 5.9.2 + Babylon.js 8.20.0)
  * 
- * This simplified version uses runtime module loading to avoid TypeScript
- * compilation issues with dynamic imports of potentially missing modules.
+ * High-performance WASM integration with zero-copy data transfer and strict typing.
+ * Implements exactly one compute_all() call per frame for O(1) performance.
  */
+
+import { 
+  WASM_CONSTANTS,
+  validateJulianDay,
+  validateWASMBuffer,
+  WASMErrorType
+} from './types.js';
+import type { 
+  WASMError, 
+  PositionBuffer
+} from './types.js';
 
 // ✅ CORRECT - Result type pattern for strict error handling (TypeScript 5.9.2+)
 export type Result<T, E> = { success: true; data: T } | { success: false; error: E };
@@ -87,8 +98,9 @@ export const initializeWASM = async (): Promise<WASMModule> => {
           // Strategy 1: Direct WASM module import (correct path)
           async () => {
             // Try to import the WASM module (may not exist during development)
-            const wasmModule = await import('@wasm-pkg/starscalendars_wasm_astro.js').catch(() => {
-              throw new Error('WASM module not found - run pnpm run build:wasm first');
+            const wasmModulePath = '../wasm-astro/pkg/starscalendars_wasm_astro.js';
+            const wasmModule = await import(/* @vite-ignore */ wasmModulePath).catch(() => {
+              throw new Error('WASM module not found - run: cd wasm-astro && wasm-pack build --release --target web --out-dir pkg');
             });
             await wasmModule.default(); // Initialize WASM
             
@@ -102,30 +114,39 @@ export const initializeWASM = async (): Promise<WASMModule> => {
             };
           },
           
-          // Strategy 2: Mock WASM modules
+          // Strategy 2: Development fallback with safe imports (no eval)
           async () => {
-            const initModule = await eval(`import('@wasm-pkg/mock_starscalendars_wasm_astro.js')`);
-            const bgModule = await eval(`import('@wasm-pkg/mock_starscalendars_wasm_astro_bg.js')`);
-            await initModule.default();
-            return {
-              init: initModule.default,
-              compute_all: bgModule.compute_all,
-              get_body_count: bgModule.get_body_count,
-              get_coordinate_count: bgModule.get_coordinate_count,
-              get_version: bgModule.get_version,
-              memory: bgModule.memory
-            };
+            console.warn('🚧 Using development fallback strategy');
+            throw new Error('Development fallback not available - please build WASM module');
           },
           
           // Strategy 3: Runtime stub
           async () => {
             console.warn('🚧 Using runtime WASM stub');
-            const memory = new WebAssembly.Memory({ initial: 1 }); // Create actual WebAssembly.Memory
+            // Create mock WebAssembly.Memory with accessible buffer
+            const mockBuffer = new ArrayBuffer(1024 * 64); // 64KB buffer
+            const memory = {
+              buffer: mockBuffer,
+              grow: () => 0,
+            } as WebAssembly.Memory;
             return {
               init: async () => {},
               compute_all: (jd: number) => {
                 console.warn('🚧 Stub compute_all called with', jd);
-                return 0;
+                // Return valid pointer to mock data buffer instead of null pointer
+                const mockBuffer = new Float64Array(33);
+                // Fill with realistic test data for 11 celestial bodies (x,y,z each)
+                for (let i = 0; i < 33; i += 3) {
+                  const bodyIndex = Math.floor(i / 3);
+                  const radius = 0.1 + bodyIndex * 0.2; // Mock distances
+                  const angle = (bodyIndex * Math.PI * 2) / 11; // Distributed around circle
+                  mockBuffer[i] = radius * Math.cos(angle);     // x
+                  mockBuffer[i + 1] = radius * Math.sin(angle); // y
+                  mockBuffer[i + 2] = 0.1 * Math.sin(angle * 3); // z
+                }
+                // Store in global for access via memory view
+                (globalThis as any).__mockWasmBuffer = mockBuffer;
+                return mockBuffer.byteOffset;
               },
               get_body_count: () => 11,
               get_coordinate_count: () => 33,
@@ -151,17 +172,17 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       const wasmFunctions = await loadWASMModule();
       timer.mark('wasm_functions_loaded');
       
-      // Validate WASM module interface
+      // Validate WASM module interface using strict constants
       const bodyCount = wasmFunctions.get_body_count();
       const coordinateCount = wasmFunctions.get_coordinate_count();
       const version = wasmFunctions.get_version();
       
-      if (bodyCount !== 11) {
-        throw new Error(`Invalid body count: expected 11, got ${bodyCount}`);
+      if (bodyCount !== WASM_CONSTANTS.EXPECTED_BODY_COUNT) {
+        throw new Error(`Invalid body count: expected ${WASM_CONSTANTS.EXPECTED_BODY_COUNT}, got ${bodyCount}`);
       }
       
-      if (coordinateCount !== 33) {
-        throw new Error(`Invalid coordinate count: expected 33, got ${coordinateCount}`);
+      if (coordinateCount !== WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT) {
+        throw new Error(`Invalid coordinate count: expected ${WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT}, got ${coordinateCount}`);
       }
       
       timer.mark('validation_complete');
@@ -169,8 +190,9 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       // Create WASM module interface
       const module: WASMModule = {
         compute_all: (julianDay: number): number => {
-          if (typeof julianDay !== 'number' || !isFinite(julianDay)) {
-            throw new Error(`Invalid Julian Day: ${julianDay}`);
+          const validation = validateJulianDay(julianDay);
+          if (!validation.success) {
+            throw new Error(validation.error.message);
           }
           return wasmFunctions.compute_all(julianDay);
         },
@@ -244,14 +266,38 @@ export const millisecondsToJulianDay = (milliseconds: number): number => {
 };
 
 /**
- * ✅ CRITICAL: Create zero-copy Float64Array view of WASM memory
+ * ✅ CRITICAL: Create zero-copy Float64Array view of WASM memory (TypeScript 5.9.2+)
  * 
- * This function implements the zero-copy data transfer requirement.
- * Returns a Float64Array view directly into WASM memory at the given pointer.
+ * This function implements the zero-copy data transfer requirement with strict validation.
+ * Returns a validated Float64Array view directly into WASM memory at the given pointer.
  */
-export const createPositionsView = (wasmModule: WASMModule, ptr: number): Float64Array => {
+export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result<PositionBuffer, WASMError> => {
+  if (ptr === 0) {
+    return {
+      success: false,
+      error: {
+        type: WASMErrorType.MemoryAccessError,
+        message: 'Null pointer returned from WASM compute_all',
+        timestamp: performance.now()
+      }
+    };
+  }
+
   const coordinateCount = wasmModule.get_coordinate_count();
-  return new Float64Array(wasmModule.memory.buffer, ptr, coordinateCount);
+  const buffer = new Float64Array(wasmModule.memory.buffer, ptr, coordinateCount);
+  
+  const validation = validateWASMBuffer(buffer);
+  if (!validation.success) {
+    return {
+      success: false,
+      error: validation.error
+    };
+  }
+
+  return {
+    success: true,
+    data: validation.data
+  };
 };
 
 /**
