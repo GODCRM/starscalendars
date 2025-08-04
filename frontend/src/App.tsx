@@ -49,6 +49,9 @@ const App: React.FC = () => {
     frameCount: 0
   });
 
+  // ✅ NEW - Canvas ready state for Babylon.js initialization
+  const [canvasReady, setCanvasReady] = useState(false);
+
   // ✅ CORRECT - Refs for performance-critical elements (zero re-renders)
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>(0);
@@ -153,6 +156,14 @@ const App: React.FC = () => {
     animationFrameRef.current = requestAnimationFrame(animate);
   }, [updateAstronomicalPositions]);
 
+  // ✅ NEW - Canvas ready effect (must run before WASM initialization) 
+  useEffect(() => {
+    if (canvasRef.current) {
+      setCanvasReady(true);
+      console.log('🎨 Canvas ready for Babylon.js initialization');
+    }
+  }, []);
+
   // ✅ CORRECT - Component initialization effect with cleanup
   useEffect(() => {
     let isMounted = true;
@@ -241,12 +252,14 @@ const App: React.FC = () => {
             aria-label="3D astronomical visualization"
           />
           
-          {/* Babylon.js 3D Scene Manager */}
-          <BabylonScene 
-            canvas={canvasRef.current}
-            astronomicalData={appState.astronomicalData}
-            isInitialized={appState.isInitialized}
-          />
+          {/* Babylon.js 3D Scene Manager - only render when canvas is ready */}
+          {canvasReady && canvasRef.current && (
+            <BabylonScene 
+              canvas={canvasRef.current}
+              astronomicalData={appState.astronomicalData}
+              isInitialized={appState.isInitialized}
+            />
+          )}
           
           {/* HTML/CSS overlay for performance-critical GUI elements */}
           <div className="ui-overlay">

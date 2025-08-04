@@ -75,7 +75,10 @@
       "Bash(timeout 30s pnpm run type-check)",
       "Bash(cargo sqlx prepare:*)",
       "Bash(cargo install:*)",
-      "Bash(SQLX_OFFLINE=true cargo check --workspace --exclude starscalendars-infra)"
+      "Bash(SQLX_OFFLINE=true cargo check --workspace --exclude starscalendars-infra)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(echo $PATH)"
     ],
     "deny": []
   }

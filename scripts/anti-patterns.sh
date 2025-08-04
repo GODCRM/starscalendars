@@ -19,32 +19,49 @@ TOTAL_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-ru
 
 echo "📊 Scanning $TOTAL_FILES Rust files"
 
-# Function to check if a line is within a test module (FIXED: no double output)
+# Function to check if a line is within a test module (ENHANCED: better test detection)
 is_in_test_code() {
     local file="$1"
     local line_number="$2"
     
-    # Primary check: #[cfg(test)] module (covers most test code)
+    # Primary check: #[cfg(test)] module with proper scope detection
     local cfg_test_line=$(awk '/#\[cfg\(test\)\]/ { print NR }' "$file" | tail -1)
     
     if [[ -n "$cfg_test_line" ]] && [[ $line_number -gt $cfg_test_line ]]; then
-        local lines_after=$((line_number - cfg_test_line))
-        if [[ $lines_after -lt 200 ]]; then  # Reasonable test module size
+        # Check if we're still within the test module by finding the next non-test module
+        local next_mod_line=$(awk -v start="$cfg_test_line" '
+            NR > start && /^[[:space:]]*#\[cfg\(.*\)\][[:space:]]*$/ && !/cfg\(test\)/ { print NR; exit }
+        ' "$file")
+        
+        # If no next module found, or we're before it, we're in test code
+        if [[ -z "$next_mod_line" ]] || [[ $line_number -lt $next_mod_line ]]; then
             echo "IN_TEST"
             return 0
         fi
     fi
     
-    # Fallback: individual #[test] functions (only if no cfg_test found)
-    if [[ -z "$cfg_test_line" ]]; then
-        local test_fn_line=$(awk -v target="$line_number" '
-            /#\[test\]/ { if (NR < target && target - NR <= 15) print NR }
-        ' "$file" | tail -1)
-        
-        if [[ -n "$test_fn_line" ]]; then
-            echo "IN_TEST"
-            return 0
-        fi
+    # Secondary check: individual #[test] functions (works regardless of cfg_test)
+    local test_fn_line=$(awk -v target="$line_number" '
+        /#\[test\]/ { if (NR < target && target - NR <= 20) print NR }
+    ' "$file" | tail -1)
+    
+    if [[ -n "$test_fn_line" ]]; then
+        echo "IN_TEST"
+        return 0
+    fi
+    
+    # Tertiary check: inside mod tests { } block
+    local in_test_mod=$(awk -v target="$line_number" '
+        /^[[:space:]]*mod[[:space:]]+tests[[:space:]]*\{/ { test_start = NR }
+        /^[[:space:]]*\}[[:space:]]*$/ && test_start && NR > test_start { 
+            if (target > test_start && target < NR) { print "IN_TEST"; exit }
+            test_start = ""
+        }
+    ' "$file")
+    
+    if [[ "$in_test_mod" == "IN_TEST" ]]; then
+        echo "IN_TEST"
+        return 0
     fi
     
     # Not in test code

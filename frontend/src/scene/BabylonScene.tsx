@@ -22,23 +22,23 @@ type CelestialBodyConfig = {
   readonly hasRings?: boolean;
 };
 
-// ✅ CORRECT - Pre-configured celestial bodies with artistic proportions  
+// ✅ CORRECT - Pre-configured celestial bodies with LARGER artistic proportions for visibility
 const CELESTIAL_BODIES: Record<string, CelestialBodyConfig> = {
   sun: {
     name: 'Sun',
-    radius: 0.2,                   // Artistic size for visibility
+    radius: 1.0,                   // INCREASED: Artistic size for visibility
     color: new Color3(1.0, 0.8, 0.3),
     emission: 1.0                  // Full emission for light source
   },
   earth: {
     name: 'Earth', 
-    radius: 0.05,
+    radius: 0.5,                   // INCREASED: More visible
     color: new Color3(0.2, 0.6, 1.0),
     emission: 0.0
   },
   moon: {
     name: 'Moon',
-    radius: 0.02,
+    radius: 0.3,                   // INCREASED: More visible
     color: new Color3(0.8, 0.8, 0.7),
     emission: 0.0
   }
@@ -144,12 +144,12 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
 
       timer.mark('scene_created');
 
-      // Setup Camera for cinematic experience (медитативный опыт)
+      // Setup Camera for cinematic experience (медитативный опыт) - CLOSER for visibility
       const camera = new ArcRotateCamera(
         "camera",
         -Math.PI / 2,      // Alpha (horizontal rotation)
         Math.PI / 2.5,     // Beta (vertical rotation) 
-        10,                // Radius (distance from target)
+        5,                 // CLOSER: Radius (distance from target) - was 10, now 5
         Vector3.Zero(),    // Target at origin (Sun position)
         scene
       );
@@ -208,7 +208,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
         diameter: sunConfig.radius * 2,
         segments: 32
       }, scene);
-      sunMesh.position = Vector3.Zero(); // Initial position - will be updated by WASM data
+      sunMesh.position = new Vector3(3, 0, 0); // VISIBLE POSITION - will be updated by WASM data
       
       // ✅ Performance optimizations for dynamic celestial body
       sunMesh.doNotSyncBoundingInfo = true; // Reduce bounding box calculations
@@ -232,8 +232,8 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
         segments: 24
       }, scene);
       
-      // ✅ Earth is static at origin in geocentric scene
-      earthMesh.freezeWorldMatrix(); // Never moves in geocentric scene
+      // ✅ Earth is static at origin in geocentric scene - VISIBLE at center
+      earthMesh.position = Vector3.Zero(); // Earth always at center (0,0,0)
       earthMesh.doNotSyncBoundingInfo = true;
       earthMesh.alwaysSelectAsActiveMesh = true;
 
@@ -251,6 +251,9 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ canvas, astronomicalData, i
         diameter: moonConfig.radius * 2,
         segments: 16
       }, scene);
+      
+      // ✅ VISIBLE POSITION for Moon
+      moonMesh.position = new Vector3(-2, 1, 0); // VISIBLE POSITION - will be updated by WASM data
       
       // ✅ Performance optimizations for dynamic moon
       moonMesh.doNotSyncBoundingInfo = true;

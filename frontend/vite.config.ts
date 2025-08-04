@@ -11,8 +11,8 @@ export default defineConfig({
     topLevelAwait()
   ],
   server: {
-    port: 3000,
-    host: true,
+    port: 3001,
+    host: '0.0.0.0',
     fs: {
       // Allow serving files from wasm-astro workspace
       allow: ['..', '../wasm-astro/pkg']
