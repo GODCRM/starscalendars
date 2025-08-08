@@ -6,7 +6,8 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::{TelegramId, JulianDay, CelestialBody};
+use crate::TelegramId;
+// ❌ REMOVED: JulianDay, CelestialBody imports violate WASM-only architecture per tz.md
 
 /// Unique identifier for domain events
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -113,8 +114,8 @@ pub enum AstronomicalEvent {
     CalculationCompleted {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        julian_day: JulianDay,
-        celestial_bodies: Vec<CelestialBody>,
+        julian_day: f64, // Julian Day as f64 - calculated in WASM frontend only
+        celestial_bodies: Vec<String>, // Celestial body names - actual data in WASM frontend
         calculation_duration_micros: u64,
     },
     
@@ -122,7 +123,7 @@ pub enum AstronomicalEvent {
     SceneUpdated {
         event_id: EventId,
         occurred_at: OffsetDateTime,
-        julian_day: JulianDay,
+        julian_day: f64, // Julian Day as f64 - calculated in WASM frontend only
         frame_rate: f32,
     },
     
@@ -131,8 +132,8 @@ pub enum AstronomicalEvent {
         event_id: EventId,
         occurred_at: OffsetDateTime,
         event_type: String,
-        julian_day: JulianDay,
-        celestial_bodies: Vec<CelestialBody>,
+        julian_day: f64, // Julian Day as f64 - calculated in WASM frontend only
+        celestial_bodies: Vec<String>, // Celestial body names - actual data in WASM frontend
         description: String,
     },
 }
@@ -171,7 +172,7 @@ pub enum SpiritualEvent {
         event_id: EventId,
         occurred_at: OffsetDateTime,
         telegram_user_id: TelegramId,
-        julian_day: JulianDay,
+        julian_day: f64, // Julian Day as f64 - calculated in WASM frontend only
         recommendation_type: String,
         content: String,
     },
@@ -291,8 +292,8 @@ mod tests {
         let event = AstronomicalEvent::CalculationCompleted {
             event_id: EventId::new(),
             occurred_at: OffsetDateTime::now_utc(),
-            julian_day: JulianDay::new(2451545.0).expect("test J2000 JD should be valid"),
-            celestial_bodies: vec![CelestialBody::Sun, CelestialBody::Moon],
+            julian_day: 2451545.0, // J2000 epoch as raw f64
+            celestial_bodies: vec!["Sun".to_string(), "Moon".to_string()],
             calculation_duration_micros: 1500,
         };
         

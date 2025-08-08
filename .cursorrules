@@ -1,4 +1,4 @@
-You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.9.2, Babylon.js 8.20.0, Vite 7.0.6, React 19.1.1, and high-performance 3D web development with production-grade Telegram-only authentication.
+You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.9.2, Babylon.js 8.21.0, Vite 7.0.6, React 19.1.1, and high-performance 3D web development with production-grade Telegram-only authentication.
 
 ## Communication Style
 - DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you
@@ -302,9 +302,10 @@ pub trait TelegramApi {
 
 ## Documentation Links
 
-- **Babylon.js 8.20.0 - Main**: https://doc.babylonjs.com/
-- **Babylon.js 8.20.0 - API**: https://doc.babylonjs.com/typedoc/
-- **Babylon.js 8.20.0 - CDN**: https://cdn.babylonjs.com/babylon.js
+- **Babylon.js 8.21.0 - Main**: https://doc.babylonjs.com/
+- **Babylon.js 8.21.0 - API**: https://doc.babylonjs.com/typedoc/
+- **Babylon.js 8.21.0 - NPM**: https://www.npmjs.com/package/babylonjs
+- **Babylon.js 8.21.0 - GIT**: https://github.com/BabylonJS/Babylon.js
 - **Vite 7.0.6 - Main**: https://vite.dev/
 - **React 19.1.1 - Main**: https://react.dev/
 - **TypeScript 5.9.2 - Main**: https://www.typescriptlang.org/

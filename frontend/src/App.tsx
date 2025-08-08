@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { initializeWASM, createPositionsView, extractCelestialPositions, type WASMModule, type AstronomicalState } from './wasm/init';
-import BabylonScene from './scene/BabylonScene';
+import { initializeWASM, type WASMModule, type AstronomicalState } from './wasm/init';
+import BabylonScene, { type TimeDisplayData } from './scene/BabylonScene';
+import UIOverlay from './components/UIOverlay';
 import './styles/BabylonScene.css';
 
 // ✅ CORRECT - Result type pattern (TypeScript 5.9.2+ strict compliance)
@@ -14,6 +15,8 @@ interface AppState {
   readonly astronomicalData: AstronomicalState | null;
   readonly error: string | null;
   readonly frameCount: number;
+  readonly currentFPS: number;
+  readonly timeData: TimeDisplayData | null; // ✅ Данные времени из BabylonScene
 }
 
 // ✅ CORRECT - Performance timer class for development monitoring
@@ -24,18 +27,23 @@ class PerformanceTimer {
   constructor(operationName: string) {
     this.operationName = operationName;
     this.startTime = performance.now();
-    console.log(`🚀 Frontend: Starting ${operationName}`);
+    // Only log in development and not for frame updates
+    if (import.meta.env.DEV && operationName !== 'frame_update') {
+      console.log(`🚀 Frontend: Starting ${operationName}`);
+    }
   }
 
   public mark(checkpoint: string): void {
-    const currentTime = performance.now();
-    const duration = currentTime - this.startTime;
-    console.log(`📊 Frontend: ${this.operationName} - ${checkpoint} at ${duration.toFixed(3)}ms`);
+    // Only log in development and not for frame updates  
+    if (import.meta.env.DEV && this.operationName !== 'frame_update') {
+      const currentTime = performance.now();
+      const duration = currentTime - this.startTime;
+      console.log(`📊 Frontend: ${this.operationName} - ${checkpoint} at ${duration.toFixed(3)}ms`);
+    }
   }
 }
 
-// ✅ CORRECT - Constants for zero-allocation reference (60fps optimization)
-const FRAME_TARGET_MS = 16.67; // Exactly 60fps requirement
+// ✅ CORRECT - Constants for zero-allocation reference
 const JULIAN_DAY_UNIX_EPOCH = 2440587.5; // Julian Day for Unix epoch
 
 const App: React.FC = () => {
@@ -46,16 +54,58 @@ const App: React.FC = () => {
     currentJulianDay: JULIAN_DAY_UNIX_EPOCH + Date.now() / 86400000.0,
     astronomicalData: null,
     error: null,
-    frameCount: 0
+    frameCount: 0,
+    currentFPS: 0,
+    timeData: null
   });
 
   // ✅ NEW - Canvas ready state for Babylon.js initialization
   const [canvasReady, setCanvasReady] = useState(false);
+  const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null);
 
   // ✅ CORRECT - Refs for performance-critical elements (zero re-renders)
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>(0);
-  const lastFrameTimeRef = useRef<number>(0);
+  
+  // ✅ CALLBACK REF - Triggered when canvas DOM element is created
+  const canvasRef = useCallback((canvas: HTMLCanvasElement | null) => {
+    if (canvas) {
+      console.log('🎨 Canvas DOM element created:', {
+        canvas: canvas,
+        width: canvas.width,
+        height: canvas.height,
+        clientWidth: canvas.clientWidth,
+        clientHeight: canvas.clientHeight,
+        offsetWidth: canvas.offsetWidth,
+        offsetHeight: canvas.offsetHeight
+      });
+      setCanvasElement(canvas);
+      setCanvasReady(true);
+      console.log('✅ Canvas ready for Babylon.js initialization');
+    } else {
+      console.log('🧹 Canvas DOM element removed');
+      setCanvasElement(null);
+      setCanvasReady(false);
+    }
+  }, []);
+  
+  // ✅ FPS update callback - НЕ ОБНОВЛЯЕМ STATE каждый кадр!
+  const handleFpsUpdate = useCallback((fps: number) => {
+    // Обновляем заголовок браузера напрямую, БЕЗ React state
+    document.title = `FPS: ${fps} - StarsCalendars`;
+    
+    // Обновляем DOM напрямую, БЕЗ React ререндера
+    const fpsElement = document.querySelector('.fps-display');
+    if (fpsElement) {
+      fpsElement.textContent = fps.toString();
+    }
+  }, []);
+
+  // ✅ TIME UPDATE callback - только раз в секунду, БЕЗ ререндера каждый кадр!
+  const handleTimeUpdate = useCallback((timeData: TimeDisplayData) => {
+    // НЕ ИСПОЛЬЗУЕМ React state для обновления времени!
+    // Вместо этого обновляем DOM напрямую для производительности
+    // setAppState остается стабильным и НЕ вызывает ререндер
+  }, []);
 
   // ✅ CORRECT - Memoized error boundary component (zero re-allocation)
   const ErrorBoundary = useMemo(() => ({ children, error }: { children: React.ReactNode; error: string | null }) => {
@@ -105,64 +155,12 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // ✅ CRITICAL: Exactly one WASM call per frame (O(1) performance requirement)
-  const updateAstronomicalPositions = useCallback((wasmModule: WASMModule, currentTime: number): void => {
-    const frameTimer = new PerformanceTimer('frame_update');
-    
-    // Convert milliseconds to Julian Day (zero-allocation calculation)
-    const julianDay = JULIAN_DAY_UNIX_EPOCH + currentTime / 86400000.0;
-    
-    // ✅ CRITICAL: Exactly ONE compute_all() call per frame
-    const positionsPtr = wasmModule.compute_all(julianDay);
-    
-    // Check for null pointer (calculation failure)
-    if (positionsPtr === 0) {
-      console.warn('⚠️ WASM calculation returned null pointer');
-      return;
-    }
-    
-    // Zero-copy access via Float64Array view to WASM memory
-    const positionsResult = createPositionsView(wasmModule, positionsPtr);
-    if (!positionsResult.success) {
-      throw new Error(`Failed to create positions view: ${positionsResult.error.message}`);
-    }
-    
-    // Extract all celestial positions using the dedicated function
-    const astronomicalData = extractCelestialPositions(positionsResult.data, currentTime);
-    
-    // Update state with new astronomical data (single state update per frame)
-    setAppState(prevState => ({
-      ...prevState,
-      currentJulianDay: julianDay,
-      astronomicalData,
-      frameCount: prevState.frameCount + 1
-    }));
-    
-    frameTimer.mark('positions_updated');
-  }, []);
+  // ✅ REMOVED - All astronomical data updates happen in BabylonScene render loop
 
-  // ✅ CORRECT - 60fps animation loop with performance monitoring
-  const startAnimationLoop = useCallback((wasmModule: WASMModule): void => {
-    const animate = (currentTime: number): void => {
-      // Frame rate limiting to exact 60fps
-      if (currentTime - lastFrameTimeRef.current >= FRAME_TARGET_MS) {
-        updateAstronomicalPositions(wasmModule, currentTime);
-        lastFrameTimeRef.current = currentTime;
-      }
-      
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-    
-    animationFrameRef.current = requestAnimationFrame(animate);
-  }, [updateAstronomicalPositions]);
+  // ✅ REMOVED TIMER - All updates happen in Babylon.js render loop at 60fps
+  // No separate timers needed - BabylonScene handles all WASM calls
 
-  // ✅ NEW - Canvas ready effect (must run before WASM initialization) 
-  useEffect(() => {
-    if (canvasRef.current) {
-      setCanvasReady(true);
-      console.log('🎨 Canvas ready for Babylon.js initialization');
-    }
-  }, []);
+  // ✅ REPLACED with callback ref above - no useEffect needed
 
   // ✅ CORRECT - Component initialization effect with cleanup
   useEffect(() => {
@@ -183,7 +181,7 @@ const App: React.FC = () => {
           error: null
         }));
         
-        startAnimationLoop(wasmResult.data);
+        // ✅ NO TIMERS - BabylonScene handles all updates at 60fps
         initTimer.mark('initialization_complete');
       } else {
         setAppState(prevState => ({
@@ -208,16 +206,14 @@ const App: React.FC = () => {
     // Cleanup function
     return () => {
       isMounted = false;
-      if (animationFrameRef.current !== 0) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      // No timers to cleanup - all handled by Babylon.js engine
     };
-  }, [initializeAstronomy, startAnimationLoop]);
+  }, [initializeAstronomy]);
 
   // ✅ CORRECT - Loading state with accessibility
   if (!appState.isInitialized && !appState.error) {
     return (
-      <div className="loading-container" role="status" aria-live="polite">
+      <div className="app-loading-screen" role="status" aria-live="polite">
         <div className="loading-spinner"></div>
         <p>Initializing WASM astronomical core...</p>
         <small>Frame count: {appState.frameCount}</small>
@@ -233,7 +229,7 @@ const App: React.FC = () => {
           <h1>StarsCalendars - Cinematic Astronomy</h1>
           <div className="status-bar">
             <span>Julian Day: {appState.currentJulianDay.toFixed(6)}</span>
-            <span>Frames: {appState.frameCount}</span>
+            <span>FPS: <span className="fps-display">0</span></span>
             <span className={`status ${appState.isInitialized ? 'online' : 'offline'}`}>
               {appState.isInitialized ? '🟢 WASM Ready' : '🔴 Initializing'}
             </span>
@@ -253,62 +249,36 @@ const App: React.FC = () => {
           />
           
           {/* Babylon.js 3D Scene Manager - only render when canvas is ready */}
-          {canvasReady && canvasRef.current && (
-            <BabylonScene 
-              canvas={canvasRef.current}
-              astronomicalData={appState.astronomicalData}
-              isInitialized={appState.isInitialized}
-            />
-          )}
+          {(() => {
+            console.log('🔍 BabylonScene render conditions:', {
+              canvasReady,
+              hasCanvasElement: !!canvasElement,
+              hasWasmModule: !!appState.wasmModule,
+              isInitialized: appState.isInitialized,
+              willRender: canvasReady && canvasElement
+            });
+            return canvasReady && canvasElement ? (
+              <BabylonScene 
+                canvas={canvasElement}
+                wasmModule={appState.wasmModule}
+                isInitialized={appState.isInitialized}
+                onFpsUpdate={handleFpsUpdate}
+                onTimeUpdate={handleTimeUpdate}
+              />
+            ) : null;
+          })()}
           
-          {/* HTML/CSS overlay for performance-critical GUI elements */}
-          <div className="ui-overlay">
-            {appState.astronomicalData && (
-              <div className="celestial-info">
-                <div className="celestial-body">
-                  <h3>Sun (Geocentric)</h3>
-                  <p>X: {appState.astronomicalData.sun.x.toFixed(6)} AU</p>
-                  <p>Y: {appState.astronomicalData.sun.y.toFixed(6)} AU</p>
-                  <p>Z: {appState.astronomicalData.sun.z.toFixed(6)} AU</p>
-                  <p>Distance: {appState.astronomicalData.sun.distance.toFixed(6)} AU</p>
-                </div>
-                <div className="celestial-body">
-                  <h3>Earth (Origin)</h3>
-                  <p>Position: (0, 0, 0) - Geocentric Scene</p>
-                </div>
-                <div className="celestial-body">
-                  <h3>Moon (Geocentric)</h3>
-                  <p>X: {appState.astronomicalData.moon.x.toFixed(6)} AU</p>
-                  <p>Y: {appState.astronomicalData.moon.y.toFixed(6)} AU</p>
-                  <p>Z: {appState.astronomicalData.moon.z.toFixed(6)} AU</p>
-                  <p>Distance: {appState.astronomicalData.moon.distance.toFixed(6)} AU</p>
-                </div>
-                <div className="quantum-resonance">
-                  <h3>Quantum Resonance</h3>
-                  <p>{appState.astronomicalData.quantumResonance.toFixed(4)}</p>
-                  <div className="resonance-bar">
-                    <div 
-                      className="resonance-fill"
-                      style={{ width: `${appState.astronomicalData.quantumResonance * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* 🚧 TEMPORARILY DISABLED UI OVERLAY - Let's see the Babylon.js scene first */}
+          {false && <UIOverlay
+            astronomicalData={appState.astronomicalData}
+            isInitialized={appState.isInitialized}
+            frameCount={appState.frameCount}
+            currentJulianDay={appState.currentJulianDay}
+            {...(appState.wasmModule?.get_version() && { wasmVersion: appState.wasmModule.get_version() })}
+            {...(appState.timeData && { timeData: appState.timeData })}
+          />}
         </main>
 
-        {/* Footer with performance metrics */}
-        <footer className="app-footer">
-          <p>
-            High-precision astronomical calculations powered by Rust WASM
-          </p>
-          <div className="performance-metrics">
-            <span>Target: 60fps</span>
-            <span>WASM Version: {appState.wasmModule?.get_version() ?? 'Loading...'}</span>
-            <span>Bodies: {appState.wasmModule?.get_body_count() ?? 'N/A'}</span>
-          </div>
-        </footer>
       </div>
     </ErrorBoundary>
   );

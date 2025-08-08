@@ -23,7 +23,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 
 ### Frontend
 - **TypeScript 5.9.2** with strict type checking
-- **Babylon.js 8.20.0** for 3D astronomical visualization
+- **Babylon.js 8.21.0** for 3D astronomical visualization
 - **Vite 7.0.6** build system with WASM integration
 - **React 19.1.1** with latest features
 - **Fluent** for internationalization (ICU MessageFormat)
@@ -134,7 +134,25 @@ make wasm-perf            # WASM performance validation
 make pre-commit
 ```
 
-### Forbidden Anti-Patterns
+### 🚨 CRITICAL WASM ANTI-PATTERNS (PROJECT FAILURE IF VIOLATED)
+
+**🔥 СТРОГО ЗАПРЕЩЕННЫЕ ПАТТЕРНЫ В WASM ОБЕРТКЕ:**
+- ❌ **Mock-данные любого вида** - даже временные или для тестов
+- ❌ **Кастомные астрономические формулы** не из astro-rust библиотеки
+- ❌ **Hardcoded константы** планетарных позиций или орбитальных элементов
+- ❌ **Прямые математические расчеты** вместо вызовов astro-rust функций
+- ❌ **eval()** - 🚨 КРИТИЧЕСКАЯ уязвимость безопасности
+- ❌ **Изменение кода в ./astro-rust/** - папка read-only
+- ❌ **Частичное покрытие API** - должны быть ВСЕ функции библиотеки
+- ❌ **Отсебятина в расчетах** - только чистые astro-rust вызовы
+
+**✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
+- ТОЛЬКО функции из astro-rust для астрономических расчетов
+- Полное покрытие API (24 функции в обертке)
+- Реальные эфемеридные данные для тестов
+- Максимальная точность с коррекциями нутации/прецессии
+
+### General Anti-Patterns
 
 - ❌ **`unwrap()`**, **`expect()`**, **`panic!()`** - Use `Result<T, E>` everywhere
 - ❌ **`HashMap::new()`**, **`Vec::new()`** - Use `with_capacity()` for performance
@@ -212,11 +230,11 @@ make pre-commit
 ```
 
 🚀 **Phase 1.2: 3D Визуализация** (ГОТОВО К ИМПЛЕМЕНТАЦИИ)
-- [x] Babylon.js 8.20.0 dependencies установлены и обновлены
+- [x] Babylon.js 8.21.0 dependencies установлены и обновлены
 - [x] Vite 7.0.6 + React 19.1.1 + TypeScript 5.9.2 стек готов
 - [x] WASM-Frontend интеграция complete с astro-rust
 - [x] Build система работает (17.48s)
-- [ ] **СЛЕДУЮЩИЙ ЭТАП**: Babylon.js 8.20.0 Engine + Scene setup
+- [ ] **СЛЕДУЮЩИЙ ЭТАП**: Babylon.js 8.21.0 Engine + Scene setup
 - [ ] **СЛЕДУЮЩИЙ ЭТАП**: Cinematic 3D rendering (60fps target)
 - [ ] **СЛЕДУЮЩИЙ ЭТАП**: Real-time astronomical data visualization
 

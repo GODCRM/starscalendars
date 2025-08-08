@@ -6,14 +6,16 @@ use crate::{ports::*, AppResult};
 use std::sync::Arc;
 
 mod auth;
-mod astronomical;
+// mod astronomical; // ❌ REMOVED: violates WASM-only architecture per tz.md
 mod user;
 
 pub use auth::*;
-pub use astronomical::*;
+// pub use astronomical::*; // ❌ REMOVED: WASM-only calculations
 pub use user::*;
 
 /// Dependency injection container for use cases
+/// 
+/// ❌ CORRECTED: Removed astronomical_service per tz.md WASM-only architecture requirement  
 #[derive(Clone)]
 pub struct AppServices {
     pub user_repo: Arc<dyn UserRepository>,
@@ -21,7 +23,7 @@ pub struct AppServices {
     pub telegram_service: Arc<dyn TelegramService>,
     pub cache_service: Arc<dyn CacheService>,
     pub jwt_service: Arc<dyn JwtService>,
-    pub astronomical_service: Arc<dyn AstronomicalService>,
+    // ❌ REMOVED: astronomical_service (violates WASM-only architecture)
 }
 
 impl AppServices {
@@ -31,7 +33,7 @@ impl AppServices {
         telegram_service: Arc<dyn TelegramService>,
         cache_service: Arc<dyn CacheService>,
         jwt_service: Arc<dyn JwtService>,
-        astronomical_service: Arc<dyn AstronomicalService>,
+        // ❌ REMOVED: astronomical_service parameter (WASM-only per tz.md)
     ) -> Self {
         Self {
             user_repo,
@@ -39,7 +41,7 @@ impl AppServices {
             telegram_service,
             cache_service,
             jwt_service,
-            astronomical_service,
+            // ❌ REMOVED: astronomical_service field (WASM-only per tz.md)
         }
     }
 }

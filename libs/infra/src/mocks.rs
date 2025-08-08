@@ -116,65 +116,14 @@ impl TokenRepository for MockTokenRepository {
     }
 }
 
-/// Mock astronomical service for testing
-pub struct MockAstronomicalService {
-    mock_positions: Arc<std::sync::Mutex<Vec<CelestialBodyPosition>>>,
-}
-
-impl MockAstronomicalService {
-    pub fn new() -> Self {
-        let mock_positions = vec![
-            CelestialBodyPosition {
-                body: CelestialBody::Sun,
-                position: Cartesian::new(0.0, 0.0, 0.0),
-                julian_day: JulianDay::J2000,
-            },
-            CelestialBodyPosition {
-                body: CelestialBody::Earth,
-                position: Cartesian::new(1.0, 0.0, 0.0),
-                julian_day: JulianDay::J2000,
-            },
-        ];
-        
-        Self {
-            mock_positions: Arc::new(std::sync::Mutex::new(mock_positions)),
-        }
-    }
-    
-    pub fn set_mock_positions(&self, positions: Vec<CelestialBodyPosition>) {
-        if let Ok(mut mock_positions) = self.mock_positions.lock() {
-            *mock_positions = positions;
-        }
-    }
-}
-
-impl Default for MockAstronomicalService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[async_trait]
-impl AstronomicalService for MockAstronomicalService {
-    async fn calculate_planetary_positions(&self, _julian_day: JulianDay) -> PortResult<Vec<CelestialBodyPosition>> {
-        if let Ok(positions) = self.mock_positions.lock() {
-            Ok(positions.clone())
-        } else {
-            Ok(Vec::with_capacity(0))
-        }
-    }
-    
-    async fn calculate_spiritual_events(&self, _start: time::OffsetDateTime, _end: time::OffsetDateTime) -> PortResult<Vec<EventSpiritualEvent>> {
-        // Mock spiritual event
-        let event = EventSpiritualEvent::RecommendationGenerated {
-            event_id: EventId::new(),
-            occurred_at: time::OffsetDateTime::now_utc(),
-            telegram_user_id: TelegramId(12345),
-            julian_day: JulianDay::new(2460000.0).map_err(|e| InfraError::Internal(format!("Invalid julian day: {}", e)))?,
-            recommendation_type: "Full Moon".to_string(),
-            content: "Mock Full Moon Meditation: A powerful time for spiritual reflection".to_string(),
-        };
-        
-        Ok(vec![event])
-    }
-}
+// ❌ ARCHITECTURAL VIOLATION REMOVED:
+// Mock astronomical service with hardcoded planetary positions violates tz.md WASM-only architecture.
+//
+// **VIOLATION DETAILS:**
+// - Contained hardcoded CelestialBodyPosition data (lines 126-137 in original)
+// - Mock Sun at (0,0,0) and Earth at (1,0,0) coordinates 
+// - Violates "ВСЕ астрономические расчеты ТОЛЬКО в WASM модуле на клиенте" requirement
+//
+// **CORRECT APPROACH:**
+// All planetary positions must come from WASM compute_all(julian_day) function only.
+// Infrastructure layer provides ONLY external service adapters (PostgreSQL, Redis, Telegram, JWT).

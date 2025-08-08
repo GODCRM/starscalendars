@@ -1,0 +1,534 @@
+/**
+ * UIOverlay CSS - Performance-optimized overlay styles for StarsCalendars
+ * Implements spiritual astronomy UI with quantum time display from reference scene
+ */
+
+/* ✅ QUANTUM TIME PANEL - точные стили из референсной сцены */
+.quantum-time-panel {
+  background: rgba(12, 18, 40, 0.85);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  color: #CCCDCE;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-width: 300px;
+}
+
+.quantum-time-display {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.quantum-title {
+  font-size: 18px;
+  color: #CCCDCE;
+  margin: 0 0 10px 0;
+  font-weight: normal;
+}
+
+.quantum-value {
+  font-size: 34px;
+  color: #CCCDCE;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.quantum-value:hover {
+  color: #ffffff;
+}
+
+.current-time-display {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.current-time {
+  font-size: 15px;
+  color: #CCCDCE;
+  line-height: 1.4;
+}
+
+.astronomical-info {
+  border-top: 1px solid rgba(204, 205, 206, 0.2);
+  padding-top: 15px;
+}
+
+.earth-info {
+  margin-bottom: 15px;
+}
+
+.earth-info p {
+  font-size: 15px;
+  color: #CCCDCE;
+  margin: 0;
+  text-align: center;
+}
+
+.moon-info h4 {
+  font-size: 17px;
+  color: #CCCDCE;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.moon-info p {
+  font-size: 15px;
+  color: #CCCDCE;
+  margin: 5px 0;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ✅ UI OVERLAY LAYOUT */
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-overlay.loading {
+  pointer-events: all;
+  background: rgba(0, 0, 0, 0.9);
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-overlay.operational {
+  pointer-events: none;
+}
+
+.ui-overlay.operational > * {
+  pointer-events: all;
+}
+
+/* ✅ LOADING ANIMATION */
+.loading-container {
+  text-align: center;
+  color: #CCCDCE;
+}
+
+.cosmic-spinner {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 30px;
+}
+
+.orbit {
+  position: absolute;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  animation: orbit 3s linear infinite;
+}
+
+.orbit-1 {
+  width: 40px;
+  height: 40px;
+  border-top-color: #FFD700;
+  top: 30px;
+  left: 30px;
+  animation-duration: 1.5s;
+}
+
+.orbit-2 {
+  width: 60px;
+  height: 60px;
+  border-right-color: #87CEEB;
+  top: 20px;
+  left: 20px;
+  animation-duration: 2s;
+}
+
+.orbit-3 {
+  width: 80px;
+  height: 80px;
+  border-bottom-color: #C0C0C0;
+  top: 10px;
+  left: 10px;
+  animation-duration: 2.5s;
+}
+
+.sun-center {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #FFD700;
+  border-radius: 50%;
+  top: 44px;
+  left: 44px;
+  box-shadow: 0 0 20px #FFD700;
+}
+
+@keyframes orbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ✅ TOP HEADER */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 25px;
+  background: rgba(12, 18, 40, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(204, 205, 206, 0.2);
+}
+
+.app-title h1 {
+  font-size: 24px;
+  color: #CCCDCE;
+  margin: 0;
+  font-weight: 300;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: rgba(204, 205, 206, 0.7);
+}
+
+.header-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+/* ✅ LANGUAGE SELECTOR */
+.language-selector {
+  position: relative;
+}
+
+.language-toggle {
+  background: rgba(204, 205, 206, 0.1);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  color: #CCCDCE;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.language-toggle:hover {
+  background: rgba(204, 205, 206, 0.2);
+  border-color: rgba(204, 205, 206, 0.5);
+}
+
+.language-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: rgba(12, 18, 40, 0.95);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  border-radius: 6px;
+  backdrop-filter: blur(15px);
+  min-width: 200px;
+  z-index: 1001;
+  margin-top: 5px;
+}
+
+.language-option {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #CCCDCE;
+  padding: 10px 15px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.language-option:hover {
+  background: rgba(204, 205, 206, 0.1);
+}
+
+.language-option.active {
+  background: rgba(255, 215, 0, 0.2);
+  color: #FFD700;
+}
+
+.settings-toggle {
+  background: rgba(204, 205, 206, 0.1);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  color: #CCCDCE;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.settings-toggle:hover {
+  background: rgba(204, 205, 206, 0.2);
+  transform: rotate(90deg);
+}
+
+/* ✅ CONTENT PANELS */
+.content-panels {
+  flex: 1;
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+}
+
+.left-panel, .right-panel {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.center-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ✅ CELESTIAL DATA PANEL */
+.celestial-data-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.celestial-body-card {
+  background: rgba(12, 18, 40, 0.8);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  border-radius: 8px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.celestial-body-card h3 {
+  font-size: 16px;
+  color: #CCCDCE;
+  margin: 0 0 10px 0;
+  font-weight: 500;
+}
+
+.coordinates p {
+  font-size: 12px;
+  color: rgba(204, 205, 206, 0.8);
+  margin: 3px 0;
+  font-family: 'Courier New', monospace;
+}
+
+.sun-card {
+  border-left: 4px solid #FFD700;
+}
+
+.earth-card {
+  border-left: 4px solid #4A90E2;
+}
+
+.moon-card {
+  border-left: 4px solid #C0C0C0;
+}
+
+.time-info {
+  background: rgba(12, 18, 40, 0.6);
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.time-info p {
+  font-size: 11px;
+  color: rgba(204, 205, 206, 0.7);
+  margin: 2px 0;
+}
+
+/* ✅ PERFORMANCE PANEL */
+.performance-panel {
+  background: rgba(12, 18, 40, 0.8);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  border-radius: 8px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.performance-panel h4 {
+  font-size: 16px;
+  color: #CCCDCE;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.performance-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: rgba(204, 205, 206, 0.7);
+}
+
+.metric-value {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+.metric-value.good {
+  color: #4CAF50;
+}
+
+.metric-value.ok {
+  color: #FF9800;
+}
+
+.metric-value.poor {
+  color: #F44336;
+}
+
+/* ✅ SETTINGS PANEL */
+.settings-panel {
+  background: rgba(12, 18, 40, 0.8);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  border-radius: 8px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.settings-panel h4 {
+  font-size: 16px;
+  color: #CCCDCE;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.setting-group {
+  margin-bottom: 15px;
+}
+
+.setting-group label {
+  display: block;
+  font-size: 12px;
+  color: rgba(204, 205, 206, 0.8);
+  margin-bottom: 5px;
+}
+
+.setting-group select {
+  width: 100%;
+  background: rgba(204, 205, 206, 0.1);
+  border: 1px solid rgba(204, 205, 206, 0.3);
+  color: #CCCDCE;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* ✅ BOTTOM STATUS BAR */
+.bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 25px;
+  background: rgba(12, 18, 40, 0.8);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(204, 205, 206, 0.2);
+}
+
+.status-indicators {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #F44336;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.online {
+  background: #4CAF50;
+}
+
+.status-text {
+  font-size: 12px;
+  color: rgba(204, 205, 206, 0.8);
+}
+
+.cosmic-time {
+  font-size: 12px;
+  color: rgba(204, 205, 206, 0.6);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ✅ RTL SUPPORT */
+.ui-overlay.rtl {
+  direction: rtl;
+}
+
+.ui-overlay.rtl .language-dropdown {
+  right: auto;
+  left: 0;
+}
+
+.ui-overlay.rtl .header-controls {
+  flex-direction: row-reverse;
+}
+
+/* ✅ RESPONSIVE DESIGN */
+@media (max-width: 1200px) {
+  .content-panels {
+    flex-direction: column;
+  }
+  
+  .left-panel, .right-panel {
+    width: 100%;
+  }
+  
+  .center-panel {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-bar {
+    padding: 10px 15px;
+  }
+  
+  .app-title h1 {
+    font-size: 20px;
+  }
+  
+  .content-panels {
+    padding: 15px;
+    gap: 15px;
+  }
+  
+  .quantum-time-panel {
+    min-width: auto;
+  }
+  
+  .quantum-value {
+    font-size: 28px;
+  }
+}

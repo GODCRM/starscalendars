@@ -12,6 +12,9 @@ import { useLanguage, type SupportedLanguage } from '../i18n/LanguageManager';
 import type { AstronomicalState } from '../wasm/init';
 import './UIOverlay.css';
 
+// ✅ CORRECT - Import time display data from BabylonScene
+import type { TimeDisplayData } from '../scene/BabylonScene';
+
 // ✅ CORRECT - Strict interface for overlay props
 interface UIOverlayProps {
   readonly astronomicalData: AstronomicalState | null;
@@ -19,6 +22,7 @@ interface UIOverlayProps {
   readonly frameCount: number;
   readonly currentJulianDay: number;
   readonly wasmVersion?: string;
+  readonly timeData?: TimeDisplayData; // ✅ Данные времени из референсной сцены
 }
 
 // ✅ CORRECT - Performance timer for UI operations
@@ -171,31 +175,7 @@ const CelestialDataPanel: React.FC<{
         </div>
       </div>
 
-      <div className="spiritual-resonance-card">
-        <h3>{t('spiritual-quantum-resonance')}</h3>
-        <div className="resonance-display">
-          <div className="resonance-value">
-            {formatNumber(data.quantumResonance, 4)}
-          </div>
-          <div className="resonance-bar">
-            <div 
-              className="resonance-fill"
-              style={{ 
-                width: `${data.quantumResonance * 100}%`,
-                transition: 'width 0.3s ease-in-out'
-              }}
-            />
-          </div>
-          <div className="resonance-message">
-            {data.quantumResonance > 0.7 ? 
-              t('message-manifestation') : 
-              data.quantumResonance > 0.4 ? 
-              t('message-meditation') : 
-              t('message-reflection')
-            }
-          </div>
-        </div>
-      </div>
+      {/* ✅ REMOVED: Quantum resonance не нужен! */}
 
       <div className="time-info">
         <p>{t('astronomical-julian-day', { day: formatNumber(julianDay, 6) })}</p>
@@ -269,13 +249,70 @@ const PerformancePanel: React.FC<{
 
 PerformancePanel.displayName = 'PerformancePanel';
 
+// ✅ КРИТИЧЕСКИЙ КОМПОНЕНТ: Quantum Time Display из референсной сцены
+const QuantumTimePanel: React.FC<{
+  readonly timeData: TimeDisplayData;
+}> = React.memo(({ timeData }) => {
+
+  // ✅ Функции фаз Луны (из референса строки 1208-1227)
+  const getMoonPhaseText = useCallback((phase: number): string => {
+    switch (phase) {
+      case 0: return 'новолуние';
+      case 1: return 'растущий серп';
+      case 2: return 'первая четверть';
+      case 3: return 'растущая Луна';
+      case 4: return 'полнолуние';
+      case 5: return 'убывающая Луна';
+      case 6: return 'последняя четверть';
+      case 7: return 'убывающий серп';
+      default: return 'неизвестно';
+    }
+  }, []);
+
+  const getDayNumber = useCallback((dayNum: number): string => {
+    const daysNum = ["первый","второй","третий","четвертый","пятый","шестой","седьмой","восьмой","девятый","десятый","одиннадцатый","двенадцатый","тринадцатый","четырнадцатый","пятнадцатый","шестнадцатый","семнадцатый","восемнадцатый","девятнадцатый","двадцатый"];
+    return daysNum[dayNum] || `${dayNum + 1}-й`;
+  }, []);
+
+  return (
+    <div className="quantum-time-panel">
+      {/* ✅ КВАНТОВОЕ ВРЕМЯ - точно как в референсе */}
+      <div className="quantum-time-display">
+        <h3 className="quantum-title">Квантовое время</h3>
+        <div className="quantum-value">{timeData.quantumTime}</div>
+      </div>
+
+      {/* ✅ ТЕКУЩЕЕ ВРЕМЯ - точно как в референсе (строки 1337-1345) */}
+      <div className="current-time-display">
+        <div className="current-time">{timeData.currentTime}</div>
+      </div>
+
+      {/* ✅ АСТРОНОМИЧЕСКАЯ ИНФОРМАЦИЯ - как в референсе */}
+      <div className="astronomical-info">
+        <div className="earth-info">
+          <p>{timeData.earthDirection ? 'Восходящее' : 'Нисходящее'} движение активности природных сил.</p>
+        </div>
+
+        <div className="moon-info">
+          <h4>Луна:</h4>
+          <p>возраст {timeData.moonAge.toString()} д., {getMoonPhaseText(timeData.moonPhase)},</p>
+          <p>{getDayNumber(timeData.moonDays)} день движения Луны {timeData.moonDirection ? 'к апогею.' : 'к перигею.'}</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+QuantumTimePanel.displayName = 'QuantumTimePanel';
+
 // ✅ CORRECT - Main UI Overlay component
 const UIOverlay: React.FC<UIOverlayProps> = ({ 
   astronomicalData, 
   isInitialized, 
   frameCount, 
   currentJulianDay,
-  wasmVersion 
+  wasmVersion,
+  timeData 
 }) => {
   const { t, isRTL } = useLanguage();
   const [showSettings, setShowSettings] = useState(false);
@@ -341,6 +378,13 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
           )}
         </aside>
 
+        {/* Center Panel - Quantum Time (из референсной сцены) */}
+        {timeData && (
+          <div className="center-panel">
+            <QuantumTimePanel timeData={timeData} />
+          </div>
+        )}
+
         {/* Right Panel - Performance & Settings */}
         <aside className="right-panel">
           <PerformancePanel 
@@ -375,9 +419,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         
         <div className="cosmic-time">
           {astronomicalData && (
-            <span>{t('spiritual-energy-level', { 
-              level: Math.round(astronomicalData.quantumResonance * 100) 
-            })}%</span>
+            <span>{t('astronomical-system-active')}</span>
           )}
         </div>
       </footer>

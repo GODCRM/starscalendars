@@ -11,21 +11,9 @@ use thiserror::Error;
 /// All errors are serializable for WASM interop and structured logging
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]
 pub enum DomainError {
-    // Astronomical calculation errors
-    #[error("Invalid Julian Day: {0}")]
-    InvalidJulianDay(f64),
-    
-    #[error("Invalid coordinates provided")]
-    InvalidCoordinates,
-    
-    #[error("Invalid distance: {0} (must be positive)")]
-    InvalidDistance(f64),
-    
-    #[error("Ephemeris data capacity exceeded (max 11 bodies)")]
-    EphemerisCapacityExceeded,
-    
-    #[error("Unsupported celestial body calculation")]
-    UnsupportedCelestialBody,
+    // ❌ REMOVED: Astronomical validation errors - moved to WASM frontend per tz.md
+    // InvalidJulianDay, InvalidCoordinates, InvalidDistance, EphemerisCapacityExceeded, UnsupportedCelestialBody
+    // All astronomical validation is now performed in WASM module only
     
     // Authentication and authorization errors
     #[error("Invalid user ID format: {0}")]
@@ -152,11 +140,7 @@ impl DomainError {
     /// Get error category for logging and metrics
     pub fn category(&self) -> &'static str {
         match self {
-            Self::InvalidJulianDay(_)
-            | Self::InvalidCoordinates
-            | Self::InvalidDistance(_)
-            | Self::EphemerisCapacityExceeded
-            | Self::UnsupportedCelestialBody => "astronomical",
+            // ❌ REMOVED: Astronomical error categories - WASM-only per tz.md
             
             Self::InvalidUserId(_)
             | Self::InvalidTelegramUserId(_)
@@ -203,11 +187,12 @@ mod tests {
     
     #[test]
     fn test_error_serialization() {
-        let error = DomainError::InvalidJulianDay(123.45);
+        // ❌ UPDATED: Test with auth error instead of removed astronomical error
+        let error = DomainError::Unauthorized;
         
         if let Ok(json) = serde_json::to_string(&error) {
             if let Ok(deserialized) = serde_json::from_str::<DomainError>(&json) {
-                assert!(matches!(deserialized, DomainError::InvalidJulianDay(123.45)));
+                assert!(matches!(deserialized, DomainError::Unauthorized));
             } else {
                 assert!(false, "Failed to deserialize domain error");
             }
@@ -218,9 +203,10 @@ mod tests {
     
     #[test]
     fn test_error_categories() {
-        assert_eq!(DomainError::InvalidJulianDay(0.0).category(), "astronomical");
+        // ❌ UPDATED: Test only non-astronomical error categories per WASM-only architecture
         assert_eq!(DomainError::Unauthorized.category(), "auth");
         assert_eq!(DomainError::UserNotFound("test".to_string()).category(), "user");
+        assert_eq!(DomainError::ValidationFailed { field: "test".to_string(), message: "invalid".to_string() }.category(), "validation");
     }
     
     #[test]

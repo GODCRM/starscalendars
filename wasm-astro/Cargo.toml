@@ -54,7 +54,7 @@ web-sys = { version = "0.3", features = [
 default = ["wasm"]
 wasm = []
 
-# wasm-pack optimization settings for <100KB target
+# wasm-pack optimization settings for full astronomical library
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false  # Disable wasm-opt for compatibility with modern WASM features
 

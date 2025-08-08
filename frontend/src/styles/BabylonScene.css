@@ -5,8 +5,7 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(135deg, #000428 0%, #004e92 100%);
-  background-attachment: fixed;
+  background: transparent; /* ✅ NO BACKGROUND - 3D canvas shows through */
 }
 
 /* ✅ Main 3D Canvas - Full viewport coverage */
@@ -39,107 +38,62 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* ✅ Celestial Information Panel */
-.celestial-info {
+/* ✅ Authentication Button */
+.auth-button-container {
   position: absolute;
-  top: 20px;
+  top: 100px; /* Moved below header */
   right: 20px;
-  background: rgba(0, 0, 0, 0.8);
+  z-index: 20; /* Above header (z-index: 15) */
+  pointer-events: auto;
+}
+
+.auth-button {
+  background: linear-gradient(135deg, #007acc 0%, #005bb5 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 20px;
-  max-width: 300px;
-  pointer-events: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  animation: fadeInUp 0.6s ease-out;
 }
 
-.celestial-body {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.auth-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 122, 204, 0.4);
+  background: linear-gradient(135deg, #0088ff 0%, #006bd6 100%);
 }
 
-.celestial-body:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
+.auth-button:active {
+  transform: translateY(0);
 }
 
-.celestial-body h3 {
-  color: #fff;
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.celestial-body p {
-  color: rgba(255, 255, 255, 0.8);
-  margin: 4px 0;
-  font-size: 13px;
-  font-family: 'JetBrains Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
-  line-height: 1.4;
-}
-
-/* ✅ Quantum Resonance Special Styling */
-.quantum-resonance {
-  background: linear-gradient(135deg, rgba(138, 43, 226, 0.2) 0%, rgba(75, 0, 130, 0.2) 100%);
-  border: 1px solid rgba(138, 43, 226, 0.3);
+/* ✅ Development Info (minimal) */
+.dev-info {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 12px;
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+  z-index: 20; /* ✅ Above other UI elements */
 }
 
-.quantum-resonance h3 {
-  color: #DDA0DD;
-  font-size: 14px;
-  margin-bottom: 6px;
+.dev-info p {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 2px 0;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.quantum-resonance p {
-  color: #E6E6FA;
-  font-size: 20px;
-  font-weight: 700;
-  text-align: center;
-  margin: 0 0 8px 0;
-  text-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
-}
-
-/* ✅ Quantum Resonance Visual Bar */
-.resonance-bar {
-  width: 100%;
-  height: 8px;
-  background: rgba(138, 43, 226, 0.2);
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid rgba(138, 43, 226, 0.3);
-}
-
-.resonance-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #8A2BE2 0%, #DDA0DD 50%, #E6E6FA 100%);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-  box-shadow: 0 0 8px rgba(138, 43, 226, 0.6);
-  position: relative;
-}
-
-.resonance-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
+/* ✅ REMOVED: Old celestial info and quantum resonance styles - not needed anymore */
 
 /* ✅ App Header - Floating above 3D scene */
 .app-header {
@@ -198,45 +152,10 @@
   background: rgba(248, 113, 113, 0.1);
 }
 
-/* ✅ Footer - Floating bottom */
-.app-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 15;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%);
-  backdrop-filter: blur(8px);
-  padding: 16px 20px;
-  text-align: center;
-  pointer-events: auto;
-}
+/* ✅ Footer styles removed - footer is no longer needed */
 
-.app-footer p {
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0 0 8px 0;
-  font-size: 12px;
-}
-
-.performance-metrics {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.performance-metrics span {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 10px;
-  font-family: 'JetBrains Mono', monospace;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 6px;
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* ✅ Loading State */
-.loading-container {
+/* ✅ App Loading Screen */
+.app-loading-screen {
   position: fixed;
   top: 0;
   left: 0;

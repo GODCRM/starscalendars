@@ -6,7 +6,7 @@
   "type": "module",
   "workspaces": [
     "frontend",
-    "wasm-astro", 
+    "wasm-astro",
     "dioxus-app",
     "i18n"
   ],
@@ -18,7 +18,9 @@
     "build:wasm:debug": "cd wasm-astro && wasm-pack build --dev --target web --out-dir pkg",
     "build:i18n": "pnpm run -r build:i18n",
     "dev": "concurrently \"pnpm run dev:frontend\" \"pnpm run dev:backend\" \"pnpm run dev:dioxus\" \"pnpm run dev:telegram\"",
-    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:full": "./scripts/dev-full.sh",
+    "dev:frontend": "pnpm --filter starscalendars-frontend dev",
+    "dev:frontend-only": "./scripts/dev-frontend.sh",
     "dev:backend": "cargo run -p backend",
     "dev:dioxus": "pnpm --filter dioxus-app dev",
     "dev:telegram": "cargo run -p telegram-bot",
@@ -28,20 +30,20 @@
     "clean": "pnpm run -r clean && rm -rf node_modules/.pnpm && rm -rf wasm-astro/pkg",
     "clean:wasm": "rm -rf wasm-astro/pkg",
     "test": "pnpm run -r test",
-    "test:wasm": "node scripts/test-wasm.js",
+    "test:wasm": "node --experimental-wasm-modules scripts/test-wasm.js",
     "quality-check": "make quality-check",
     "pre-commit": "make pre-commit"
   },
   "devDependencies": {
-    "@types/node": "^22.7.4",
+    "@types/node": "^22.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.32.0",
+    "prettier": "^3.6.2",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "^5.9.2",
-    "vite": "^7.0.6",
-    "concurrently": "^9.1.0",
-    "simple-git-hooks": "^2.12.0",
-    "prettier": "^3.3.3",
-    "eslint": "^9.12.0",
-    "@typescript-eslint/eslint-plugin": "^8.8.0",
-    "@typescript-eslint/parser": "^8.8.0"
+    "vite": "^7.0.6"
   },
   "engines": {
     "node": ">=20.0.0",

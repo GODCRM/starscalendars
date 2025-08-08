@@ -7,7 +7,10 @@ use std::sync::Arc;
 use tracing::{info, error};
 use crate::AppError;
 
-/// Application services container
+/// Application services container  
+/// 
+/// ❌ CORRECTED: Removed astronomical_service per tz.md WASM-only architecture requirement
+/// Backend provides ONLY: auth + PostgreSQL + Telegram + JWT + Cache services
 #[derive(Clone)]
 pub struct AppServices {
     pub user_repository: Arc<dyn crate::UserRepository + Send + Sync>,
@@ -15,7 +18,7 @@ pub struct AppServices {
     pub cache_service: Arc<dyn crate::CacheService + Send + Sync>,
     pub jwt_service: Arc<dyn crate::JwtService + Send + Sync>,
     pub telegram_service: Arc<dyn crate::TelegramService + Send + Sync>,
-    pub astronomical_service: Arc<dyn crate::AstronomicalService + Send + Sync>,
+    // ❌ REMOVED: astronomical_service (violates WASM-only architecture)
 }
 
 impl AppServices {
@@ -86,10 +89,10 @@ impl AppServices {
             database_service.pool().clone()
         );
         
-        // Initialize astronomical service
-        let astronomical_service = starscalendars_infra::AstronomicalServiceImpl::new();
+        // ❌ REMOVED: Astronomical service initialization (violates WASM-only architecture)
+        // All astronomical calculations performed in frontend WASM module only
         
-        info!("✅ All production services initialized successfully");
+        info!("✅ All production services initialized successfully (WASM-only architecture)");
         
         Ok(Self {
             user_repository: Arc::new(user_repository),
@@ -97,7 +100,7 @@ impl AppServices {
             cache_service: Arc::new(telegram_cache),
             jwt_service: Arc::new(jwt_service),
             telegram_service: Arc::new(telegram_service),
-            astronomical_service: Arc::new(astronomical_service),
+            // ❌ REMOVED: astronomical_service (WASM-only per tz.md)
         })
     }
     
@@ -116,7 +119,7 @@ impl AppServices {
             cache_service: Arc::new(telegram_cache),
             jwt_service: Arc::new(starscalendars_infra::MockJwtService::new()),
             telegram_service: Arc::new(starscalendars_infra::MockTelegramService::new()),
-            astronomical_service: Arc::new(starscalendars_infra::MockAstronomicalService::new()),
+            // ❌ REMOVED: MockAstronomicalService (violates WASM-only architecture)
         }
     }
     

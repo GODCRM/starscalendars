@@ -1,7 +1,7 @@
 //! Spiritual and astrological domain types
 
 use serde::{Deserialize, Serialize};
-use crate::astronomical::{JulianDay, CelestialBody};
+// ❌ REMOVED: astronomical imports violate WASM-only architecture per tz.md
 use uuid::Uuid;
 
 /// Astrological system types
@@ -16,7 +16,7 @@ pub enum AstrologicalSystem {
 /// Birth chart information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BirthChart {
-    pub birth_time: JulianDay,
+    pub birth_time: f64, // Julian Day as f64 - calculated in WASM frontend only
     pub latitude: f64,
     pub longitude: f64,
     pub system: AstrologicalSystem,

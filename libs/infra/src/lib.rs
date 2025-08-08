@@ -7,7 +7,7 @@ pub mod database;
 pub mod cache;
 pub mod telegram;
 pub mod jwt;
-pub mod astronomical;
+// ❌ REMOVED: astronomical services violate WASM-only architecture per tz.md
 pub mod config;
 pub mod mocks;
 
@@ -16,7 +16,7 @@ pub use database::*;
 pub use cache::*;
 pub use telegram::*;
 pub use jwt::*;
-pub use astronomical::*;
+// ❌ REMOVED: astronomical services - WASM-only calculations per tz.md
 pub use config::*;
 pub use mocks::*;
 

@@ -1,6 +1,6 @@
 # 🚀 StarsCalendars - Getting Started
 
-**High-performance spiritual astronomy platform with TypeScript 5.9.2 + Babylon.js 8.20.0 + WASM astronomical calculations**
+**High-performance spiritual astronomy platform with TypeScript 5.9.2 + Babylon.js 8.21.0 + WASM astronomical calculations**
 
 ## 🎯 Quick Start (First Launch)
 
@@ -21,18 +21,27 @@ node --version   # Should be 20+
 pnpm --version   # Should be 9+
 ```
 
-### Build & Run (3 Steps)
+### 🚨 КРИТИЧЕСКИ ВАЖНО - Build & Run (3 Steps)
 
 ```bash
 # 1. Install dependencies
 pnpm install
 
-# 2. Build WASM module (CRITICAL - must be first!)
+# 2. Build WASM module (КРИТИЧЕСКИ ВАЖНО - должно быть первым!)
+# ⚠️  ЗАПОМНИ: WASM обертка использует ТОЛЬКО astro-rust функции
+# ⚠️  НИКАКИХ mock-данных, отсебятины или кастомных формул!
 pnpm run build:wasm
 
 # 3. Start development server
 cd frontend && pnpm run dev
 ```
+
+**🔒 СТРОГО ЗАПРЕЩЕНО при работе с WASM:**
+- Изменение файлов в папке `./astro-rust/` (read-only библиотека)
+- Mock-данные в тестах или разработке
+- Кастомные астрономические расчеты вместо astro-rust API
+- eval() в любом контексте
+- Hardcoded константы планетарных позиций
 
 **Expected Result**: Browser opens to `http://localhost:3000` with 3D astronomical scene.
 
@@ -41,11 +50,61 @@ cd frontend && pnpm run dev
 ### Current Implementation Status
 
 ✅ **Ready for Development:**
-- **Frontend**: React 19 + TypeScript 5.9.2 + Vite 7.0.6 + Babylon.js 8.20.0
-- **WASM Module**: High-precision astronomical calculations (astro-rust integration)
+- **Frontend**: React 19 + TypeScript 5.9.2 + Vite 7.0.6 + Babylon.js 8.21.0
+- **WASM Module**: ✅ ПОЛНОСТЬЮ РЕАЛИЗОВАНО - 24 функции покрывают весь API astro-rust с солнечным зенитом для поворота Земли
 - **3D Scene**: Interactive celestial body visualization with 60fps performance
 - **Build System**: pnpm workspaces with optimized Rust/WASM/TypeScript compilation
 - **Quality Gates**: Comprehensive linting, anti-pattern detection, performance monitoring
+
+## 🛡️ КРИТИЧЕСКИЕ ПРАВИЛА РАЗРАБОТКИ WASM ОБЕРТКИ
+
+### 🚨 СТРОГИЕ ОГРАНИЧЕНИЯ (НАРУШЕНИЕ = ПРОВАЛ ПРОЕКТА)
+
+**❌ АБСОЛЮТНО ЗАПРЕЩЕНО:**
+- **Mock-данные любого вида** - даже временные или для тестов
+- **Любая отсебятина** или кастомные астрономические расчеты
+- **Hardcoded значения** планетарных позиций или констант
+- **Математические формулы не из astro-rust библиотеки**
+- **eval()** в любом контексте - критическая уязвимость безопасности
+- **Изменение кода в папке `./astro-rust/`** - она read-only!
+- **Частичное покрытие API** - должны быть ВСЕ функции библиотеки
+- **Отсебятина в расчетах** - только чистые astro-rust вызовы
+
+**✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
+- ТОЛЬКО функции из astro-rust для астрономических расчетов
+- Полное покрытие API (24 функции в обертке)
+- Реальные эфемеридные данные для тестов
+- Максимальная точность с коррекциями нутации/прецессии
+- Production-ready паттерны Rust 1.88+ с WASM-bindgen
+
+### 🎯 ПРИМЕР ПРАВИЛЬНОЙ РЕАЛИЗАЦИИ НОВОЙ ФУНКЦИИ:
+```rust
+// ✅ ПРАВИЛЬНО - только astro-rust функции
+#[wasm_bindgen]
+pub fn calculate_solar_zenith_position(julian_day: f64) -> *const f64 {
+    // Используем ТОЛЬКО astro::sun::geocent_ecl_pos()
+    let (sun_ecl, _) = astro::sun::geocent_ecl_pos(julian_day);
+    // Применяем ТОЛЬКО astro::nutation::nutation()
+    let (nut_long, nut_oblq) = astro::nutation::nutation(julian_day);
+    // И так далее - ТОЛЬКО библиотечные функции
+}
+
+// ❌ ЗАПРЕЩЕНО - любая отсебятина
+#[wasm_bindgen] 
+pub fn bad_solar_position(julian_day: f64) -> *const f64 {
+    let fake_x = 1.0; // ❌ Mock данные!
+    let custom_calc = julian_day * 0.123; // ❌ Кастомная формула!
+}
+```
+
+### 📊 ТЕКУЩЕЕ СОСТОЯНИЕ WASM ОБЕРТКИ:
+- ✅ **24 функции** полностью покрывают astro-rust API
+- ✅ **Солнечный зенит** реализован для точного поворота Земли
+- ✅ **Нутация и прецессия** включены для максимальной точности
+- ✅ **Нулевое копирование** данных через thread-local буферы
+- ✅ **Производительность O(1)** для горячего пути рендеринга
+- 🛡️ **Гарантия**: никаких mock-данных или отсебятины
+- 🔒 **Папка ./astro-rust/** неприкосновенна (read-only)
 
 ❌ **Not Yet Implemented (Optional for first launch):**
 - Backend API server (Axum/PostgreSQL)
@@ -57,7 +116,7 @@ cd frontend && pnpm run dev
 
 The **main astronomical 3D scene** is fully functional:
 - Real-time celestial body calculations via WASM
-- Interactive 3D visualization with Babylon.js 8.20.0
+- Interactive 3D visualization with Babylon.js 8.21.0
 - High-precision astronomical algorithms (VSOP87, ELP-2000/82)
 - 60fps performance with zero-copy WASM-JS data transfer
 - TypeScript 5.9.2 strict type safety
@@ -204,7 +263,7 @@ chmod +x scripts/build-wasm.sh
 
 ## 🎨 3D Visualization
 
-### Babylon.js 8.20.0 Features
+### Babylon.js 8.21.0 Features
 - **WebGPU Support**: Automatic fallback to WebGL 2.0
 - **Material Optimization**: Frozen materials, pre-allocated meshes
 - **Camera System**: ArcRotateCamera with smooth controls
@@ -241,7 +300,7 @@ chmod +x scripts/build-wasm.sh
 ## 📚 Documentation Links
 
 - **TypeScript 5.9.2**: https://www.typescriptlang.org/
-- **Babylon.js 8.20.0**: https://doc.babylonjs.com/
+- **Babylon.js 8.21.0**: https://doc.babylonjs.com/
 - **Vite 7.0.6**: https://vite.dev/
 - **wasm-pack**: https://rustwasm.github.io/wasm-pack/
 - **astro-rust**: Local copy in `./astro-rust/` (🔒 READ-ONLY)

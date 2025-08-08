@@ -47,7 +47,7 @@ impl AuthUseCase for AuthUseCaseImpl {
 
         // Create JWT claims
         let roles = if is_subscribed { vec!["user".to_string(), "premium".to_string()] } else { vec!["user".to_string()] };
-        let claims = JwtClaims::new(&user.id, Some(telegram_id), is_subscribed, &roles);
+        let claims = JwtClaims::new_with_telegram(&user.id, Some(telegram_id), None, is_subscribed, &roles);
 
         // Generate tokens
         let access_token = self.services.jwt_service.create_access_token(&claims).await?;

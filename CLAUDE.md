@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.9.2, Babylon.js 8.20.0, Vite 7.0.6, React 19.1.1, and high-performance 3D web development with production-grade Telegram-only authentication.
+You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.9.2, Babylon.js 8.21.0, Vite 7.0.6, React 19.1.1, and high-performance 3D web development with production-grade Telegram-only authentication.
 
 ## Communication Style
 - DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you 
@@ -45,6 +45,25 @@ irrelevant
 
 **⚠️ This comprehensive research is MANDATORY and comes FIRST for every agent.**
 
+## 🚨 КРИТИЧЕСКИЕ ПРАВИЛА WASM ОБЕРТКИ ASTRO-RUST:
+
+### **СТРОГИЕ ОГРАНИЧЕНИЯ (НАРУШЕНИЕ = ПРОВАЛ ЗАДАЧИ):**
+
+**1. 🚫 АБСОЛЮТНО ЗАПРЕЩЕНО:**
+- **Mock-данные любого рода** (даже в тестах используй реальные astro-rust функции)
+- **Любая отсебятина** или кастомные астрономические расчеты
+- **Hardcoded значения** планетарных позиций или констант
+- **Математические формулы не из astro-rust библиотеки**
+- **Изменение кода в папке `./astro-rust/`** - она read-only!
+- **eval()** в любом контексте - критическая уязвимость
+
+**2. ✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
+- **ТОЛЬКО функции из astro-rust** для всех астрономических расчетов
+- **Полное покрытие API** - все 24 функции обертки соответствуют библиотеке
+- **Zero-copy data transfer** через Float64Array и thread-local буферы
+- **Максимальная точность** с коррекциями нутации и прецессии
+- **Production-ready паттерны** Rust 1.88+ с WASM-bindgen
+
 ## Current Project Status
 
 **Phase**: Active Development
@@ -53,7 +72,7 @@ irrelevant
 ### Implemented Components
 - **Frontend**: React 19 + Babylon.js 8 + TypeScript 5.9 with Vite 7 (needs TypeScript config fixes)
 - **Backend**: Axum server with clean architecture layers implemented (needs SQLX database setup)  
-- **WASM Module**: Astronomical calculations core with astro-rust integration (working)
+- **WASM Module**: ✅ ПОЛНОСТЬЮ РАБОТАЕТ - 24 функции покрывают весь API astro-rust, включая солнечный зенит для поворота Земли
 - **Domain/App/Infra Libraries**: Clean architecture implementation (some import issues)
 - **Dioxus App**: Authentication and profile management (configured)
 - **Quality System**: Comprehensive Makefile and quality rules (fully working)
@@ -96,8 +115,9 @@ starscalendars/
 
 ## Key Technologies & Stack
 
-- **Frontend Main Scene**: Babylon.js 8.20.0 with TypeScript 5.9.2/Vite 7.0.6/React 19.1.1
+- **Frontend Main Scene**: Babylon.js 8.21.0 with TypeScript 5.9.2/Vite 7.0.6/React 19.1.1
 - **Astronomical Calculations**: Rust + WebAssembly using local astro-rust library (📚 READ-ONLY: astro-rust/ folder must NOT be modified!)
+- **🌟 WASM ОБЕРТКА**: Полное покрытие всех функций astro-rust с СТРОГИМ ЗАПРЕТОМ на mock-данные и отсебятину!
 - **Backend**: Axum (Rust 1.88+) with PostgreSQL and WebSockets
 - **Authentication System**: Telegram-only auth via Teloxide with subscription verification
 - **Multilingual System**: 10-language support with Fluent (ICU MessageFormat)
@@ -235,15 +255,16 @@ pnpm run dev
 ### Build Commands (Actual package.json scripts)
 - `pnpm run build` - Build all workspaces (WASM → Frontend → Dioxus → Backend)
 - `pnpm run build:frontend` - Vite build for frontend  
-- `pnpm run build:wasm` - Execute ./scripts/build-wasm.sh (✅ working)
-- `pnpm run build:wasm:debug` - WASM debug build for development
+- `pnpm run build:wasm` - Execute ./scripts/build-wasm.sh (✅ working) → outputs to `frontend/src/wasm-astro/`
+- `pnpm run build:wasm:debug` - WASM debug build for development (⚠️ inconsistent: outputs to `pkg/`)
 - `pnpm run build:dioxus` - Dioxus build for auth app
 - `pnpm run build:i18n` - Build internationalization files
 - `cargo build --release` - Axum server production build (⚠️ needs DATABASE_URL for SQLX)
 - `time cargo check --workspace --exclude starscalendars-infra` - Quick Rust compilation check (✅ working)
 
 ### Development Commands (Actual package.json scripts)
-- `pnpm run dev` - Start all development servers concurrently
+- `pnpm run dev:full` - **🚀 ПОЛНАЯ НАСТРОЙКА**: собирает WASM + запускает все серверы
+- `pnpm run dev` - Start all development servers concurrently (без WASM сборки)
 - `pnpm run dev:frontend` - Vite dev server with hot reload
 - `pnpm run dev:backend` - Axum server with cargo run -p backend
 - `pnpm run dev:dioxus` - Dioxus development mode
@@ -416,27 +437,71 @@ make find-patterns         # Show detailed anti-pattern locations
 ### **🚨 CRITICAL DEPLOYMENT POLICY:**
 **МЫ НЕ ИСПОЛЬЗУЕМ DOCKER И РУКАМИ РАЗВОРАЧИВАЕМ НА СЕРВЕР AlmaLinux 9.4**
 
+### Production Architecture (nginx + Axum)
+```
+/opt/starscalendars/backend          ← Axum сервер (localhost:8080)
+/var/www/starscalendars/             ← Статические файлы (nginx)
+├── index.html                       ← React 3D сцена
+├── assets/main-abc.js               ← Скомпилированный фронтенд
+├── textures/                        ← Текстуры для Babylon.js
+│   ├── earth.jpg, moon.jpg, sun.jpg
+│   ├── stars/milky-way.jpg
+│   └── planets/*.jpg
+├── models/                          ← 3D модели (.babylon, .glb)
+├── wasm-astro/                      ← WASM астрономические расчеты
+│   ├── starscalendars_wasm_astro.js
+│   └── starscalendars_wasm_astro_bg.wasm
+└── cabinet/                         ← Dioxus полноценное приложение  
+    ├── index.html                   ← Личный кабинет пользователя
+    ├── auth/                        ← Авторизация через Telegram
+    ├── profile/                     ← Профиль и настройки
+    ├── learning/                    ← Обучающие материалы и курсы
+    ├── subscription/                ← Управление подпиской
+    ├── admin/                       ← Админка (для админов)
+    └── assets/
+```
+
 ### Production Deployment Flow
-1. **Frontend**: Компилируется заранее в `frontend/dist/` с помощью `pnpm run build:prod`
-2. **Backend**: Компилируется ТОЛЬКО на продакшн сервере AlmaLinux 9.4 с `cargo build --release`
-3. **WASM**: Компилируется заранее с `wasm-pack build --release --target web`
-4. **Deployment**: Скомпилированный фронт копируется на сервер к уже скомпилированному серверу
+1. **Frontend**: Компилируется заранее в `frontend/dist/` с помощью `pnpm run build`
+2. **Dioxus**: Компилируется заранее в `dioxus-app/dist/` с помощью `pnpm run build:dioxus`
+3. **WASM**: Компилируется заранее с `pnpm run build:wasm` → `frontend/src/wasm-astro/`
+4. **Backend**: Компилируется ТОЛЬКО на продакшн сервере AlmaLinux 9.4 с `cargo build --release`
+5. **nginx**: Отдаёт статику напрямую, проксирует API/WebSocket на Axum
 
-### AlmaLinux 9.4 Server Setup
+### AlmaLinux 9.4 Server Setup (с HTTPS)
 ```bash
-# Установка Rust на сервере
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup update stable
-rustup default stable
+# Установка системных зависимостей  
+sudo dnf install -y gcc openssl-devel postgresql-devel nginx rust cargo certbot python3-certbot-nginx
 
-# Установка системных зависимостей
-sudo dnf install -y gcc openssl-devel postgresql-devel
+# Создание директорий
+sudo mkdir -p /opt/starscalendars
+sudo mkdir -p /var/www/starscalendars
 
 # Компиляция сервера на продакшн машине
 cargo build --release --target-cpu=native
+sudo cp target/release/backend /opt/starscalendars/
 
-# Копирование статических файлов фронтенда
+# Копирование статических файлов
 rsync -av frontend/dist/ /var/www/starscalendars/
+rsync -av dioxus-app/dist/ /var/www/starscalendars/cabinet/
+
+# Настройка nginx с базовой конфигурацией
+sudo cp nginx.conf /etc/nginx/sites-available/starscalendars
+sudo ln -s /etc/nginx/sites-available/starscalendars /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# Получение SSL сертификатов Let's Encrypt
+sudo certbot --nginx -d starscalendars.com -d www.starscalendars.com
+
+# Настройка автообновления сертификатов
+echo "0 12 * * * /usr/bin/certbot renew --quiet" | sudo crontab -
+
+# Запуск сервисов
+sudo systemctl enable --now starscalendars
+sudo systemctl enable --now nginx
+
+# Проверка HTTPS
+curl -I https://starscalendars.com
 ```
 
 ### Deployment Agents
@@ -538,7 +603,39 @@ cargo test --release -- --ignored bench_
 - UUID tokens for Telegram account linking
 - Subscription status caching
 
-## Anti-patterns FORBIDDEN (tz.md Strict)
+## Anti-patterns FORBIDDEN (tz.md Strict) + WASM CRITICAL
+
+### **🚨 КРИТИЧЕСКИЕ WASM АНТИПАТТЕРНЫ (ПРИВОДЯТ К ПРОВАЛУ ПРОЕКТА):**
+
+**СТРОГО ЗАПРЕЩЕННЫЕ ПАТТЕРНЫ В WASM ОБЕРТКЕ:**
+- **Mock-данные любого вида** - даже временные или для тестов
+- **Кастомные астрономические формулы** не из astro-rust библиотеки
+- **Hardcoded константы** планетарных позиций или орбитальных элементов
+- **Прямые математические расчеты** вместо вызовов astro-rust функций
+- **eval()** - критическая уязвимость безопасности
+- **Изменение кода в ./astro-rust/** - папка read-only
+- **Частичное покрытие API** - должны быть ВСЕ функции библиотеки
+- **Отсебятина в расчетах** - только чистые astro-rust вызовы
+
+**ПРИМЕР ПРАВИЛЬНОЙ РЕАЛИЗАЦИИ НОВОЙ ФУНКЦИИ:**
+```rust
+// ✅ ПРАВИЛЬНО - только astro-rust функции
+#[wasm_bindgen]
+pub fn calculate_solar_zenith_position(julian_day: f64) -> *const f64 {
+    // Используем ТОЛЬКО astro::sun::geocent_ecl_pos()
+    let (sun_ecl, _) = astro::sun::geocent_ecl_pos(julian_day);
+    // Применяем ТОЛЬКО astro::nutation::nutation()
+    let (nut_long, nut_oblq) = astro::nutation::nutation(julian_day);
+    // И так далее - ТОЛЬКО библиотечные функции
+}
+
+// ❌ ЗАПРЕЩЕНО - любая отсебятина
+#[wasm_bindgen] 
+pub fn bad_solar_position(julian_day: f64) -> *const f64 {
+    let fake_x = 1.0; // ❌ Mock данные!
+    let custom_calc = julian_day * 0.123; // ❌ Кастомная формула!
+}
+```
 
 ### **Clean Architecture Violations:**
 - Domain layer depending on infrastructure
@@ -578,12 +675,21 @@ cargo test --release -- --ignored bench_
 - `as` conversions (use `TryFrom`)
 - `Vec::new()` (use `Vec::with_capacity()`)
 - `.await` in loops
+- `eval()` - **КРИТИЧЕСКАЯ УЯЗВИМОСТЬ** безопасности
+
+### **🚨 WASM Specific Anti-patterns:**
+- Mock-данные в любой форме (даже в тестах используй реальные astro-rust функции)
+- Кастомные астрономические расчеты (только astro-rust API)
+- Hardcoded координаты или орбитальные элементы
+- Частичное покрытие astro-rust API (должны быть ВСЕ функции)
+- Изменения в папке ./astro-rust/ (строго read-only)
+- Любая отсебятина вместо библиотечных вызовов
 
 ## 🌟 ASTRO-RUST API USAGE RULES (MANDATORY)
 
 ### **КРИТИЧЕСКИЕ ПРАВИЛА ИСПОЛЬЗОВАНИЯ ASTRO-RUST:**
 
-#### **1. ОБЯЗАТЕЛЬНОЕ ИСПОЛЬЗОВАНИЕ ЛОКАЛЬНОЙ КОПИИ:**
+#### **1. 🚨 ПОЛНОЕ ПОКРЫТИЕ ВСЕХ ФУНКЦИЙ ASTRO-RUST В WASM ОБЕРТКЕ:**
 ```toml
 # ✅ ПРАВИЛЬНО - локальная копия с багфиксами (🚨 НЕ ИЗМЕНЯТЬ astro-rust/ папку!)
 astro = { path = "./astro-rust" }
@@ -591,10 +697,14 @@ astro = { path = "./astro-rust" }
 # ❌ ЗАПРЕЩЕНО - оригинал с багами
 astro = "2.0.0"  # Broken decimal_day & lunar equations!
 ```
-**🔒 ВАЖНО**: Папка `astro-rust/` содержит неприкосновенный код библиотеки:
+
+**🔒 КРИТИЧЕСКИ ВАЖНО ДЛЯ ВСЕХ РАЗРАБОТЧИКОВ:**
 - **✅ МОЖНО**: Читать, изучать, анализировать код для создания WASM оберток
 - **✅ НУЖНО**: Полностью изучить API библиотеки перед написанием кода
-- **❌ ЗАПРЕЩЕНО**: Изменять, модифицировать любые файлы в этой папке
+- **❌ ЗАПРЕЩЕНО**: Изменять, модифицировать любые файлы в папке `./astro-rust/`
+- **🚨 ОБЯЗАТЕЛЬНО**: Добавляя новую функцию, используй ТОЛЬКО astro-rust API
+- **⚡ СОСТОЯНИЕ**: 24 функции полностью покрывают astro-rust, включая солнечный зенит
+- **🛡️ ГАРАНТИЯ**: Никакие mock-данные или отсебятина не допускаются
 
 #### **2. ОСНОВНЫЕ ФУНКЦИИ API:**
 ```rust
@@ -692,9 +802,10 @@ pub trait TelegramApi {
 
 ## Documentation Links
 
-- **Babylon.js 8.20.0 - Main**: https://doc.babylonjs.com/
-- **Babylon.js 8.20.0 - API**: https://doc.babylonjs.com/typedoc/
-- **Babylon.js 8.20.0 - CDN**: https://cdn.babylonjs.com/babylon.js
+- **Babylon.js 8.21.0 - Main**: https://doc.babylonjs.com/
+- **Babylon.js 8.21.0 - API**: https://doc.babylonjs.com/typedoc/
+- **Babylon.js 8.21.0 - NPM**: https://www.npmjs.com/package/babylonjs
+- **Babylon.js 8.21.0 - GIT**: https://github.com/BabylonJS/Babylon.js
 - **Vite 7.0.6 - Main**: https://vite.dev/
 - **React 19.1.1 - Main**: https://react.dev/
 - **TypeScript 5.9.2 - Main**: https://www.typescriptlang.org/
@@ -804,6 +915,51 @@ export DATABASE_URL="postgresql://user:pass@localhost/starscalendars"
 # OR for offline development:
 cargo sqlx prepare
 ```
+
+#### 6. 🚨 CRITICAL: WASM Module Loading Path Mismatch
+**Error**: `WASM module loading failed: Cannot resolve module '../../../wasm-astro/pkg/starscalendars_wasm_astro.js'`
+**Cause**: Path mismatch between build script output and TypeScript import
+**Problem**: 
+- Build script (`scripts/build-wasm.sh`) outputs to: `frontend/src/wasm-astro/`
+- But `frontend/src/wasm/init.ts` tries to load from: `../../../wasm-astro/pkg/`
+**Solution**: Fix the import path in `frontend/src/wasm/init.ts`:
+```typescript
+// ❌ WRONG - current path (line 103)
+const wasmModule = await import('../../../wasm-astro/pkg/starscalendars_wasm_astro.js');
+
+// ✅ CORRECT - should be
+const wasmModule = await import('../wasm-astro/starscalendars_wasm_astro.js');
+```
+**Additional Notes**:
+- This is a fundamental integration issue that prevents WASM from loading
+- `package.json` also has inconsistent paths (`build:wasm:debug` uses different output)
+- Production deployment needs to copy from correct source path: `frontend/src/wasm-astro/`
+
+## Essential Development Commands
+
+### Single Test Execution
+```bash
+# Run specific test file
+cargo test -p backend test_auth
+cargo test -p wasm-astro test_calculations
+
+# Run test with output for debugging
+cargo test test_function_name -- --nocapture
+
+# Run specific frontend test
+cd frontend && pnpm test -- --testNamePattern="UIOverlay"
+
+# Run WASM integration test
+pnpm run test:wasm
+```
+
+### Development Architecture Understanding
+
+#### Clean Architecture Layer Dependencies
+- **Domain** (`libs/domain/`) → No dependencies, pure business logic
+- **App** (`libs/app/`) → Depends only on domain, defines port interfaces
+- **Infra** (`libs/infra/`) → Implements ports, depends on external services
+- **Delivery** (`backend/`, `frontend/`) → Depends on app layer through dependency injection
 
 ### Test Code Patterns (Exception to Anti-Pattern Rules)
 

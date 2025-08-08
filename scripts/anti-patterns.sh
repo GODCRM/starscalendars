@@ -153,6 +153,7 @@ scan_pattern "\.expect(" "expect() usage" "Use Result<T, E> with custom error ty
 scan_pattern "todo!()" "todo! usage" "Complete implementation before production" "true"
 scan_pattern "HashSet::new()" "HashSet initialization without capacity" "Use HashSet::with_capacity(n) for pre-allocation" "false"
 scan_pattern "Vec::new()" "Vec initialization without capacity" "Use Vec::with_capacity(n) for pre-allocation" "false"
+scan_pattern "eval(" "eval() function usage" "🚨 CRITICAL SECURITY VULNERABILITY - never use eval() in any context" "false"
 
 echo "📋 Summary of scan results:"
 echo "  - Test code exclusions applied per CLAUDE.md"

@@ -23,15 +23,16 @@ fi
 cd "$(dirname "$0")/../wasm-astro"
 
 echo "📦 Compiling WASM module with wasm-pack..."
-echo "   Target: web (ES modules)"
+echo "   Target: bundler (Vite 7.0.6 optimized)"
 echo "   Mode: release (optimized)"
-echo "   Output: pkg/"
+echo "   Output: frontend/src/wasm-astro/"
 
-# Build WASM module with maximum optimization
+# Build WASM module with maximum optimization for Vite 7.0.6
+# ✅ 2025 BEST PRACTICE: --target bundler for vite-plugin-wasm 3.5.0
 wasm-pack build \
     --release \
-    --target web \
-    --out-dir pkg \
+    --target bundler \
+    --out-dir ../frontend/src/wasm-astro \
     --out-name starscalendars_wasm_astro \
     --scope starscalendars
 
@@ -39,14 +40,14 @@ echo "✅ WASM build completed successfully!"
 
 # Verify output files
 echo "📋 Generated files:"
-ls -la pkg/
+ls -la ../frontend/src/wasm-astro/
 
 # Verify expected files exist
 REQUIRED_FILES=(
-    "pkg/starscalendars_wasm_astro.js"
-    "pkg/starscalendars_wasm_astro_bg.wasm"
-    "pkg/starscalendars_wasm_astro.d.ts"
-    "pkg/package.json"
+    "../frontend/src/wasm-astro/starscalendars_wasm_astro.js"
+    "../frontend/src/wasm-astro/starscalendars_wasm_astro_bg.wasm"
+    "../frontend/src/wasm-astro/starscalendars_wasm_astro.d.ts"
+    "../frontend/src/wasm-astro/package.json"
 )
 
 echo "🔍 Verifying required files..."
@@ -64,8 +65,8 @@ done
 
 echo ""
 echo "🎯 Performance Summary:"
-WASM_SIZE=$(wc -c < "pkg/starscalendars_wasm_astro_bg.wasm" 2>/dev/null || echo "0")
-JS_SIZE=$(wc -c < "pkg/starscalendars_wasm_astro.js" 2>/dev/null || echo "0")
+WASM_SIZE=$(wc -c < "../frontend/src/wasm-astro/starscalendars_wasm_astro_bg.wasm" 2>/dev/null || echo "0")
+JS_SIZE=$(wc -c < "../frontend/src/wasm-astro/starscalendars_wasm_astro.js" 2>/dev/null || echo "0")
 TOTAL_SIZE=$((WASM_SIZE + JS_SIZE))
 
 echo "   WASM module: $WASM_SIZE bytes"
@@ -80,14 +81,15 @@ fi
 
 echo ""
 echo "🚀 WASM module ready for frontend integration!"
-echo "   Import path: '../../wasm-astro/pkg/starscalendars_wasm_astro.js'"
+echo "   ES Module: './wasm-astro/starscalendars_wasm_astro.js'"
+echo "   Location: frontend/src/wasm-astro/"
 echo "   Next step: pnpm run dev in frontend/"
 
 # Optional: Test WASM module can be loaded
 echo ""
 echo "🧪 Testing WASM module loading..."
 node -e "
-  import('file://$(pwd)/pkg/starscalendars_wasm_astro.js')
+  import('file://$(pwd)/../frontend/src/wasm-astro/starscalendars_wasm_astro.js')
     .then(module => {
       console.log('✅ WASM module loads successfully');
       console.log('   Version:', module.get_version?.() || 'unknown');

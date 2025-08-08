@@ -44,7 +44,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.d.ts",
-    "../wasm-astro/pkg/*.d.ts"
+    "src/wasm-astro/*.d.ts"
   ],
   "exclude": [
     "node_modules",

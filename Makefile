@@ -1,9 +1,9 @@
 # StarsCalendars Quality-First Makefile
 
-.PHONY: quality-check anti-patterns clippy security arch perf clean setup monitor quality-report quality-summary find-patterns security-audit test bench docs check ci
+.PHONY: quality-check anti-patterns wasm-critical wasm-perf clippy security arch perf clean setup monitor quality-report quality-summary find-patterns security-audit test bench docs check ci
 
-# 🛡️ Главная проверка качества
-quality-check: anti-patterns clippy security arch
+# 🛡️ Главная проверка качества (enhanced with WASM critical checks)
+quality-check: anti-patterns wasm-critical clippy security arch
 	@echo "✅ All quality checks passed!"
 
 # 🔍 Проверка антипаттернов (with enhanced test code exclusion)
@@ -30,60 +30,108 @@ error-handling-patterns:
 	@grep -q "thiserror\|anyhow" Cargo.toml || echo "⚠️  Consider using thiserror/anyhow for structured error handling"
 	@echo "✅ Error handling patterns validated"
 
-# 🦀 Строгий Clippy с anti.md правилами (per-package to avoid astro-rust)
+# 🦀 Строгий Clippy с anti.md правилами (только существующие пакеты)
 clippy:
 	@echo "🦀 Running strict Clippy checks (excluding astro-rust dependency)..."
-	@echo "📦 Checking backend..."
-	cargo clippy -p backend --all-targets --all-features -- \
-		-D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::as_conversions \
-		-D clippy::await_holding_lock -D clippy::inefficient_to_string -W clippy::missing_errors_doc || echo "⚠️ Backend clippy issues found"
-	@echo "📦 Checking domain layer..."
-	cargo clippy -p starscalendars-domain --all-targets --all-features -- \
-		-D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::as_conversions || echo "⚠️ Domain clippy issues found"
-	@echo "📦 Checking app layer..."
-	cargo clippy -p starscalendars-app --all-targets --all-features -- \
-		-D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::as_conversions || echo "⚠️ App clippy issues found"
-	@echo "📦 Checking dioxus-app..."
-	cargo clippy -p dioxus-app --all-targets --all-features -- \
-		-D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::as_conversions || echo "⚠️ Dioxus clippy issues found"
-	@echo "📦 Checking WASM module (astro-rust as dependency with relaxed rules)..."
-	cargo clippy -p starscalendars-wasm-astro --all-targets --all-features -- \
-		-W clippy::unwrap_used -W clippy::expect_used -W clippy::panic || echo "⚠️ WASM clippy issues found"
-	@echo "✅ Clippy checks completed with astro-rust dependency allowed"
+	@echo "📦 Checking WASM module..."
+	@if [ -f "wasm-astro/Cargo.toml" ]; then \
+		cargo clippy --manifest-path=wasm-astro/Cargo.toml --all-targets --all-features -- \
+			-W clippy::unwrap_used -W clippy::expect_used -W clippy::panic || echo "⚠️ WASM clippy issues found"; \
+	else \
+		echo "⚠️ WASM module not found at wasm-astro/"; \
+	fi
+	@echo "📦 Checking workspace packages..."
+	@if [ -f "backend/Cargo.toml" ]; then \
+		cargo clippy --manifest-path=backend/Cargo.toml --all-targets --all-features -- \
+			-D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::as_conversions || echo "⚠️ Backend clippy issues found"; \
+	fi
+	@if [ -d "libs" ]; then \
+		find libs -name "Cargo.toml" | while read cargo_file; do \
+			echo "📦 Checking $$cargo_file..."; \
+			cargo clippy --manifest-path="$$cargo_file" --all-targets --all-features -- \
+				-D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::as_conversions || echo "⚠️ Clippy issues in $$cargo_file"; \
+		done; \
+	fi
+	@if [ -f "dioxus-app/Cargo.toml" ]; then \
+		cargo clippy --manifest-path=dioxus-app/Cargo.toml --all-targets --all-features -- \
+			-D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::as_conversions || echo "⚠️ Dioxus clippy issues found"; \
+	fi
+	@echo "✅ Clippy checks completed for existing packages"
 
-# 🎯 WASM производительность
+# 🎯 WASM производительность и безопасность (enhanced for 2025)
 wasm-perf:
 	@echo "🎯 Checking WASM performance patterns..."
 	@! (grep -A10 -B10 "compute_all" wasm-astro/src/*.rs | grep -q "for\|while") || \
 		(echo "❌ Multiple WASM calls detected - violates O(1) requirement" && exit 1)
 	@echo "✅ WASM performance patterns valid"
 
-# 🔒 Безопасность
+# 🚨 CRITICAL WASM anti-patterns (based on 2025 security research)
+wasm-critical:
+	@echo "🚨 Checking CRITICAL WASM anti-patterns..."
+	@! (grep -r "mock_" --include="*.rs" wasm-astro/src/ 2>/dev/null | grep -v "#\[cfg(test)\]") || \
+		(echo "❌ CRITICAL: Mock data found in WASM - STRICTLY FORBIDDEN" && exit 1)
+	@! grep -r "const.*=.*[0-9]\+\.[0-9]" --include="*.rs" wasm-astro/src/ | grep -v "astro::" || \
+		(echo "❌ CRITICAL: Hardcoded astronomical constants - use astro-rust only" && exit 1)
+    @! grep -r "eval(" --include="*.rs" --include="*.ts" --include="*.js" \
+        --exclude-dir=node_modules --exclude-dir=frontend/node_modules \
+        --exclude-dir=dist --exclude-dir=frontend/dist \
+        --exclude-dir=target --exclude-dir=astro-rust \
+        . | grep -v "// ❌ FORBIDDEN" || \
+		(echo "❌ CRITICAL SECURITY: eval() usage detected - XSS vulnerability!" && exit 1)
+	@! (find wasm-astro/src/ -name "*.rs" -exec grep -l "fn.*calculate" {} \; | xargs grep -L "astro::") || \
+		(echo "❌ CRITICAL: Custom calculations without astro-rust - forbidden!" && exit 1)
+	@if [ -d "./astro-rust" ]; then \
+		if find ./astro-rust -name "*.rs" -newer ./astro-rust/Cargo.toml 2>/dev/null | grep -q .; then \
+			echo "❌ CRITICAL: astro-rust/ directory modified - READ-ONLY!"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "⚠️ astro-rust directory not found - cannot verify read-only status"; \
+	fi
+	@echo "✅ WASM critical anti-patterns check passed"
+
+# 🔒 Безопасность (исправленные проверки)
 security:
 	@echo "🔒 Running security checks..."
-	@grep -r "RS256" backend/src/ || echo "⚠️  RS256 JWT validation should be present"
-	@! (grep -r "format!" backend/src/ | grep -q "SELECT\|INSERT\|UPDATE") || \
-		(echo "❌ Potential SQL injection - use sqlx::query!" && exit 1)
+	@if [ -d "backend/src" ]; then \
+		grep -r "RS256" backend/src/ || echo "⚠️  RS256 JWT validation should be present"; \
+		if grep -r "format!" backend/src/ | grep -q "SELECT\|INSERT\|UPDATE"; then \
+			echo "❌ Potential SQL injection - use sqlx::query!"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "⚠️ Backend source not found - skipping backend security checks"; \
+	fi
 	@echo "✅ Security checks passed"
 
-# 🏗️ Архитектура
+# 🏗️ Архитектура (исправленные проверки)
 arch:
 	@echo "🏗️ Checking architecture compliance..."
-	@! grep -r "use.*infrastructure" libs/domain/src/ || \
-		(echo "❌ Domain layer depends on infrastructure" && exit 1)
+	@if [ -d "libs/domain/src" ]; then \
+		if grep -r "use.*infrastructure" libs/domain/src/; then \
+			echo "❌ Domain layer depends on infrastructure"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "⚠️ Domain layer not found - skipping domain architecture checks"; \
+	fi
 	@echo "✅ Architecture compliance verified"
 
-# 🚀 Производительность
+# 🚀 Производительность (с проверкой существования)
 perf:
 	@echo "🚀 Running performance tests..."
-	cargo test --release -- --ignored bench_
+	@if cargo test --list | grep -q "bench_"; then \
+		cargo test --release -- --ignored bench_; \
+	else \
+		echo "⚠️ No benchmark tests found - skipping performance tests"; \
+	fi
 
 # 🧹 Форматирование
 fmt:
 	cargo fmt --all
 
-# 🔧 Полная проверка перед коммитом
-pre-commit: quality-check fmt perf
+# 🔧 Полная проверка перед коммитом (enhanced with WASM validation)
+pre-commit: quality-check wasm-perf fmt perf
 	@echo "🎉 Ready to commit!"
 
 # 📊 Comprehensive quality report
@@ -91,14 +139,16 @@ quality-report:
 	@echo "🛡️ Generating comprehensive quality report..."
 	@./scripts/quality-monitor.sh
 
-# 📊 Quick quality summary
+# 📊 Quick quality summary (исправленные метрики)
 quality-summary:
 	@echo "📊 QUALITY GUARDIAN REPORT"
 	@echo "=========================="
-	@echo "🔍 Anti-patterns: $(shell grep -r '\.unwrap()\|\.expect(\|panic!(' --include='*.rs' . | wc -l) violations"
-	@echo "🦀 Clippy warnings: $(shell cargo clippy 2>&1 | grep 'warning' | wc -l)"
-	@echo "🎯 Performance tests: $(shell cargo test --release -- --ignored bench_ 2>&1 | grep 'test result' || echo 'Not run')"
-	@echo "✅ Status: $(shell make quality-check > /dev/null 2>&1 && echo 'PASSED' || echo 'FAILED')"
+	@echo "🔍 Anti-patterns: $$(grep -r '\.unwrap()\|\.expect(\|panic!(' --include='*.rs' . 2>/dev/null | wc -l || echo '0') violations"
+	@echo "🦀 Clippy warnings: $$(cargo clippy --quiet 2>&1 | grep -c 'warning' || echo '0')"
+	@echo "🎯 Performance tests: $$(if cargo test --list 2>/dev/null | grep -q 'bench_'; then echo 'Available'; else echo 'Not configured'; fi)"
+	@echo "🚨 WASM critical: $$(if make wasm-critical >/dev/null 2>&1; then echo 'SECURE'; else echo 'VIOLATIONS DETECTED'; fi)"
+	@echo "🔒 astro-rust: $$(if test -d ./astro-rust; then echo 'PROTECTED'; else echo 'MISSING'; fi)"
+	@echo "✅ Status: $$(if make quality-check >/dev/null 2>&1; then echo 'PASSED'; else echo 'FAILED'; fi)"
 
 # 🔧 Setup quality system
 setup:
@@ -148,15 +198,35 @@ clean:
 
 # 🚀 Быстрая разработка с проверками
 dev: quality-check
-	cargo run --bin backend
+	@if [ -f "backend/Cargo.toml" ]; then \
+		cargo run --manifest-path=backend/Cargo.toml; \
+	else \
+		echo "⚠️ Backend not found - cannot start dev server"; \
+	fi
 
 # 📦 Сборка с проверками
 build: quality-check
-	cargo build --release
+	@if [ -f "Cargo.toml" ]; then \
+		cargo build --release; \
+	else \
+		echo "⚠️ Root Cargo.toml not found - trying individual packages"; \
+		find . -name "Cargo.toml" -not -path "./target/*" -not -path "./astro-rust/*" | while read cargo_file; do \
+			echo "📦 Building $$cargo_file..."; \
+			cargo build --release --manifest-path="$$cargo_file"; \
+		done; \
+	fi
 
 # 🧪 Tests with quality checks
 test: quality-check
-	cargo test --all-features
+	@if [ -f "Cargo.toml" ]; then \
+		cargo test --all-features; \
+	else \
+		echo "⚠️ Root Cargo.toml not found - testing individual packages"; \
+		find . -name "Cargo.toml" -not -path "./target/*" -not -path "./astro-rust/*" | while read cargo_file; do \
+			echo "🧪 Testing $$cargo_file..."; \
+			cargo test --manifest-path="$$cargo_file" --all-features; \
+		done; \
+	fi
 
 # 🧪 Performance benchmarks
 bench:

@@ -11,8 +11,8 @@ pub mod services;
 pub use usecases::*;
 pub use services::*;
 
-// Re-export domain ports for convenience
-pub use starscalendars_domain::{PortResult, UserRepository, TokenRepository, TelegramService, CacheService, CacheServiceExt, JwtService, AstronomicalService, TelegramUserInfo};
+// Re-export domain ports for convenience  
+pub use starscalendars_domain::{PortResult, UserRepository, TokenRepository, TelegramService, CacheService, CacheServiceExt, JwtService, TelegramUserInfo};
 
 /// Application layer result type
 pub type AppResult<T> = Result<T, AppError>;

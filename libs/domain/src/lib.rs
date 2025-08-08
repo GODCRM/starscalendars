@@ -10,7 +10,7 @@
 //! - Pre-allocated collections with exact capacity
 //! - No error-prone operations like unwrap, expect, or panic
 
-pub mod astronomical;
+// ❌ REMOVED: astronomical types violate WASM-only architecture per tz.md
 pub mod telegram;
 pub mod events;
 pub mod spiritual;
@@ -19,8 +19,8 @@ pub mod auth;
 pub mod ports;
 pub mod errors;
 
+// ❌ REMOVED: astronomical types - WASM-only calculations per tz.md
 // Re-export core domain types (specific imports to avoid ambiguity)
-pub use astronomical::*;
 pub use telegram::{TelegramChannelId, SubscriptionStatus, TelegramProfile};
 pub use events::{DomainEvent, UserEvent, AstronomicalEvent, Event, EventId, EventPublisher};
 pub use spiritual::{SpiritualProfile};

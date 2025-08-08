@@ -5,7 +5,7 @@
 
 use async_trait::async_trait;
 use crate::{
-    DomainError, User, UserId, TelegramId, JulianDay, CelestialBodyPosition,
+    DomainError, User, UserId, TelegramId,
     LinkingToken, JwtClaims, RefreshToken, EventSpiritualEvent
 };
 
@@ -97,19 +97,17 @@ pub trait JwtService: Send + Sync {
     async fn create_refresh_token(&self) -> PortResult<String>;
 }
 
-/// Astronomical calculation service port
-#[async_trait]
-pub trait AstronomicalService: Send + Sync {
-    async fn calculate_planetary_positions(
-        &self,
-        julian_day: JulianDay,
-    ) -> PortResult<Vec<CelestialBodyPosition>>;
-    async fn calculate_spiritual_events(
-        &self,
-        start: time::OffsetDateTime,
-        end: time::OffsetDateTime,
-    ) -> PortResult<Vec<EventSpiritualEvent>>;
-}
+// ❌ ARCHITECTURAL VIOLATION REMOVED:
+// AstronomicalService port violates tz.md WASM-only architecture requirement
+//
+// **VIOLATION DETAILS:**
+// - Defined backend port for astronomical calculations (lines 100-112)
+// - Contradicts "ВСЕ астрономические расчеты ТОЛЬКО в WASM модуле на клиенте" requirement
+// - Backend should provide ONLY: auth + PostgreSQL + Telegram ports
+//
+// **CORRECT ARCHITECTURE:**
+// All astronomical calculations performed in WASM module via compute_all(julian_day)
+// Domain layer defines ONLY business rules and external service ports for non-astronomical services
 
 /// Telegram user information
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

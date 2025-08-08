@@ -78,7 +78,19 @@
       "Bash(SQLX_OFFLINE=true cargo check --workspace --exclude starscalendars-infra)",
       "Bash(curl:*)",
       "Bash(pkill:*)",
-      "Bash(echo $PATH)"
+      "Bash(echo $PATH)",
+      "Bash(timeout:*)",
+      "Bash(cp:*)",
+      "Bash(../scripts/build-wasm.sh:*)",
+      "Bash(./scripts/build-wasm.sh:*)",
+      "WebFetch(domain:forum.babylonjs.com)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:rustwasm.github.io)",
+      "Bash(cargo bench:*)",
+      "WebFetch(domain:navy.systems)",
+      "Bash(./scripts/wasm-patterns.sh:*)",
+      "Bash(time cargo check -p starscalendars-wasm-astro)"
     ],
     "deny": []
   }
