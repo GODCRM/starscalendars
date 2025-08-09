@@ -66,7 +66,7 @@
 
 <body>
     <h1>🚀 WASM Bundler Target Debug - StarsCalendars</h1>
-    <p>Debug page for testing WASM module with <strong>--target bundler</strong> (Vite 7.0.6 + vite-plugin-wasm 3.5.0)
+    <p>Debug page for testing WASM module with <strong>--target bundler</strong> (Vite 7.1.1 + vite-plugin-wasm 3.5.0)
     </p>
 
     <div id="results"></div>
@@ -153,11 +153,11 @@
             try {
                 addResult('🌌 Testing astronomical calculations...', 'warning');
 
-                // Test compute_all function
-                if (wasmModule.compute_all) {
+                // Test compute_state function
+                if (wasmModule.compute_state) {
                     const testJD = 2451545.0; // J2000 epoch
-                    const ptr = wasmModule.compute_all(testJD);
-                    addResult(`✅ compute_all(${testJD}) returned pointer: ${ptr}`, 'success');
+                    const ptr = wasmModule.compute_state(testJD);
+                    addResult(`✅ compute_state(${testJD}) returned pointer: ${ptr}`, 'success');
 
                     if (ptr !== 0) {
                         addResult('🎯 Pointer is non-zero - calculation succeeded!', 'success');
@@ -165,7 +165,7 @@
                         addResult('⚠️ Pointer is zero - may indicate calculation failure', 'warning');
                     }
                 } else {
-                    addResult('❌ compute_all function not found', 'error');
+                    addResult('❌ compute_state function not found', 'error');
                 }
 
                 // Test other astronomical functions
@@ -174,7 +174,7 @@
                     'get_moon_position',
                     'get_planet_position',
                     'get_nutation',
-                    'calculate_solar_zenith_position'
+                    'compute_state'
                 ];
 
                 for (const funcName of testFunctions) {

@@ -28,7 +28,7 @@ pnpm -w i --prefer-offline=false --frozen-lockfile=false || pnpm -w i
 cd "$(dirname "$0")/../wasm-astro"
 
 echo "📦 Compiling WASM module with wasm-pack..."
-echo "   Target: bundler (Vite 7.0.6 optimized)"
+echo "   Target: bundler (Vite 7.1.1 optimized)"
 echo "   Mode: release (optimized)"
 echo "   Output: frontend/src/wasm-astro/"
 

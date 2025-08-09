@@ -3,11 +3,11 @@
 //! Defines contracts that infrastructure adapters must implement.
 //! These belong to the domain layer in Clean Architecture.
 
-use async_trait::async_trait;
 use crate::{
-    DomainError, User, UserId, TelegramId,
-    LinkingToken, JwtClaims, RefreshToken, EventSpiritualEvent
+    DomainError, EventSpiritualEvent, JwtClaims, LinkingToken, RefreshToken, TelegramId, User,
+    UserId,
 };
+use async_trait::async_trait;
 
 /// Domain-wide result type for ports
 pub type PortResult<T> = Result<T, DomainError>;
@@ -56,7 +56,7 @@ pub trait CacheService: Send + Sync {
 }
 
 /// Extension trait for generic cache operations
-/// 
+///
 /// This is separate to maintain dyn compatibility of CacheService
 pub trait CacheServiceExt: CacheService {
     /// Get and deserialize cached value
@@ -80,8 +80,9 @@ pub trait CacheServiceExt: CacheService {
     where
         T: serde::Serialize + Send + Sync,
     {
-        let json_str = serde_json::to_string(value)
-            .map_err(|e| DomainError::SerializationError(format!("Cache serialization error: {}", e)))?;
+        let json_str = serde_json::to_string(value).map_err(|e| {
+            DomainError::SerializationError(format!("Cache serialization error: {}", e))
+        })?;
         self.set(key, &json_str, ttl).await
     }
 }
@@ -106,7 +107,7 @@ pub trait JwtService: Send + Sync {
 // - Backend should provide ONLY: auth + PostgreSQL + Telegram ports
 //
 // **CORRECT ARCHITECTURE:**
-// All astronomical calculations performed in WASM module via compute_all(julian_day)
+// All astronomical calculations performed in WASM module via compute_state(julian_day)
 // Domain layer defines ONLY business rules and external service ports for non-astronomical services
 
 /// Telegram user information

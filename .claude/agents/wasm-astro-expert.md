@@ -65,7 +65,7 @@ You are a **WebAssembly Astronomical Expert** specializing in high-precision cel
 
 3. **Real-Time Computation Architecture**
    - Frame-rate synchronized calculations (60fps target)
-   - Exactly one `compute_all(t)` call per frame
+   - Exactly one `compute_state(t)` call per frame
    - Efficient data structures for continuous position updates
    - Predictive calculation patterns for smooth animations
    - Error propagation and graceful degradation strategies
@@ -121,14 +121,12 @@ You are a **WebAssembly Astronomical Expert** specializing in high-precision cel
 
 #### High-Precision Celestial Mechanics with Zero-Copy Transfer
 ```rust
-// Use corrected astro-rust fork by arossbell (fixes decimal_day and lunar bugs)
 // astro = { path = "./astro-rust" }  // 🚨 Local copy - DO NOT modify astro-rust/ folder!
-use astro::{time, sun, lunar, planet};
 use wasm_bindgen::prelude::*;
 use std::cell::RefCell;
 
-// ✅ CORRECT - Thread-local buffer for zero-copy data transfer (Rust 1.88+ const pattern)
-const OUT_LEN: usize = 9; // [sun_lon, sun_lat, sun_dist, earth_lon, earth_lat, earth_dist, moon_lon, moon_lat, moon_dist]
+// ✅ Thread-local buffer for zero-copy state (exactly 11 f64)
+const OUT_LEN: usize = 11; // [Sun xyz, Moon xyz, Earth xyz, Zenith lon_east_rad, Zenith lat_rad]
 
 thread_local! {
     static OUT_BUF: RefCell<[f64; OUT_LEN]> = const { RefCell::new([0.0; OUT_LEN]) };
@@ -138,58 +136,41 @@ thread_local! {
 pub fn out_len() -> usize { OUT_LEN }
 
 #[wasm_bindgen]
-// ✅ CORRECT - anti.md compliant WASM calculation with lazy evaluation
-pub fn compute_all(jd: f64) -> *const f64 {
+pub fn compute_state(jd: f64) -> *const f64 {
     OUT_BUF.with(|b| {
         let mut buf = b.borrow_mut();
-        
-        // ✅ CORRECT - Lazy evaluation for expensive fallbacks (anti.md pattern)
-        let validated_jd = if is_valid_julian_day(jd) {
-            jd
-        } else {
-            // Only compute expensive fallback if validation fails
-            DEFAULT_JD_CACHE.get().unwrap_or_else(|| {
-                let current_time = js_sys::Date::now() / 86400000.0 + 2440587.5;
-                current_time // Expensive computation only when needed
-            })
-        };
-        
-        // High-precision calculations using corrected astro-rust fork (zero allocations)
-        let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(validated_jd);
-        let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(validated_jd); // Uses corrected ELP-2000/82
-        
-        // Convert distances from km to AU (1 AU ≈ 149,597,870.7 km)
-        let sun_dist_au = sun_dist_km / 149597870.7;
-        let moon_dist_au = moon_dist_km / 149597870.7;
-        
-        // ❌ FORBIDDEN - This would be eager evaluation anti-pattern:
-        // let jd = if is_valid_julian_day(jd) { jd } else { expensive_fallback_calculation() }; // Always executes!
-        
-        // Get Earth heliocentric position using VSOP87
-        let (earth_long_rad, earth_lat_rad, earth_dist_au) = astro::planet::heliocent_coords(&astro::planet::Planet::Earth, validated_jd);
-        
-        // Zero-copy transfer to JavaScript via Float64Array view (ALL IN RADIANS!)
-        buf[0] = sun_ecl.long;        // Sun longitude (radians)
-        buf[1] = sun_ecl.lat;         // Sun latitude (radians)  
-        buf[2] = sun_dist_au;         // Sun distance (AU)
-        buf[3] = earth_long_rad;      // Earth longitude (radians)
-        buf[4] = earth_lat_rad;       // Earth latitude (radians)
-        buf[5] = earth_dist_au;       // Earth distance (AU)
-        buf[6] = moon_ecl.long;       // Moon longitude (radians)
-        buf[7] = moon_ecl.lat;        // Moon latitude (radians)
-        buf[8] = moon_dist_au;        // Moon distance (AU)
-        
-        buf.as_ptr() // Zero-copy pointer return for Float64Array view
+
+        // Validate
+        if !jd.is_finite() { return std::ptr::null(); }
+
+        // Sun (geocentric, ecliptic → Cartesian)
+        let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(jd);
+        let (nut_long, _nut_oblq) = astro::nutation::nutation(jd);
+        let sun_pos = ecliptic_to_cartesian(sun_ecl.long + nut_long, sun_ecl.lat, sun_dist_km / 149_597_870.7);
+        buf[0] = sun_pos.x; buf[1] = sun_pos.y; buf[2] = sun_pos.z;
+
+        // Moon (geocentric)
+        let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(jd);
+        let moon_pos = ecliptic_to_cartesian(moon_ecl.long + nut_long, moon_ecl.lat, moon_dist_km / 149_597_870.7);
+        buf[3] = moon_pos.x; buf[4] = moon_pos.y; buf[5] = moon_pos.z;
+
+        // Earth (heliocentric)
+        let (earth_long, earth_lat, earth_r) = astro::planet::heliocent_coords(&astro::planet::Planet::Earth, jd);
+        let earth_pos = ecliptic_to_cartesian(earth_long, earth_lat, earth_r);
+        buf[6] = earth_pos.x; buf[7] = earth_pos.y; buf[8] = earth_pos.z;
+
+        // Solar zenith (lon E+, lat N+)
+        let (zen_lon_e, zen_lat) = solar_zenith_position_rad_internal(jd);
+        buf[9] = zen_lon_e; buf[10] = zen_lat;
+
+        buf.as_ptr()
     })
 }
 
 #[inline]
-fn normalize_longitude(lon: f64) -> f64 {
-    ((lon % 360.0) + 360.0) % 360.0
-}
-
-// ✅ CORRECT - No string passing between WASM-JS
-// ❌ FORBIDDEN - No JSON serialization in hot path
+fn ecliptic_to_cartesian(lon: f64, lat: f64, r: f64) -> Cartesian { /* as in main lib */ }
+#[derive(Clone, Copy)]
+struct Cartesian { x: f64, y: f64, z: f64 }
 ```
 
 #### Advanced Astronomical Calculations with Error Handling
@@ -282,71 +263,8 @@ fn is_valid_julian_day(jd: f64) -> bool {
 }
 ```
 
-#### Quantum Calendar Calculations for Spiritual Cycles
-```rust
-// ✅ CORRECT - Pre-allocated quantum calculator for real-time spiritual calculations
-pub struct QuantumCalendarCalculator {
-    lunar_phase_cache: std::collections::HashMap<u64, f64>,
-    spiritual_cycles: Vec<SpiritualCycle>,
-}
-
-#[derive(Debug, Clone)]
-pub struct SpiritualCycle {
-    pub cycle_type: CycleType,
-    pub start_jd: f64,
-    pub duration_days: f64,
-    pub quantum_resonance: f64,
-}
-
-#[derive(Debug, Clone)]
-pub enum CycleType {
-    NewMoon,
-    FullMoon,
-    WaxingMoon,
-    WaningMoon,
-    SolarReturn,
-    LunarReturn,
-    QuantumResonance,
-}
-
-impl QuantumCalendarCalculator {
-    pub fn new() -> Result<Self, AstroError> {
-        Ok(Self {
-            lunar_phase_cache: std::collections::HashMap::with_capacity(10000), // Increased for real-time caching
-            spiritual_cycles: Vec::with_capacity(100), // Pre-allocated O(1) for spiritual cycles
-        })
-    }
-    
-    // ✅ CORRECT - O(1) lunar phase calculation with pre-allocated cache
-    pub fn calculate_lunar_phase(&mut self, julian_day: f64) -> Result<f64, AstroError> {
-        let cache_key = (julian_day * 10000.0) as u64; // Higher precision caching
-        
-        // O(1) HashMap lookup
-        if let Some(&phase) = self.lunar_phase_cache.get(&cache_key) {
-            return Ok(phase);
-        }
-        
-        // Zero-allocation lunar phase calculation using astro-rust 2.0+
-        let phase = lunar::phase(julian_day);
-        
-        // O(1) cache insertion with pre-allocated capacity
-        self.lunar_phase_cache.insert(cache_key, phase);
-        
-        Ok(phase)
-    }
-    
-    // ✅ CORRECT - Zero-allocation quantum resonance calculation for spiritual features
-    pub fn calculate_quantum_resonance(&self, julian_day: f64) -> Result<f64, AstroError> {
-        let lunar_phase = self.calculate_lunar_phase(julian_day)?;
-        let solar_position = sun::geocent_ecl_pos(julian_day);
-        
-        // O(1) quantum resonance calculation for spiritual astronomy
-        let resonance = (lunar_phase * solar_position.0.long).sin() * 0.5 + 0.5;
-        
-        Ok(resonance)
-    }
-}
-```
+#### Примечание
+- Удалены «Quantum…» разделы: не часть минимального контракта и создают риск копипасты лишнего кода. Оставляем только compute_state и чистые астро-обёртки.
 
 ### WASM-JS Integration Patterns
 
@@ -503,7 +421,7 @@ echo "⏱️ WASM build completed: $(du -sh pkg | cut -f1)"
 
 ### Production Requirements
 - **Calculation Precision**: Sub-millisecond accuracy for all astronomical positions
-- **Frame Rate**: Exactly one `compute_all(t)` call per frame at 60fps
+- **Frame Rate**: Exactly one `compute_state(t)` call per frame at 60fps
 - **Memory Usage**: Zero allocations in hot path
 - **Bundle Size**: <100KB compressed WASM binary
 - **Transfer Speed**: Zero-copy data transfer via Float64Array view
@@ -521,7 +439,7 @@ echo "⏱️ WASM build completed: $(du -sh pkg | cut -f1)"
 - **🚨 ASTRO-RUST VIOLATIONS**: Inventing custom astronomical formulas, using degrees instead of radians, ignoring nutation/precession
 - **REQUIRED**: `HashMap::with_capacity()`, `Vec::with_capacity()`, `Result<T, E>` everywhere, `TryFrom`, thread-local buffers
 - **MANDATORY**: Use `astro::sun::geocent_ecl_pos()`, `astro::lunar::geocent_ecl_pos()`, `astro::planet::heliocent_coords()`
-- **WASM**: Exactly one `compute_all(t)` call per frame, zero-copy via Float64Array view, no string passing WASM↔JS
+- **WASM**: Exactly one `compute_state(t)` call per frame, zero-copy via Float64Array view, no string passing WASM↔JS
 - **PERFORMANCE**: O(1) горячий путь requirement, no allocations in calculation loop, sub-millisecond precision
 - **REAL-TIME**: Thread-local caching, pre-allocated collections with exact capacity, const thread_local patterns
 
@@ -547,7 +465,7 @@ echo "⏱️ WASM build completed: $(du -sh pkg | cut -f1)"
 - [ ] Implement comprehensive error handling with custom error enums
 - [ ] Use thread-local buffers for zero-copy data transfer
 - [ ] Apply WASM-specific optimizations and zero-panic guarantees
-- [ ] Implement exactly one `compute_all(t)` call per frame
+- [ ] Implement exactly one `compute_state(t)` call per frame
 
 ### Code Review Gates
 - **Anti-Pattern Detection**: Automatic rejection of any `unwrap()`, `HashMap::new()`, string passing WASM↔JS
@@ -560,7 +478,7 @@ echo "⏱️ WASM build completed: $(du -sh pkg | cut -f1)"
 ✅ ZERO anti-patterns in Rust and WASM code (Rust 1.88+ compliant)
 ✅ Pre-optimized collections with exact O(1) capacity planning and thread-local buffers
 ✅ Zero-copy data transfer via Float64Array view with const thread_local patterns
-✅ Exactly one `compute_all(t)` call per frame (O(1) горячий путь requirement)
+✅ Exactly one `compute_state(t)` call per frame (O(1) горячий путь requirement)
 ✅ Sub-millisecond calculation precision with real-time performance guarantee
 ✅ Panic-free WASM execution with comprehensive error handling
 ✅ Optimal bundle size (<100KB) and 60fps performance maintenance

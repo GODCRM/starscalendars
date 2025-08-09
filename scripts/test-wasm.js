@@ -61,11 +61,11 @@ try {
     {
       name: 'get_version()',
       test: () => wasmModule.get_version(),
-      expected: 'wasm-v1.0.0-bundler'
+      expected: '2.0.1'
     },
     {
-      name: 'compute_all(2451545.0)', // J2000 epoch
-      test: () => wasmModule.compute_all(2451545.0),
+      name: 'compute_state(2451545.0)', // J2000 epoch
+      test: () => wasmModule.compute_state(2451545.0),
       expected: 'non-null-pointer'
     }
   ];
@@ -92,44 +92,40 @@ try {
 
   // Test memory access
   console.log('\n🔍 Testing memory access...');
-  const ptr = wasmModule.compute_all(2451545.0);
+  const ptr = wasmModule.compute_state(2451545.0);
 
   if (ptr !== 0) {
-    const coordinateCount = 33;
+    const coordinateCount = 11;
 
     const memory = wasmModule.memory;
     if (memory) {
       const positions = new Float64Array(memory.buffer, ptr, coordinateCount);
 
       console.log(`  ✅ Memory view created: Float64Array[${positions.length}]`);
-      console.log(`  📊 Sample coordinates:`);
-      console.log(`     Sun:  [${positions[0]?.toFixed(6)}, ${positions[1]?.toFixed(6)}, ${positions[2]?.toFixed(6)}]`);
-      console.log(`     Moon: [${positions[3]?.toFixed(6)}, ${positions[4]?.toFixed(6)}, ${positions[5]?.toFixed(6)}]`);
+      console.log(`  📊 State:`);
+      console.log(`     Sun xyz:    [${positions[0]?.toFixed(6)}, ${positions[1]?.toFixed(6)}, ${positions[2]?.toFixed(6)}]`);
+      console.log(`     Moon xyz:   [${positions[3]?.toFixed(6)}, ${positions[4]?.toFixed(6)}, ${positions[5]?.toFixed(6)}]`);
+      console.log(`     Earth xyz:  [${positions[6]?.toFixed(6)}, ${positions[7]?.toFixed(6)}, ${positions[8]?.toFixed(6)}]`);
+      console.log(`     Zenith lonE: ${positions[9]?.toFixed(6)} rad, lat: ${positions[10]?.toFixed(6)} rad`);
 
       // Validate that we got reasonable astronomical values
       const sunDistance = Math.sqrt(positions[0]**2 + positions[1]**2 + positions[2]**2);
-      const moonDistance = Math.sqrt(positions[3]**2 + positions[4]**2 + positions[5]**2);
+      const earthDistance = Math.sqrt(positions[6]**2 + positions[7]**2 + positions[8]**2);
 
       console.log(`  📏 Distances:`);
-      console.log(`     Sun:  ${sunDistance.toFixed(6)} AU`);
-      console.log(`     Moon: ${moonDistance.toFixed(6)} AU`);
+      console.log(`     Sun (geocentric):  ${sunDistance.toFixed(6)} AU`);
+      console.log(`     Earth (heliocentric): ${earthDistance.toFixed(6)} AU`);
 
-      if (sunDistance > 0.9 && sunDistance < 1.1) {
-        console.log(`  ✅ Sun distance reasonable (~1 AU)`);
+      if (earthDistance > 0.9 && earthDistance < 1.1) {
+        console.log(`  ✅ Earth distance reasonable (~1 AU)`);
       } else {
-        console.log(`  ⚠️  Sun distance unusual (expected ~1 AU)`);
-      }
-
-      if (moonDistance > 0.001 && moonDistance < 0.01) {
-        console.log(`  ✅ Moon distance reasonable (~0.0026 AU)`);
-      } else {
-        console.log(`  ⚠️  Moon distance unusual (expected ~0.0026 AU)`);
+        console.log(`  ⚠️  Earth distance unusual (expected ~1 AU)`);
       }
     } else {
       throw new Error('WASM memory export is missing');
     }
   } else {
-    console.log(`  ❌ compute_all returned null pointer`);
+    console.log(`  ❌ compute_state returned null pointer`);
   }
 
   // Test new spiritual astronomy functions

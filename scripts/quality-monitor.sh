@@ -205,7 +205,7 @@ if [ -d "wasm-astro" ]; then
     log_info "Checking WASM performance patterns..."
 
     # Check for O(1) hot path compliance
-    wasm_violations=$(grep -r -A10 -B10 "compute_all" wasm-astro/src/ 2>/dev/null | grep -c "for\|while\|loop" || echo "0")
+    wasm_violations=$(grep -r -A10 -B10 "compute_state" wasm-astro/src/ 2>/dev/null | grep -c "for\|while\|loop" || echo "0")
 
     if [ "$wasm_violations" -eq 0 ]; then
         echo "✅ **WASM Performance**: O(1) hot path compliance verified" >> "$REPORT_FILE"

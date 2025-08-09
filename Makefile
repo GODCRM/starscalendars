@@ -61,7 +61,7 @@ clippy:
 # 🎯 WASM производительность и безопасность (enhanced for 2025)
 wasm-perf:
 	@echo "🎯 Checking WASM performance patterns..."
-	@! (grep -A10 -B10 "compute_all" wasm-astro/src/*.rs | grep -q "for\|while") || \
+	@! (grep -A10 -B10 "compute_state" wasm-astro/src/*.rs | grep -q "for\|while") || \
 		(echo "❌ Multiple WASM calls detected - violates O(1) requirement" && exit 1)
 	@echo "✅ WASM performance patterns valid"
 

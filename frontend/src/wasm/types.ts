@@ -6,8 +6,7 @@
 
 // ✅ CORRECT - Strict WASM function signatures (TypeScript 5.9.2+)
 export interface WASMExports {
-  readonly compute_all: (julianDay: number) => number;
-  readonly compute_state?: (julianDay: number) => number;
+  readonly compute_state: (julianDay: number) => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
 }
@@ -15,8 +14,7 @@ export interface WASMExports {
 // ✅ CORRECT - WASM module initialization interface
 export interface WASMModuleInit {
   readonly default: () => Promise<void>;
-  readonly compute_all: (julianDay: number) => number;
-  readonly compute_state?: (julianDay: number) => number;
+  readonly compute_state: (julianDay: number) => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
 }
@@ -99,32 +97,18 @@ export type WASMResult<T> =
 
 // ✅ CORRECT - WASM memory layout constants (from Rust lib.rs)
 export const WASM_CONSTANTS = {
-  EXPECTED_BODY_COUNT: 11,
-  EXPECTED_COORDINATE_COUNT: 33,
-  COORDINATES_PER_BODY: 3,
-  BYTES_PER_COORDINATE: 8, // f64
-  TOTAL_BUFFER_SIZE: 264,  // 33 * 8 bytes
+  STATE_LEN: 11, // Sun(3) + Moon(3) + Earth(3) + Zenith(2)
+  BYTES_PER_F64: 8,
 } as const;
 
 // ✅ CORRECT - Validation utilities with strict typing
 export const validateWASMBuffer = (buffer: Float64Array): WASMResult<PositionBuffer> => {
-  if (buffer.length !== WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT) {
+  if (buffer.length !== WASM_CONSTANTS.STATE_LEN) {
     return {
       success: false,
       error: {
         type: WASMErrorType.BufferSizeMismatch,
-        message: `Expected ${WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT} coordinates, got ${buffer.length}`,
-        timestamp: performance.now(),
-      }
-    };
-  }
-
-  if (buffer.byteLength !== WASM_CONSTANTS.TOTAL_BUFFER_SIZE) {
-    return {
-      success: false,
-      error: {
-        type: WASMErrorType.BufferSizeMismatch,
-        message: `Expected ${WASM_CONSTANTS.TOTAL_BUFFER_SIZE} bytes, got ${buffer.byteLength}`,
+        message: `Expected ${WASM_CONSTANTS.STATE_LEN} f64 values, got ${buffer.length}`,
         timestamp: performance.now(),
       }
     };
@@ -137,38 +121,14 @@ export const validateWASMBuffer = (buffer: Float64Array): WASMResult<PositionBuf
 };
 
 // Variant validators (strict):
-export const validateSEMBuffer = (buffer: Float64Array): WASMResult<PositionBuffer> => {
-  const expectedLen = 9; // Sun, Moon, Earth (3 bodies * 3)
-  const expectedBytes = expectedLen * WASM_CONSTANTS.BYTES_PER_COORDINATE;
-  if (buffer.length !== expectedLen) {
-    return {
-      success: false,
-      error: {
-        type: WASMErrorType.BufferSizeMismatch,
-        message: `Expected ${expectedLen} coordinates (SEM), got ${buffer.length}`,
-        timestamp: performance.now(),
-      }
-    };
-  }
-  if (buffer.byteLength !== expectedBytes) {
-    return {
-      success: false,
-      error: {
-        type: WASMErrorType.BufferSizeMismatch,
-        message: `Expected ${expectedBytes} bytes (SEM), got ${buffer.byteLength}`,
-        timestamp: performance.now(),
-      }
-    };
-  }
-  return { success: true, data: buffer as PositionBuffer };
-};
+// validateSEMBuffer removed: compute_state is the only contract
 
 // ✅ CORRECT - Position extraction with zero allocation (TypeScript 5.9.2 optimized)
 export const extractBodyPosition = (
   buffer: PositionBuffer,
   bodyIndex: CelestialBodyIndex
 ): readonly [number, number, number] => {
-  const baseIndex = bodyIndex * WASM_CONSTANTS.COORDINATES_PER_BODY;
+  const baseIndex = bodyIndex * 3;
   return [
     buffer[baseIndex]!,
     buffer[baseIndex + 1]!,

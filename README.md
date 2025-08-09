@@ -234,7 +234,7 @@ make pre-commit
 
 ### 📊 **Build Metrics - ОТЛИЧНЫЕ РЕЗУЛЬТАТЫ:**
 ```
-✅ Frontend Build: 17.48s with Vite 7.0.6 (Target: <20s)
+✅ Frontend Build: 17.48s with Vite 7.1.1 (Target: <20s)
 ✅ Bundle Size: 7.4MB total (5.3MB Babylon.js, 1.6MB WASM)
 ✅ WASM Module: 1.6MB compiled with astro-rust
 ✅ Zero Anti-Patterns: Rust 1.88+ compliant

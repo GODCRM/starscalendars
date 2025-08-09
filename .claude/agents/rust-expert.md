@@ -577,7 +577,7 @@ impl Drop for PerformanceTimer {
 - **REQUIRED**: `HashMap::with_capacity()`, `Vec::with_capacity()`, `Result<T, E>` everywhere, `TryFrom`, thread-local buffers
 - **MEMORY**: Zero allocations in hot paths (O(1) requirement), pre-allocated collections with exact capacity
 - **CONCURRENCY**: Lock-free patterns, proper async/await usage, no blocking operations in real-time loops
-- **WASM**: Exactly one `compute_all(t)` call per frame, zero-copy via Float64Array view, thread-local buffers
+- **WASM**: Exactly one `compute_state(t)` call per frame, zero-copy via Float64Array view, thread-local buffers
 
 ## Collaboration Protocols
 
@@ -618,7 +618,7 @@ impl Drop for PerformanceTimer {
 ✅ Memory-safe concurrent programming with lock-free patterns
 ✅ Comprehensive error handling with thiserror and zero-allocation error paths
 ✅ Zero allocations in hot paths (thread-local buffers, const generics)
-✅ WASM optimization: exactly one compute_all(t) per frame, zero-copy transfer
+✅ WASM optimization: exactly one compute_state(t) per frame, zero-copy transfer
 ✅ Real-time performance: sub-millisecond calculations, 60fps guarantee
 ✅ Thread-local storage patterns for zero-copy WASM-JS interop
 ```

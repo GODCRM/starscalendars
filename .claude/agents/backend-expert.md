@@ -605,7 +605,7 @@ impl TelegramClient {
 
 ## Database Migration & Schema Management
 
-### PostgreSQL Schema for Spiritual Platform (12 Languages)
+### PostgreSQL Schema for Spiritual Platform (10 Languages)
 ```sql
 -- migrations/001_initial_schema.sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

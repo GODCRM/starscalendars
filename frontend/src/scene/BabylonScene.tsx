@@ -214,6 +214,11 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
   // ✅ Internal canvas ref (self-managed canvas)
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // ✅ Zero-allocation WASM view reuse in render loop
+  const statePtrRef = useRef<number>(0);
+  const stateViewRef = useRef<Float64Array | null>(null);
+  const memBufferRef = useRef<ArrayBuffer | null>(null);
+
   // ✅ УБИРАЕМ React state - используем только рефы!
   // НЕ СОЗДАЕМ state который может вызвать ререндер!
 
@@ -1066,7 +1071,15 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
         console.error('❌ STATE pointer out of bounds');
         return;
       }
-      const buf = new Float64Array(mem, positionsPtr, 11);
+      // Reuse view if ptr and buffer unchanged (no allocations in hot path)
+      if (stateViewRef.current === null ||
+        statePtrRef.current !== positionsPtr ||
+        memBufferRef.current !== mem) {
+        stateViewRef.current = new Float64Array(mem, positionsPtr, 11);
+        statePtrRef.current = positionsPtr;
+        memBufferRef.current = mem;
+      }
+      const buf = stateViewRef.current as Float64Array;
       // Buffer layout: Sun(0..2) geocentric, Moon(3..5) geocentric, Earth(6..8) heliocentric, Zenith(9..10)
       const ex = buf[6]!, ey = buf[7]!, ez = buf[8]!;
       const mx = buf[3]!, my = buf[4]!, mz = buf[5]!;

@@ -6,44 +6,55 @@
     "--all-features",
     "--",
     // Critical anti-patterns (deny = compilation blocking)
-    "-D", "clippy::unwrap_used",
-    "-D", "clippy::expect_used",
-    "-D", "clippy::panic",
-    "-D", "clippy::as_conversions",
-    "-D", "clippy::await_holding_lock",
+    "-D",
+    "clippy::unwrap_used",
+    "-D",
+    "clippy::expect_used",
+    "-D",
+    "clippy::panic",
+    "-D",
+    "clippy::as_conversions",
+    "-D",
+    "clippy::await_holding_lock",
     // Performance optimizations
-    "-D", "clippy::inefficient_to_string",
-    "-D", "clippy::large_stack_arrays",
-    "-D", "clippy::large_const_arrays",
-    "-D", "clippy::vec_init_then_push",
+    "-D",
+    "clippy::inefficient_to_string",
+    "-D",
+    "clippy::large_stack_arrays",
+    "-D",
+    "clippy::large_const_arrays",
+    "-D",
+    "clippy::vec_init_then_push",
     // Memory safety
-    "-D", "clippy::mem_forget",
-    "-D", "clippy::cast_possible_truncation",
+    "-D",
+    "clippy::mem_forget",
+    "-D",
+    "clippy::cast_possible_truncation",
     // Async safety
-    "-D", "clippy::async_yields_async",
+    "-D",
+    "clippy::async_yields_async",
     // Additional quality checks
-    "-W", "clippy::pedantic",
-    "-W", "clippy::nursery",
-    "-W", "clippy::cargo"
+    "-W",
+    "clippy::pedantic",
+    "-W",
+    "clippy::nursery",
+    "-W",
+    "clippy::cargo"
   ],
-  
   // Real-time diagnostics configuration
   "rust-analyzer.diagnostics.disabled": [],
   "rust-analyzer.diagnostics.warningsAsHint": [],
   "rust-analyzer.diagnostics.warningsAsInfo": [],
   "rust-analyzer.diagnostics.experimental.enable": true,
-  
   // Documentation and hover improvements
   "rust-analyzer.hover.actions.enable": true,
   "rust-analyzer.hover.documentation.enable": true,
   "rust-analyzer.completion.addCallParenthesis": true,
   "rust-analyzer.completion.addCallArgumentSnippets": true,
-  
   // Performance optimizations for large workspace
   "rust-analyzer.procMacro.enable": true,
   "rust-analyzer.cargo.buildScripts.enable": true,
   "rust-analyzer.checkOnSave.enable": true,
-  
   // 📁 FILE MANAGEMENT - Exclude build artifacts and dependencies
   "files.watcherExclude": {
     "**/target/**": true,
@@ -53,7 +64,6 @@
     "**/.dioxus/**": true,
     "**/astro-rust/**": true
   },
-  
   "search.exclude": {
     "**/target": true,
     "**/node_modules": true,
@@ -64,9 +74,10 @@
     "**/build": true,
     "**/astro-rust": true
   },
-  
   // ✏️ EDITOR CONFIGURATION - Consistent formatting and quality
-  "editor.rulers": [100],
+  "editor.rulers": [
+    100
+  ],
   "editor.formatOnSave": true,
   "editor.formatOnType": true,
   "editor.formatOnPaste": true,
@@ -74,12 +85,10 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit"
   },
-  
   // Line ending consistency (Unix LF)
   "files.eol": "\n",
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
-  
   // 🚨 ANTI-PATTERN HIGHLIGHTING - Real-time visual feedback
   "todohighlight.keywords": [
     // Critical violations (red background)
@@ -152,26 +161,23 @@
     },
     // WASM performance violations (purple background)
     {
-      "text": "compute_all",
+      "text": "compute_state",
       "color": "#ffffff",
       "backgroundColor": "#6f42c1",
       "overviewRulerColor": "#6f42c1",
       "isWholeLine": false
     }
   ],
-  
   // 🔧 LANGUAGE-SPECIFIC SETTINGS
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.formatOnSave": true,
     "editor.semanticHighlighting.enabled": true
   },
-  
   "[toml]": {
     "editor.defaultFormatter": "tamasfe.even-better-toml",
     "editor.formatOnSave": true
   },
-  
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,
@@ -179,59 +185,53 @@
       "source.fixAll.eslint": "explicit"
     }
   },
-  
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
   },
-  
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
   },
-  
   "[yaml]": {
     "editor.defaultFormatter": "redhat.vscode-yaml",
     "editor.formatOnSave": true
   },
-  
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,
     "files.trimTrailingWhitespace": false
   },
-  
   // 🎨 THEME AND UI - Optimized for quality-focused development
   "workbench.colorCustomizations": {
     "editorError.foreground": "#dc3545",
     "editorWarning.foreground": "#fd7e14",
     "editorInfo.foreground": "#17a2b8"
   },
-  
   // 🔍 SEARCH AND GIT INTEGRATION
   "git.enableSmartCommit": true,
   "git.confirmSync": false,
   "git.autofetch": true,
-  
   // Terminal configuration for quality commands
   "terminal.integrated.defaultProfile.osx": "bash",
   "terminal.integrated.profiles.osx": {
     "Quality Guardian": {
       "path": "/bin/bash",
-      "args": ["-l", "-c", "echo '🛡️ Quality Guardian Terminal Ready' && make quality-check && bash"]
+      "args": [
+        "-l",
+        "-c",
+        "echo '🛡️ Quality Guardian Terminal Ready' && make quality-check && bash"
+      ]
     }
   },
-  
   // Extension-specific settings
   "evenBetterToml.formatter.alignEntries": true,
   "evenBetterToml.formatter.indentTables": true,
-  
   // Prettier configuration for frontend files
   "prettier.singleQuote": true,
   "prettier.trailingComma": "es5",
   "prettier.tabWidth": 2,
   "prettier.semi": true,
-  
   // 📊 QUALITY MONITORING - Track metrics and issues
   "problems.showCurrentInStatus": true,
   "editor.lightbulb.enabled": "onCode",
@@ -240,7 +240,6 @@
     "comments": "on",
     "strings": "on"
   },
-  
   // 🌍 INTERNATIONALIZATION - Support for 10-language spiritual platform
   "i18n-ally.localesPaths": [
     "frontend/src/i18n",
@@ -249,8 +248,10 @@
   ],
   "i18n-ally.keystyle": "nested",
   "i18n-ally.defaultNamespace": "common",
-  "i18n-ally.enabledFrameworks": ["fluent", "icu"],
-  
+  "i18n-ally.enabledFrameworks": [
+    "fluent",
+    "icu"
+  ],
   // Final reminder of our spiritual mission
   "workbench.startupEditor": "readme"
 }

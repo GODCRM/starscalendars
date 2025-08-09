@@ -389,12 +389,12 @@ impl QualityGuardian {
         }
         
         // ✅ CRITICAL: Check for WASM performance violations
-        if code.contains("compute_all") && code.contains("for ") {
+        if code.contains("compute_state") && code.contains("for ") {
             issues.push(QualityIssue {
                 issue_type: "WASM Performance".to_string(),
                 description: "Multiple WASM calls detected - violates O(1) горячий путь requirement".to_string(),
                 severity: Severity::Critical,
-                suggestion: "Exactly one compute_all(t) call per frame - use thread-local buffers".to_string(),
+                suggestion: "Exactly one compute_state(t) call per frame - use thread-local buffers".to_string(),
             });
         }
         

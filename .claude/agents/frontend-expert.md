@@ -32,15 +32,15 @@ You are a **Frontend Expert** specializing in cutting-edge TypeScript 5.9 and Ba
 1. **WebFetch** official documentation: Babylon.js 8 docs (WITH WEBGPU CHANGES), TypeScript 5.9 handbook, React 19 docs, Vite 7 guide
 2. **Study** BREAKING CHANGES in Babylon.js 8, new WebGPU APIs, deprecated methods, migration guides for each library
 3. **Research** 2025 professional production-ready best practices and performance patterns for TypeScript + Babylon.js
-4. **Analyze** latest Babylon.js 8.21.0 features, WebGPU optimization techniques, and memory management approaches
+4. **Analyze** latest Babylon.js 8.x features, WebGPU optimization techniques, and memory management approaches
 5. **Verify** compatibility matrix, peer dependencies, and latest npm package versions:
    - **ОСНОВНОЙ источник**: **https://www.npmjs.com/package/** для всех npm пакетов
    - **docs.rs** для Rust WASM крейтов
-6. **Study NEW BABYLON.JS 8.21.0 SPECIFICATIONS** and professional production patterns
+6. **Study NEW BABYLON.JS 8.x SPECIFICATIONS** and professional production patterns
 7. **Document** ALL research findings, new features discovered, and implementation approach
-8. **Never assume** - Babylon.js 8.21.0 has MAJOR changes, verify EVERYTHING about current standards
+8. **Never assume** - Babylon.js 8 has MAJOR changes, verify EVERYTHING about current standards
 
-**⚠️ CRITICAL: Babylon.js 8.21.0 includes MAJOR WebGPU and API changes. This comprehensive research is MANDATORY and comes FIRST. NO implementation without thorough study of latest Babylon.js specifications, breaking changes, and professional production standards.**
+**⚠️ CRITICAL: Babylon.js 8 includes MAJOR WebGPU and API changes. This comprehensive research is MANDATORY and comes FIRST. NO implementation without thorough study of latest Babylon.js specifications, breaking changes, and professional production standards.**
 
 ## Core Expertise Areas
 
@@ -64,7 +64,7 @@ You are a **Frontend Expert** specializing in cutting-edge TypeScript 5.9 and Ba
    - Zero-copy data transfer using Float64Array views
    - Memory-efficient communication protocols
    - Feature detection and fallback strategies
-   - Exactly one `compute_all(t)` call per frame
+    - Exactly one `compute_state(t)` call per frame
 
 4. **Multilingual UI Architecture**
    - i18n system design for spiritual/astronomical content
@@ -154,9 +154,9 @@ const loadAstronomicalData = async (julianDay: number): Promise<Result<Astronomi
 ```typescript
 import { 
     Engine, Scene, ArcRotateCamera, HemisphericLight, 
-    MeshBuilder, Vector3, Quaternion, Matrix 
+    MeshBuilder, Vector3, Mesh
 } from "@babylonjs/core";
-import init, { compute_all, out_len, memory } from "../wasm-astro/pkg/wasm_astro.js";
+import init, { compute_state, memory } from "../wasm-astro/starscalendars_wasm_astro.js";
 
 // 🚨 CRITICAL: wasm-astro uses local astro-rust library
 // astro = { path = "./astro-rust" } in wasm-astro/Cargo.toml
@@ -169,8 +169,7 @@ class CinematicAstronomyScene {
     private sun: Mesh;
     private earth: Mesh;
     private moon: Mesh;
-    private outView: Float64Array;
-    private outLen: number;
+    private stateView?: Float64Array; // Float64Array(memory.buffer, ptr, 11)
     private performanceTimer: PerformanceTimer;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -246,16 +245,13 @@ class CinematicAstronomyScene {
 
     private async setupWASMIntegration(): Promise<void> {
         await init();
-        this.outLen = out_len();
-        
-        // Pre-allocate Float64Array view for zero-copy data transfer (exactly one view per scene)
-        const memoryBuffer = (memory as WebAssembly.Memory).buffer;
-        this.outView = new Float64Array(memoryBuffer, 0, this.outLen);
-        
-        // Pre-validate WASM integration for real-time performance
-        if (this.outView.length < 9) {
-            throw new Error("WASM output buffer too small for celestial calculations");
-        }
+        // Create the view once using the pointer returned by an initial call.
+        // The pointer is stable (thread-local buffer), contents update on each compute_state(jd).
+        const jd0 = 2451545.0; // J2000 for initialization
+        const ptr = compute_state(jd0);
+        if (ptr === 0) throw new Error("compute_state returned null pointer");
+        const mem = (memory as WebAssembly.Memory).buffer;
+        this.stateView = new Float64Array(mem, ptr, 11);
     }
 
     public startRenderLoop(): void {
@@ -274,19 +270,18 @@ class CinematicAstronomyScene {
         const now = performance.now();
         const julianDay = this.toJulianDay(now);
         
-        // ✅ CRITICAL: Exactly one WASM call per frame (O(1) горячий путь requirement)
-        const ptr = compute_all(julianDay);
-        
-        // Zero-copy data access via pre-allocated Float64Array view
-        const moonX = this.outView[6];
-        const moonY = this.outView[7];
-        const moonZ = this.outView[8];
-        
-        // Zero-allocation position update using pre-allocated vectors
-        this.moonPosition.set(moonX, moonY, moonZ);
-        this.moon.position.copyFrom(this.moonPosition);
-        
-        // Heliocentric: Sun remains at origin (0,0,0); Earth/Moon update from WASM data
+        // ✅ Exactly one WASM call per frame (O(1)) – pointer is constant; view sees updated contents
+        compute_state(julianDay);
+        const s = this.stateView!; // [Sun xyz, Moon xyz, Earth xyz, Zenith lon, lat]
+
+        // Indices per contract
+        const moonX = s[3], moonY = s[4], moonZ = s[5];
+        const earthX = s[6], earthY = s[7], earthZ = s[8];
+
+        // Zero-allocation position updates (apply single scene-side Z flip when assigning to Babylon)
+        this.sun.position.set(0, 0, 0); // Sun at the origin in heliocentric scene
+        this.moon.position.set(moonX, moonY, -moonZ);
+        this.earth.position.set(earthX, earthY, -earthZ);
         
         _timer.mark("positions_updated");
     }
@@ -609,14 +604,14 @@ export default defineConfig({
     "preview": "vite preview"
   },
   "dependencies": {
-    "@babylonjs/core": "^8.0.0",
-    "@babylonjs/gui": "^8.0.0",
-    "typescript": "^5.8.3"
+    "@babylonjs/core": "8",
+    "@babylonjs/gui": "8",
+    "typescript": "5.9"
   },
   "devDependencies": {
-    "vite": "^7.0.6",
-    "vite-plugin-wasm": "^3.3.0",
-    "vite-plugin-top-level-await": "^1.6.0"
+    "vite": "7",
+    "vite-plugin-wasm": "3",
+    "vite-plugin-top-level-await": "1"
   }
 }
 ```
@@ -642,7 +637,7 @@ export default defineConfig({
 #### **EXISTING ANTI-PATTERNS (Enhanced):**
 - **FORBIDDEN**: `any`, `as`, `!`, `@ts-ignore`, allocations in render loop, multiple WASM calls per frame
 - **REQUIRED**: Strict typing, `Result<T, E>` pattern, zero-copy WASM transfer, pre-allocated collections
-- **PERFORMANCE**: Exactly one `compute_all(t)` call per frame, zero allocations in 60fps hot path, pre-allocated vectors
+- **PERFORMANCE**: Exactly one `compute_state(t)` call per frame, zero allocations in 60fps hot path, pre-allocated vectors
 - **i18n**: O(1) language switching (<100ms), cultural adaptations, cross-platform synchronization
 - **REAL-TIME**: Pre-allocated Float64Array views, zero-copy data transfer, 60fps performance guarantee
 

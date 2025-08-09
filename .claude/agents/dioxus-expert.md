@@ -157,7 +157,10 @@ impl Default for AppState {
 // ✅ CORRECT - Zero-allocation component with pre-initialized services
 pub fn App() -> Element {
     let mut state = use_signal(|| AppState::default());
-    let i18n = use_signal(|| I18nService::new().expect("I18n service initialization should never fail"));
+    let i18n = use_signal(|| I18nService::new().unwrap_or_else(|e| {
+        tracing::error!("I18n init failed: {}", e);
+        I18nService::default()
+    }));
     
     // O(1) app state initialization with error handling
     use_effect(move || {

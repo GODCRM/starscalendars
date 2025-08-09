@@ -2,14 +2,25 @@
  * WASM Astronomical Module Integration (TypeScript 5.9.2 + Babylon.js 8 major — latest minor at runtime)
  *
  * High-performance WASM integration with zero-copy data transfer and strict typing.
- * Implements exactly one compute_all() call per frame for O(1) performance.
+ * Implements exactly one compute_state() call per frame for O(1) performance.
  */
 
 import type {
   PositionBuffer,
   WASMError,
 } from './types.js';
-import { validateJulianDay, validateWASMBuffer, WASM_CONSTANTS, WASMErrorType } from './types.js';
+import { WASMErrorType, validateWASMBuffer } from './types.js';
+
+// Prod flag for conditional logging (Vite-only, no Node typings needed)
+const __IS_PROD__ = (() => {
+  try {
+    // Vite exposes a boolean PROD flag and MODE string
+    const env = (typeof import.meta !== 'undefined' && (import.meta as any).env) || undefined;
+    return Boolean(env?.PROD || env?.MODE === 'production');
+  } catch {
+    return false;
+  }
+})();
 
 // ✅ CORRECT - Result type pattern for strict error handling (TypeScript 5.9.2+)
 export type Result<T, E> = { success: true; data: T } | { success: false; error: E };
@@ -36,28 +47,9 @@ export interface AstronomicalState {
 
 // ✅ CORRECT - WASM module interface with strict typing for spiritual astronomy
 export interface WASMModule {
-  readonly compute_all: (julianDay: number) => number;
-  readonly compute_state?: (julianDay: number) => number;
+  readonly compute_state: (julianDay: number) => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
-
-  // Precise solar zenith calculation (returns pointer to [lon_deg_W_positive, lat_deg])
-  readonly calculate_solar_zenith_position?: ((julianDay: number) => number) | undefined;
-  // High-precision radians variant (returns pointer to [lon_east_rad, lat_rad])
-  readonly calculate_solar_zenith_position_rad?: ((julianDay: number) => number) | undefined;
-
-  // 🌌 QUANTUM SPIRITUAL ASTRONOMY FUNCTIONS
-  readonly calculate_earth_orbit: (julianDay: number) => number;
-  readonly calculate_moon_orbit: (julianDay: number) => number;
-  readonly get_movement_direction: (currentDistance: number, orbitalPhase: number) => number;
-  readonly calculate_days_after_passage: (julianDay: number, orbitalPhase: number, orbitalPeriodDays: number) => number;
-  readonly calculate_lunar_phase_detailed: (julianDay: number) => number;
-
-  // ⭐ STELLAR COORDINATE TRANSFORMATION FUNCTIONS for createSky
-  readonly transform_stellar_coordinates: (raHours: number, decDegrees: number, magnitude: number, starScale: number, radius: number) => number;
-  readonly calculate_constellation_line: (star1RaHours: number, star1DecDeg: number, star2RaHours: number, star2DecDeg: number, radius: number) => number;
-  readonly apply_stellar_precession: (catalogRaHours: number, catalogDecDegrees: number, catalogEpochJd: number, currentJd: number) => number;
-  readonly calculate_astrological_aspects: (julianDay: number) => number;
 }
 
 // ✅ CORRECT - Performance monitoring for WASM operations
@@ -68,13 +60,13 @@ class WASMPerformanceTimer {
   constructor(operationName: string) {
     this.operationName = operationName;
     this.startTime = performance.now();
-    console.log(`🚀 WASM: Starting ${operationName}`);
+    if (!__IS_PROD__) console.log(`🚀 WASM: Starting ${operationName}`);
   }
 
   public mark(checkpoint: string): void {
     const currentTime = performance.now();
     const duration = currentTime - this.startTime;
-    console.log(`📊 WASM: ${this.operationName} - ${checkpoint} at ${duration.toFixed(3)}ms`);
+    if (!__IS_PROD__) console.log(`📊 WASM: ${this.operationName} - ${checkpoint} at ${duration.toFixed(3)}ms`);
   }
 }
 
@@ -83,15 +75,8 @@ let globalWasmModule: WASMModule | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<WASMModule> | null = null;
 
-// Internal strict type for dynamic import so we don't use `any` downstream
-type RawWasmModule = {
-  readonly memory: WebAssembly.Memory;
-  readonly compute_all: (jd: number) => number;
-  readonly compute_state?: (jd: number) => number;
-  readonly get_version: () => string;
-  readonly calculate_solar_zenith_position?: (jd: number) => number;
-  readonly calculate_solar_zenith_position_rad?: (jd: number) => number;
-};
+// Vite 7.1.1 WASM init signature: `*.wasm?init` returns an async initializer
+type ViteWasmInit = (imports?: WebAssembly.Imports) => Promise<WebAssembly.Instance>;
 
 /**
  * Initialize WASM module with runtime module loading
@@ -110,198 +95,52 @@ export const initializeWASM = async (): Promise<WASMModule> => {
     const timer = new WASMPerformanceTimer('wasm_module_initialization');
 
     try {
-      // Runtime module loading to avoid TypeScript compilation issues
-      const loadWASMModule = async (): Promise<{
-        init: () => Promise<void>;
-        compute_all: (jd: number) => number;
-        // minimal interface + extras
-        get_version: () => string;
-        memory: WebAssembly.Memory;
-        // Spiritual astronomy functions (optional - may not be available in all builds)
-        calculate_earth_orbit?: (jd: number) => number;
-        calculate_moon_orbit?: (jd: number) => number;
-        get_movement_direction?: (currentDistance: number, orbitalPhase: number) => number;
-        calculate_days_after_passage?: (jd: number, orbitalPhase: number, orbitalPeriodDays: number) => number;
-        calculate_lunar_phase_detailed?: (jd: number) => number;
-        transform_stellar_coordinates?: (raHours: number, decDegrees: number, magnitude: number, starScale: number, radius: number) => number;
-        calculate_constellation_line?: (star1RaHours: number, star1DecDeg: number, star2RaHours: number, star2DecDeg: number, radius: number) => number;
-        apply_stellar_precession?: (catalogRaHours: number, catalogDecDegrees: number, catalogEpochJd: number, currentJd: number) => number;
-        calculate_astrological_aspects?: (jd: number) => number;
-        calculate_solar_zenith_position?: (jd: number) => number;
-        calculate_solar_zenith_position_rad?: (jd: number) => number;
-      }> => {
-        // Try different module loading strategies
-        const moduleLoadStrategies = [
-          // Strategy 1: Vite 7.0.6 + bundler target optimized loading (2025 best practice)
-          async () => {
-            console.log('🚀 Loading WASM module via Vite 7.0.6 bundler target...');
+      // Use wasm-pack bundler wrapper (correct for wasm-bindgen glue)
+      const wrapper = await import('../wasm-astro/starscalendars_wasm_astro.js');
+      // After wrapper loads, the module is initialized and __wbindgen_start() executed
+      // Import the wasm module namespace to access memory export
+      const wasmNs = (await import('../wasm-astro/starscalendars_wasm_astro_bg.wasm')) as unknown as { memory?: WebAssembly.Memory };
 
-            // ✅ CORRECT 2025: Import wasm-bindgen bundler target module
-          const wasmModule = (await import('../wasm-astro/starscalendars_wasm_astro.js')) as unknown as RawWasmModule;
+      const compute_state_raw = (wrapper as unknown as { compute_state?: (jd: number) => number }).compute_state;
+      const get_version_fn = (wrapper as unknown as { get_version?: () => string }).get_version;
+      const memory = wasmNs.memory;
 
-            // ✅ CORRECT 2025: With bundler target, initialization is automatic
-            // No need for wasmModule.default() - this is for web target only
+      if (!memory) throw new Error('WASM memory export missing');
+      if (typeof compute_state_raw !== 'function') throw new Error('WASM export compute_state missing');
+      if (typeof get_version_fn !== 'function') throw new Error('WASM get_version export missing');
 
-            console.log('✅ WASM module loaded and initialized with bundler target');
-
-            // Access memory directly from bundler export (no fallbacks/mocks)
-            const memory: WebAssembly.Memory | undefined = wasmModule.memory as WebAssembly.Memory | undefined;
-            if (!memory) {
-              throw new Error('WASM memory export is missing');
-            }
-            console.log(`✅ WASM memory accessed: ${memory.buffer.byteLength} bytes`);
-
-            // Test a real calculation to ensure WASM is working
+      // Smoke test
             const testJD = 2451545.0; // J2000 epoch
-            if (typeof wasmModule.compute_all !== 'function') {
-              throw new Error('WASM export compute_all is missing');
-            }
-            const testResult = wasmModule.compute_all(testJD);
-            if (testResult === 0) {
-              throw new Error('WASM compute_all returned null pointer during init test');
-            }
+      const testResult = compute_state_raw(testJD);
+      if (testResult === 0) throw new Error('WASM compute_state returned null pointer during init test');
 
-            // Return unified interface optimized for bundler target
-            const base = {
-              init: async () => { /* Already initialized */ },
-              compute_all: wasmModule.compute_all,
-              compute_state: typeof wasmModule.compute_state === 'function' ? wasmModule.compute_state : undefined,
-              get_version: (() => {
-                if (typeof wasmModule.get_version !== 'function') {
-                  throw new Error('WASM export get_version is missing');
-                }
-                return wasmModule.get_version();
-              }) as () => string,
-              memory,
-            } as const;
-            // Note: Additional functions may be conditionally attached below without mutation
-            return {
-              ...base,
-              ...(typeof wasmModule.calculate_solar_zenith_position === 'function'
-                ? { calculate_solar_zenith_position: wasmModule.calculate_solar_zenith_position }
-                : {}),
-              ...(typeof wasmModule.calculate_solar_zenith_position_rad === 'function'
-                ? { calculate_solar_zenith_position_rad: wasmModule.calculate_solar_zenith_position_rad }
-                : {}),
-            } as any;
-          },
-
-          // Strategy 2: Development fallback with safe imports (no eval)
-          async () => {
-            console.warn('🚧 Using development fallback strategy');
-            throw new Error('Development fallback not available - please build WASM module');
-          },
-
-          // Strategy 3: WASM unavailable - show error (NO MOCK DATA!)
-          async () => {
-            throw new Error('🚨 WASM module unavailable - cannot proceed without real astronomical calculations! Please build WASM module with: pnpm run build:wasm');
-          }
-        ];
-
-        // Try each strategy until one succeeds
-        for (const strategy of moduleLoadStrategies) {
-          try {
-            return await strategy();
-          } catch (error) {
-            console.warn('WASM loading strategy failed:', error);
-            continue;
-          }
-        }
-
-        throw new Error('All WASM loading strategies failed');
-      };
-
-      const wasmFunctions = await loadWASMModule();
       timer.mark('wasm_functions_loaded');
 
-      // Validate WASM module interface using strict constants
-      if (typeof wasmFunctions.get_version !== 'function') {
-        throw new Error('WASM get_version export is missing');
-      }
-      const version = wasmFunctions.get_version();
+      // Version via wrapper (wasm-bindgen JS glue handles decoding)
+      const version = get_version_fn();
       if (typeof version !== 'string' || version.length === 0) {
         throw new Error('WASM get_version returned invalid value');
       }
 
       timer.mark('validation_complete');
 
-      // Create WASM module interface
+      // Create WASM module interface (minimal surface used by the scene)
       const module: WASMModule = {
-        compute_all: (julianDay: number): number => {
-          const validation = validateJulianDay(julianDay);
-          if (!validation.success) {
-            throw new Error(validation.error.message);
-          }
-          return wasmFunctions.compute_all(julianDay);
+        compute_state: (julianDay: number): number => {
+          if (!Number.isFinite(julianDay)) throw new Error(`Invalid Julian Day: ${julianDay}`);
+          return compute_state_raw(julianDay);
         },
-
         get_version: (): string => version,
-
-
-        memory: wasmFunctions.memory,
-        calculate_solar_zenith_position: wasmFunctions.calculate_solar_zenith_position,
-
-        // 🌌 QUANTUM SPIRITUAL ASTRONOMY FUNCTIONS (newly implemented)
-        calculate_earth_orbit: (julianDay: number): number => {
-          const validation = validateJulianDay(julianDay);
-          if (!validation.success) {
-            throw new Error(validation.error.message);
-          }
-          // Call the actual WASM function once it's available
-          return wasmFunctions.calculate_earth_orbit ? wasmFunctions.calculate_earth_orbit(julianDay) : 0;
-        },
-
-        calculate_moon_orbit: (julianDay: number): number => {
-          const validation = validateJulianDay(julianDay);
-          if (!validation.success) {
-            throw new Error(validation.error.message);
-          }
-          return wasmFunctions.calculate_moon_orbit ? wasmFunctions.calculate_moon_orbit(julianDay) : 0;
-        },
-
-        get_movement_direction: (currentDistance: number, orbitalPhase: number): number => {
-          return wasmFunctions.get_movement_direction ? wasmFunctions.get_movement_direction(currentDistance, orbitalPhase) : 0;
-        },
-
-        calculate_days_after_passage: (julianDay: number, orbitalPhase: number, orbitalPeriodDays: number): number => {
-          return wasmFunctions.calculate_days_after_passage ? wasmFunctions.calculate_days_after_passage(julianDay, orbitalPhase, orbitalPeriodDays) : 0;
-        },
-
-        calculate_lunar_phase_detailed: (julianDay: number): number => {
-          const validation = validateJulianDay(julianDay);
-          if (!validation.success) {
-            throw new Error(validation.error.message);
-          }
-          return wasmFunctions.calculate_lunar_phase_detailed ? wasmFunctions.calculate_lunar_phase_detailed(julianDay) : 0;
-        },
-
-        // ⭐ STELLAR COORDINATE TRANSFORMATION FUNCTIONS for createSky
-        transform_stellar_coordinates: (raHours: number, decDegrees: number, magnitude: number, starScale: number, radius: number): number => {
-          return wasmFunctions.transform_stellar_coordinates ? wasmFunctions.transform_stellar_coordinates(raHours, decDegrees, magnitude, starScale, radius) : 0;
-        },
-
-        calculate_constellation_line: (star1RaHours: number, star1DecDeg: number, star2RaHours: number, star2DecDeg: number, radius: number): number => {
-          return wasmFunctions.calculate_constellation_line ? wasmFunctions.calculate_constellation_line(star1RaHours, star1DecDeg, star2RaHours, star2DecDeg, radius) : 0;
-        },
-
-        apply_stellar_precession: (catalogRaHours: number, catalogDecDegrees: number, catalogEpochJd: number, currentJd: number): number => {
-          return wasmFunctions.apply_stellar_precession ? wasmFunctions.apply_stellar_precession(catalogRaHours, catalogDecDegrees, catalogEpochJd, currentJd) : 0;
-        },
-
-        calculate_astrological_aspects: (julianDay: number): number => {
-          const validation = validateJulianDay(julianDay);
-          if (!validation.success) {
-            throw new Error(validation.error.message);
-          }
-          return wasmFunctions.calculate_astrological_aspects ? wasmFunctions.calculate_astrological_aspects(julianDay) : 0;
-        }
+        memory,
       };
 
       globalWasmModule = module;
       isInitialized = true;
       timer.mark('module_ready');
 
-      console.log(`✅ WASM Module Initialized Successfully: Version: ${version}; Memory: ${wasmFunctions.memory.buffer.byteLength} bytes`);
+      if (!__IS_PROD__) {
+        console.log(`✅ WASM Module Initialized Successfully: Version: ${version}; Memory: ${memory.buffer.byteLength} bytes`);
+      }
 
       return module;
 
@@ -365,14 +204,14 @@ export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result
       success: false,
       error: {
         type: WASMErrorType.MemoryAccessError,
-        message: 'Null pointer returned from WASM compute_all',
+        message: 'Null pointer returned from WASM compute_state',
         timestamp: performance.now()
       }
     };
   }
 
-  // Expect 33 coordinates (11 bodies * 3) — from single source of truth
-  const coordinateCount = WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT;
+  // Expect 11 f64: Sun(3) + Moon(3) + Earth(3) + Zenith(2)
+  const coordinateCount = 11;
 
   // No mock data allowed - WASM must be available for real astronomical calculations
 
@@ -441,24 +280,12 @@ export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result
 // createSTATEView no longer needed; scene inlines zero-copy view
 
 /**
- * ✅ CRITICAL: Extract celestial body positions from WASM buffer (HELIOCENTRIC/GEOCENTRIC MODEL)
- *
- * 🌟 ПРАВИЛЬНАЯ АСТРОНОМИЧЕСКАЯ СИСТЕМА КООРДИНАТ:
- * - **ГЕЛИОЦЕНТРИЧЕСКАЯ для планет**: Солнце в центре сцены (0,0,0)
- * - **ГЕОЦЕНТРИЧЕСКАЯ для Луны**: Луна относительно позиции Земли
- *
- * Celestial body order in WASM buffer (from wasm-astro/src/lib.rs):
- * - Sun: indices 0-2 (x, y, z) - GEOCENTRIC position (Sun relative to Earth)
- * - Moon: indices 3-5 (x, y, z) - GEOCENTRIC position (Moon relative to Earth)
- * - Mercury: indices 6-8 (x, y, z) - HELIOCENTRIC position
- * - Venus: indices 9-11 (x, y, z) - HELIOCENTRIC position
- * - Earth: indices 12-14 (x, y, z) - HELIOCENTRIC position (Earth relative to Sun)
- * - Mars: indices 15-17 (x, y, z) - HELIOCENTRIC position
- * - Jupiter: indices 18-20 (x, y, z) - HELIOCENTRIC position
- * - Saturn: indices 21-23 (x, y, z) - HELIOCENTRIC position
- * - Uranus: indices 24-26 (x, y, z) - HELIOCENTRIC position
- * - Neptune: indices 27-29 (x, y, z) - HELIOCENTRIC position
- * - Pluto: indices 30-32 (x, y, z) - HELIOCENTRIC position
+  * ✅ CRITICAL: STATE buffer layout (compute_state)
+  * - 0..2: Sun xyz (geocentric; AU)
+  * - 3..5: Moon xyz (geocentric; AU)
+  * - 6..8: Earth xyz (heliocentric; AU)
+  * - 9:    Solar zenith longitude (radians, east-positive)
+  * - 10:   Solar zenith latitude (radians)
  */
 // Old extractCelestialPositions removed; state provides zenith inline
 

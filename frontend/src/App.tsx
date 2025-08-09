@@ -89,7 +89,7 @@ const App: React.FC = () => {
       timer.mark('wasm_loaded');
 
       // Жёсткая проверка версии обёртки (без ENV, строго из обёртки)
-      const EXPECTED_WASM_WRAPPER_VERSION = 'wasm-v1.0.0-bundler';
+      const EXPECTED_WASM_WRAPPER_VERSION = '2.0.1';
       try {
         const version = wasmModule.get_version();
         if (version !== EXPECTED_WASM_WRAPPER_VERSION) {

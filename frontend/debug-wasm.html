@@ -130,7 +130,7 @@
 
                 // Test a single calculation
                 const testJD = 2451545.0; // J2000 epoch
-                const ptr = wasmModule.compute_all(testJD);
+                const ptr = wasmModule.compute_state(testJD);
                 log(`🧪 Test calculation result: pointer = ${ptr}`, ptr !== 0 ? 'success' : 'error');
 
                 if (ptr !== 0) {
@@ -186,7 +186,7 @@
                 ];
 
                 for (const testDate of testDates) {
-                    const ptr = wasmModule.compute_all(testDate.jd);
+                    const ptr = wasmModule.compute_state(testDate.jd);
                     if (ptr !== 0) {
                         const positions = new Float64Array(wasmModule.memory.buffer, ptr, coordCount);
                         const sunDist = Math.sqrt(positions[0] ** 2 + positions[1] ** 2 + positions[2] ** 2);
@@ -217,7 +217,7 @@
             const jd = 2440587.5 + Date.now() / 86400000.0; // Current Julian Day
             log(`🧪 Testing calculation for JD: ${jd.toFixed(6)}`, 'info');
 
-            const ptr = wasmModule.compute_all(jd);
+            const ptr = wasmModule.compute_state(jd);
             log(`📊 Returned pointer: ${ptr}`, ptr !== 0 ? 'success' : 'error');
 
             if (ptr !== 0) {
@@ -259,7 +259,7 @@
 
             for (let i = 0; i < testCount; i++) {
                 const jd = 2451545.0 + i; // Different Julian Days
-                const ptr = wasmModule.compute_all(jd);
+                const ptr = wasmModule.compute_state(jd);
                 if (ptr !== 0) {
                     successCount++;
                 }
@@ -297,15 +297,15 @@
             realtimeInterval = setInterval(() => {
                 const start = performance.now();
                 const jd = 2440587.5 + Date.now() / 86400000.0;
-                const ptr = wasmModule.compute_all(jd);
+                const ptr = wasmModule.compute_state(jd);
                 const calcTime = performance.now() - start;
 
                 frameCount++;
                 totalTime += calcTime;
 
                 if (ptr !== 0) {
-                    const positions = new Float64Array(wasmModule.memory.buffer, ptr, 33);
-                    const earthPos = [positions[12], positions[13], positions[14]];
+                    const state = new Float64Array(wasmModule.memory.buffer, ptr, 11);
+                    const earthPos = [state[6], state[7], state[8]];
                     const earthDist = Math.sqrt(earthPos[0] ** 2 + earthPos[1] ** 2 + earthPos[2] ** 2);
 
                     dataDiv.innerHTML = `

@@ -57,7 +57,7 @@ log_info "Scanning for critical anti-patterns..."
 # Enhanced forbidden patterns with context
 declare -A FORBIDDEN_PATTERNS=(
     ["\.unwrap\(\)"]="Use Result<T, E> with proper error handling"
-    ["\.expect\("]="Use Result<T, E> with custom error types"  
+    ["\.expect\("]="Use Result<T, E> with custom error types"
     ["panic!\("]="Use Result<T, E> - never panic in production"
     ["HashMap::new\(\)"]="Use HashMap::with_capacity(n) for O(1) performance"
     ["Vec::new\(\)"]="Use Vec::with_capacity(n) for pre-allocation"
@@ -89,25 +89,25 @@ log_info "Validating WASM performance patterns..."
 
 if git diff --cached --name-only | grep -q "wasm-astro"; then
     log_info "WASM changes detected - validating O(1) hot path requirement"
-    
-    # Check for multiple compute_all calls per frame
-    if git diff --cached | grep -B5 -A5 "compute_all" | grep -q "for\\|while\\|loop"; then
+
+    # Check for multiple compute_state calls per frame
+    if git diff --cached | grep -B5 -A5 "compute_state" | grep -q "for\\|while\\|loop"; then
         log_error "Multiple WASM calls detected - violates O(1) hot path requirement"
-        echo "  📝 Requirement: Exactly ONE compute_all(t) call per frame"
+        echo "  📝 Requirement: Exactly ONE compute_state(t) call per frame"
         echo "  🔧 Use thread-local buffers with Float64Array view"
     else
         log_success "WASM O(1) hot path pattern validated"
     fi
-    
+
     # Check for string passing between WASM-JS (forbidden)
     if git diff --cached | grep -q "wasm.*String\\|String.*wasm"; then
         log_error "String passing between WASM-JS detected"
         echo "  📝 Requirement: Use numbers only, no string marshaling"
     fi
-    
+
     # Check for missing thread-local buffers
-    if git diff --cached | grep -q "compute_all" && ! git diff --cached | grep -q "thread_local"; then
-        log_warning "WASM compute_all without thread_local buffer pattern"
+    if git diff --cached | grep -q "compute_state" && ! git diff --cached | grep -q "thread_local"; then
+        log_warning "WASM compute_state without thread_local buffer pattern"
         echo "  📝 Suggestion: Use thread_local buffers for zero-copy data transfer"
     fi
 fi
