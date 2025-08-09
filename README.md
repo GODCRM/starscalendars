@@ -34,7 +34,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **O(1) горячий путь** for real-time calculations
 - **Thread-local buffers** for performance optimization
 - Output (bundler target) is written to `frontend/src/wasm-astro/` as `starscalendars_wasm_astro.js` + `*_bg.wasm`
-- Use left-handed Babylon system (default); align coordinates once in the WASM bridge (invert Z only)
+- Use left-handed Babylon system (default). Scientific coordinates remain RH (WASM). Apply single RH→LH Z flip in the scene when assigning positions; no flips in WASM bridge
 
 ### Textures & Assets (Frontend)
 - All scene textures are served from `frontend/public/textures` and available at runtime under `/textures/...`

@@ -8,7 +8,7 @@ This document is the single source of truth for agents. It resolves previous con
 - Backend: Axum 0.8, Tokio 1, SQLX 0.8, Teloxide 0.13 (not required for scene)
 
 ## Scene Model (reference parity)
-- Coordinate system: Babylon default (left-handed) for rendering; we compensate via data conversion in WASM bridge. Do not change the coordinate system.
+ - Coordinate system: Babylon default (left-handed) for rendering. Scientific data stays RH (WASM). Any axis flip (Z) is applied only at scene layer. Do not change the engine handedness.
 - Heliocentric: Sun at (0,0,0). Earth uses heliocentric coordinates. Moon is geocentric relative to Earth.
 - Scaling: 1 AU → 700 units (scaleAU=700). Artistic diameters: Earth=50, Moon=20, Sun=40; Atmosphere shell height (ENV_H)=2.
 - Mesh segments: Earth=300, Clouds=300, Sun=15, Moon=25.
@@ -22,7 +22,7 @@ This document is the single source of truth for agents. It resolves previous con
 - Exactly one `compute_all(jd: f64) -> *const f64` per frame. Zero-copy Float64Array view on memory.
 - Function availability: `calculate_solar_zenith_position_rad(jd)` returns `[lon_east_rad, lat_rad]` pointer. Use this path; degree variant exists but not used.
 - extract pipeline: Earth heliocentric (indices 12–14), Moon geocentric offset (3–5) + Earth offset, Sun is (0,0,0) in scene.
-- Z-convention: any required axis flips are handled once in the WASM bridge (we currently invert z → `z = -z`).
+ - Z-convention: any required axis flips are handled once in the scene when assigning coordinates (single Z flip RH→LH). No flips in WASM bridge.
 
 ## Zenith marker and orientation (as in reference)
 - Create Earth pivot (TransformNode). Place `pivot.position` from Earth heliocentric position (scaled). Parent `earth` and `moonPivot` to `pivot`.
@@ -60,7 +60,7 @@ This document is the single source of truth for agents. It resolves previous con
 ```
 You are joining the StarsCalendars project. Use docs/context-bootstrap.md as the single source of truth. Implement strictly:
 - Heliocentric scene (Sun@0,0,0), DIAMETER semantics (Earth=50, Moon=20, Sun=40), ENV_H=2, segments Earth/Clouds=300, Sun=15, Moon=25.
-- One compute_all(jd) per frame; zero-copy view; invert z once.
+ - One compute_all(jd) per frame; zero-copy view; Z flip applied in scene (not in bridge).
 - Use calculate_solar_zenith_position_rad(jd) for zenith; build pivot hierarchy and apply rotations as specified.
 - Marker longitude tweak: -(lonE_deg - 7 + trueAnomalyDeg). True anomaly from atan2(y, x) of Earth heliocentric vector.
 - No manual mipmaps/anisotropy; Babylon GUI only; Canvas full-screen.

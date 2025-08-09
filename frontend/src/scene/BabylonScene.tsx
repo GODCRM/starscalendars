@@ -18,6 +18,7 @@ import {
   VertexData,
   VolumetricLightScatteringPostProcess
 } from '@babylonjs/core';
+import '@babylonjs/core/Materials/Textures/Loaders/envTextureLoader';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { AdvancedDynamicTexture, Control, TextBlock } from '@babylonjs/gui';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -65,6 +66,9 @@ const CELESTIAL_BODIES: Record<string, CelestialBodyConfig> = {
 
 // ✅ CONSTANTS for astronomical calculations
 const JULIAN_DAY_UNIX_EPOCH = 2440587.5;
+const SKYBOX_INTENSITY = 1.6; // brighten env background without touching scene exposure
+// Visual moon orbit radius (units), reference parity uses ~200
+const MOON_ORBIT_RADIUS_UNITS = 200;
 
 // ✅ КРИТИЧЕСКИЙ БЛОК 1: STAR DATA МАССИВ из референсной сцены (строки 710-739)
 // Точные астрономические данные звезд для созвездий
@@ -494,6 +498,35 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
 
       // Ensure canvas has correct size before content creation
       engine.resize();
+      // DPR-aware scaling: crisp on desktop, adaptive on mobile for perf
+      // High-res text/UI and light shapes, keep perf knobs dynamic
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+      const isMobile = (navigator as any).userAgentData?.mobile || /Mobi|Android/i.test(navigator.userAgent);
+      // Allow higher resolution on capable devices; cap minimal pixel ratio to avoid "квадратики"
+      const scaling = isMobile ? 1 / Math.min(dpr, 2) : 1 / dpr;
+      engine.setHardwareScalingLevel(scaling);
+
+      // WebKit/Safari workaround: guard texParameteri when no texture is bound to avoid
+      // noisy INVALID_OPERATION logs for cube textures during async loads.
+      try {
+        const gl: any = (engine as any)._gl;
+        if (gl && typeof gl.texParameteri === 'function' && !gl.__sc_texParamGuard) {
+          const original = gl.texParameteri.bind(gl);
+          gl.texParameteri = function (target: number, pname: number, param: number) {
+            try {
+              let bindingEnum: number | null = null;
+              if (target === gl.TEXTURE_CUBE_MAP) bindingEnum = gl.TEXTURE_BINDING_CUBE_MAP;
+              else if (target === gl.TEXTURE_2D) bindingEnum = gl.TEXTURE_BINDING_2D;
+              if (bindingEnum !== null) {
+                const bound = gl.getParameter(bindingEnum);
+                if (!bound) return; // skip to avoid INVALID_OPERATION when nothing is bound
+              }
+            } catch { }
+            return original(target, pname, param);
+          };
+          gl.__sc_texParamGuard = true;
+        }
+      } catch { }
 
       // ✅ Create scene content (celestial bodies, lighting, camera)
       createSceneContent(scene, engine, timer);
@@ -528,9 +561,10 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     camera.minZ = 0.1;
     camera.maxZ = 200000;
 
-    // ✅ ZOOM LIMITS - as requested!
-    camera.lowerRadiusLimit = earthRadius * 1.1;  // Can zoom almost to surface (radius + 10%)
-    camera.upperRadiusLimit = earthRadius * 50;   // Max zoom out (50 diameters)
+    // Zoom limits per reference scene (Earth=50 DIAMETER → base ~50):
+    // lower ≈ PLANET_RADIUS (DIAMETER), upper ≈ PLANET_RADIUS * 2
+    camera.lowerRadiusLimit = CELESTIAL_BODIES.earth!.radius;        // ≈ 50
+    camera.upperRadiusLimit = CELESTIAL_BODIES.earth!.radius * 2;    // ≈ 100
 
     // Enable smooth camera controls - ATTACHED TO EARTH
     const renderingCanvas = engine.getRenderingCanvas();
@@ -552,16 +586,15 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
 
     // ✅ ONLY SUN LIGHTING - as requested!
 
-    // ✅ SUN AS MAIN LIGHT SOURCE AT CENTER (0,0,0)
+    // ✅ SUN AS MAIN LIGHT SOURCE AT CENTER (0,0,0) — exact ref parity
     const sunLight = new PointLight(
       "sunLight",
       Vector3.Zero(), // At Sun position (0,0,0)
       scene
     );
-    sunLight.intensity = 8.0; // Strong light as in cinematic ref
-    sunLight.diffuse = new Color3(1.0, 0.9, 0.7); // Warm sunlight
-    sunLight.specular = new Color3(1.0, 0.9, 0.7);
-    sunLight.range = 20000; // Large range for scene scaled in thousands
+    // Reference parity: only diffuse set; no custom intensity/specular/range
+    sunLight.diffuse = new Color3(0.5, 0.5, 0.5);
+    // Other properties left as Babylon defaults to match reference
 
     timer.mark('lighting_configured');
 
@@ -575,6 +608,8 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       segments: 15 // reference value
     }, scene);
     sunMesh.position = Vector3.Zero(); // ✅ SUN AT CENTER OF SCENE
+    // Reference parity: make light the parent of the sun mesh
+    sunMesh.parent = sunLight;
 
     // ✅ STANDARD: Let Babylon.js handle mesh optimizations automatically
     // Removed advanced optimizations that may not be needed for simple scene
@@ -836,24 +871,32 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     cloudsMesh.rotation.z = Math.PI;
     cloudsMesh.parent = earthMesh; // Follow Earth
 
-    // ✅ Skybox using Babylon's base path loader (performance-friendly)
+    // ✅ Skybox – use prefiltered .env on all platforms (no fallbacks)
     const skybox = MeshBuilder.CreateBox('universe', { size: 10000 }, scene);
     const skyboxMaterial = new StandardMaterial('universe', scene);
     skyboxMaterial.backFaceCulling = false;
-    const cube = new CubeTexture('/textures/universe/universe', scene);
-    cube.coordinatesMode = Texture.SKYBOX_MODE;
-    skyboxMaterial.reflectionTexture = cube;
-    skyboxMaterial.disableLighting = true;
+    const envTex = CubeTexture.CreateFromPrefilteredData('/textures/universe/environment.env', scene);
+    envTex.onLoadObservable.addOnce(() => {
+      envTex.coordinatesMode = Texture.SKYBOX_MODE;
+      skyboxMaterial.reflectionTexture = envTex;
+      // brighten the skybox only (not affecting PBR exposure)
+      try { (skyboxMaterial as any).reflectionTextureLevel = SKYBOX_INTENSITY; } catch { }
+      skyboxMaterial.markDirty();
+      // Freeze only after reflection is bound
+      skyboxMaterial.disableLighting = true;
+      skybox.material = skyboxMaterial;
+      skybox.position = new Vector3(0, 0, 0);
+      skyboxMaterial.freeze();
+      skybox.freezeWorldMatrix();
+    });
+    // If load is very slow, keep material attached but unfrozen
     skybox.material = skyboxMaterial;
-    skybox.position = new Vector3(0, 0, 0);
-    skyboxMaterial.freeze();
-    skybox.freezeWorldMatrix();
 
     timer.mark('skybox_created');
 
     // ✨ Subtle glow for bright emissive objects (Sun)
     const glow = new GlowLayer('glow', scene);
-    glow.intensity = 0.5;
+    glow.intensity = 0.5; // only to soften stars/constellations like ref; not for sun
 
     // ✅ STELLAR SKY - создаем настоящие звезды и созвездия
     const starMesh = createSky(scene);
@@ -1036,7 +1079,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
         earthPositionVector.set(
           astronomicalData.earth.x * scaleAU,
           astronomicalData.earth.y * scaleAU,
-          astronomicalData.earth.z * scaleAU
+          -astronomicalData.earth.z * scaleAU // RH→LH Z-flip applied at scene layer (not in WASM)
         );
         sceneState.earthPivot.position.copyFrom(earthPositionVector);
 
@@ -1066,7 +1109,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
           const markerLngDeg = -(lonEDeg - 7 + trueAnomalyDeg);
           const markerLngRad = markerLngDeg * Math.PI / 180;
           const x = r * Math.cos(latRad) * Math.cos(markerLngRad);
-          const z = r * Math.cos(latRad) * Math.sin(markerLngRad);
+          const z = -r * Math.cos(latRad) * Math.sin(markerLngRad); // apply scene-level Z-flip
           const y = r * Math.sin(latRad);
           sceneState.zenithMarker.position.set(x, y, z);
         }
@@ -1075,13 +1118,16 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       // ✅ MOON ORBITS AROUND EARTH - already positioned correctly in WASM
       // ✅ Moon local geocentric offset under moonPivot
       if (sceneState.moonPivot) {
-        const moonLocalX = (astronomicalData.moon.x - astronomicalData.earth.x) * scaleAU;
-        const moonLocalY = (astronomicalData.moon.y - astronomicalData.earth.y) * scaleAU;
-        const moonLocalZ = (astronomicalData.moon.z - astronomicalData.earth.z) * scaleAU;
-        sceneState.moonPivot.position.set(0, 0, 0); // ensure pivot at Earth center
+        // Raw geocentric offset in scene units
+        const mx = (astronomicalData.moon.x - astronomicalData.earth.x) * scaleAU;
+        const my = (astronomicalData.moon.y - astronomicalData.earth.y) * scaleAU;
+        const mz = -(astronomicalData.moon.z - astronomicalData.earth.z) * scaleAU; // scene-level Z-flip
+        const dist = Math.hypot(mx, my, mz);
+        const k = dist > 0 ? (MOON_ORBIT_RADIUS_UNITS / dist) : 0;
+        sceneState.moonPivot.position.set(0, 0, 0); // pivot at Earth's center
         const moonMesh = sceneState.celestialMeshes.get('moon');
         if (moonMesh) {
-          moonMesh.position.set(moonLocalX, moonLocalY, moonLocalZ);
+          moonMesh.position.set(mx * k, my * k, mz * k);
         }
       }
 

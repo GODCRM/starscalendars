@@ -498,11 +498,9 @@ export const extractCelestialPositions = (
   currentTime: number,
   wasmModule?: WASMModule | null
 ): AstronomicalState => {
-  // Babylon LEFT-HANDED (default): X→right, Y→up, Z→forward (into screen)
-  // Single LH bridge transform: flip Z once (z = -z).
-  // IMPORTANT: After this, ALL positions are already in Babylon LH space.
-  // Any additional axis flips in the scene are FORBIDDEN.
-  const conv = (x: number, y: number, z: number) => ({ x, y, z: -z });
+  // Coordinates from WASM are returned in scientific (right-handed ecliptic) space.
+  // NO LH transforms here. Rendering conversion is applied at scene assignment time.
+  const conv = (x: number, y: number, z: number) => ({ x, y, z });
   // ✅ HELIOCENTRIC MODEL: Sun always at center (0,0,0) in 3D scene
   const sunPosition: CelestialPosition = {
     x: 0.0, // Sun at center of heliocentric scene

@@ -55,7 +55,7 @@ You are a **Frontend Expert** specializing in cutting-edge TypeScript 5.9 and Ba
    - Efficient mesh management with proper dispose() patterns
    - Real-time astronomical visualization with artistic proportions
    - GUI strategy: Babylon GUI for in-scene dates/quantum date; single minimal HTML `#stats` overlay for FPS
-   - Coordinate system: Babylon default left-handed; apply a single Z inversion in WASM→TS bridge; DO NOT enable `useRightHandedSystem`
+    - Coordinate system: Babylon default left-handed; scientific coords stay RH (WASM); apply single RH→LH Z flip in the scene when assigning positions; DO NOT enable `useRightHandedSystem`
 
 3. **WASM Integration & Performance**
    - Optimal TypeScript-WASM interop patterns

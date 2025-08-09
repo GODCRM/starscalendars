@@ -19,6 +19,11 @@ if ! command -v rustc &> /dev/null; then
     source ~/.cargo/env
 fi
 
+# Always ensure fresh node modules for deterministic builds
+echo "📦 Ensuring workspace deps..."
+cd "$(dirname "$0")/.."
+pnpm -w i --prefer-offline=false --frozen-lockfile=false || pnpm -w i
+
 # Navigate to WASM module directory
 cd "$(dirname "$0")/../wasm-astro"
 
@@ -27,14 +32,17 @@ echo "   Target: bundler (Vite 7.0.6 optimized)"
 echo "   Mode: release (optimized)"
 echo "   Output: frontend/src/wasm-astro/"
 
-# Build WASM module with maximum optimization for Vite 7.0.6
-# ✅ 2025 BEST PRACTICE: --target bundler for vite-plugin-wasm 3.5.0
+# Build WASM module with maximum optimization
+# ✅ 2025 BEST PRACTICE: --target bundler for Vite 7
 wasm-pack build \
     --release \
     --target bundler \
     --out-dir ../frontend/src/wasm-astro \
     --out-name starscalendars_wasm_astro \
     --scope starscalendars
+
+# Touch a file to invalidate Vite cache for WASM when needed
+date +%s > ../frontend/src/wasm-astro/.rebuilt
 
 echo "✅ WASM build completed successfully!"
 

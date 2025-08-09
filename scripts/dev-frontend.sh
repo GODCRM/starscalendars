@@ -7,16 +7,13 @@ set -e
 echo "🎨 Frontend Development Setup"
 echo "============================"
 
-# Check if dependencies are installed
-if [[ ! -d "node_modules" ]] || [[ ! -d "frontend/node_modules" ]]; then
-    echo "📥 Installing dependencies..."
-    pnpm install
-    echo "✅ Dependencies installed"
-    echo ""
-fi
+echo "📥 Installing dependencies (always fresh majors)..."
+pnpm -w i --prefer-offline=false --frozen-lockfile=false || pnpm -w i
+echo "✅ Dependencies ready"
+echo ""
 
 # Build WASM first
-echo "📦 Building WASM astronomical module..."
+echo "📦 Building WASM astronomical module (force rebuild)..."
 ./scripts/build-wasm.sh
 
 echo ""

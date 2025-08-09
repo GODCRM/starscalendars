@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Babylon ENV Generator</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+            padding: 24px;
+        }
+
+        #log {
+            white-space: pre-line;
+            font-size: 14px;
+            color: #0b5;
+        }
+    </style>
+    <!-- Use ESM modules from @babylonjs/core v8 instead of UMD tools (which 404) -->
+</head>
+
+<body>
+    <h1>Environment.env generator</h1>
+    <p>На этой странице из 6 файлов куба будет сгенерирован Babylon <code>environment.env</code>.</p>
+    <p>Источник берётся из вашего проекта: <code>/textures/universe/universe_[px,py,pz,nx,ny,nz].jpg</code>.</p>
+    <div id="log">Генерация...</div>
+    <!-- WebKit иногда ругается на операции GL при display:none.
+         Делаем крошечный offscreen canvas с ненулевым размером. -->
+    <canvas id="c" style="position:fixed;left:-9999px;top:0;width:4px;height:4px"></canvas>
+    <script type="module">
+        import { Engine } from 'https://cdn.jsdelivr.net/npm/@babylonjs/core@8/Engines/engine.js';
+        import { Scene } from 'https://cdn.jsdelivr.net/npm/@babylonjs/core@8/scene.js';
+        import { CubeTexture } from 'https://cdn.jsdelivr.net/npm/@babylonjs/core@8/Materials/Textures/cubeTexture.js';
+        import { EnvironmentTextureTools } from 'https://cdn.jsdelivr.net/npm/@babylonjs/core@8/Misc/environmentTextureTools.js';
+
+        (async function () {
+            try {
+                const canvas = document.getElementById('c');
+                const engine = new Engine(canvas, false);
+                const scene = new Scene(engine);
+
+                const faces = [
+                    '/textures/universe/universe_px.jpg',
+                    '/textures/universe/universe_py.jpg',
+                    '/textures/universe/universe_pz.jpg',
+                    '/textures/universe/universe_nx.jpg',
+                    '/textures/universe/universe_ny.jpg',
+                    '/textures/universe/universe_nz.jpg',
+                ];
+
+                const log = (m) => { document.getElementById('log').textContent = String(m); };
+
+                log('Загрузка граней куба...');
+                const cube = CubeTexture.CreateFromImages(faces, scene, true /* noMipmap */);
+                await new Promise((resolve, reject) => {
+                    cube.onLoadObservable.addOnce(() => {
+                        // Установим режим координат только после создания GL-объекта
+                        try { cube.coordinatesMode = 5; /* Texture.SKYBOX_MODE */ } catch { }
+                        resolve();
+                    });
+                    cube.onError = reject;
+                });
+
+                log('Создание environment.env...');
+                // В Safari/WebKit вызовы texParameter до bind дают INVALID_OPERATION.
+                // Оборачиваем в try; при ошибке делаем минимальную выборку (bilinear) и повторяем.
+                let buffer;
+                try {
+                    buffer = await EnvironmentTextureTools.CreateEnvTextureAsync(cube);
+                } catch (e) {
+                    try { cube.updateSamplingMode(1 /* BILINEAR */); } catch { }
+                    buffer = await EnvironmentTextureTools.CreateEnvTextureAsync(cube);
+                }
+
+                const blob = new Blob([buffer], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'environment.env';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                log('Готово. Файл environment.env скачан. Положите его в /textures/universe/environment.env');
+                engine.dispose();
+            } catch (e) {
+                document.getElementById('log').textContent = 'Ошибка: ' + (e && e.message ? e.message : e);
+            }
+        })();
+    </script>
+</body>
+
+</html>

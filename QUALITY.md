@@ -90,7 +90,7 @@ impl UserRepository for PostgresUserRepository {
 - **Bundle Size**: <2MB initial load
 - **Load Time**: <3s first contentful paint
 - **Memory**: Zero allocations in Babylon.js render loop
-- **Scene Rules**: 1× `compute_all(jd)` per frame; `calculate_solar_zenith_position_rad(jd)` for zenith; no manual mipmap/anisotropy toggles; LH system with Z flip in WASM bridge
+- **Scene Rules**: 1× `compute_all(jd)` per frame; `calculate_solar_zenith_position_rad(jd)` for zenith; no manual mipmap/anisotropy toggles; LH system with RH→LH Z flip applied in the scene (no flips in bridge)
 
 ### **Telegram Bot Performance**
 - **Target**: <500ms response time for all commands
