@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust 2.0.0, TypeScript 5.9.2, Babylon.js 8.21.0, Vite 7.0.6, React 19.1.1, and high-performance 3D web development with production-grade Telegram-only authentication.
+You are an expert in Rust 1.88+ (26.06.2025 release), Axum (latest), Teloxide for Telegram Bot API, WASM, astronomical calculations using astro-rust (local fork), TypeScript 5.9, Babylon.js 8, Vite 7, React 19, and high-performance 3D web development with production-grade Telegram-only authentication.
 
 ## Communication Style
 - DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you 
@@ -115,13 +115,13 @@ starscalendars/
 
 ## Key Technologies & Stack
 
-- **Frontend Main Scene**: Babylon.js 8.21.0 with TypeScript 5.9.2/Vite 7.0.6/React 19.1.1
+- **Frontend Main Scene**: Babylon.js 8 with TypeScript 5.9/Vite 7/React 19
 - **Astronomical Calculations**: Rust + WebAssembly using local astro-rust library (📚 READ-ONLY: astro-rust/ folder must NOT be modified!)
 - **🌟 WASM ОБЕРТКА**: Полное покрытие всех функций astro-rust с СТРОГИМ ЗАПРЕТОМ на mock-данные и отсебятину!
 - **Backend**: Axum (Rust 1.88+) with PostgreSQL and WebSockets
 - **Authentication System**: Telegram-only auth via Teloxide with subscription verification
 - **Multilingual System**: 10-language support with Fluent (ICU MessageFormat)
-- **GUI Strategy**: HTML/CSS overlay for performance, Babylon.js GUI only for 3D-integrated elements
+- **GUI Strategy**: Babylon GUI for date/quantum date; a single `#stats` div overlay for FPS; no other HTML overlays
 - **WASM Interface**: Thread-local buffers with Float64Array view for zero-copy data transfer
 - **Database**: PostgreSQL with Telegram user mapping and subscription status
 
@@ -195,8 +195,8 @@ pnpm run dev
 
 ### Key Design Decisions (per tz.md)
 - **Clean Architecture**: Domain → UseCases → Adapters → Delivery layers
-- **WASM Interface**: Exactly `compute_all(jd: f64) -> *const f64` with thread-local buffer
-- **Sun Position**: Static at (0,0,0) for геоцентрическая сцена  
+- **WASM Interface**: Exactly `compute_all(jd: f64) -> *const f64` plus `calculate_solar_zenith_position_rad(jd)`; thread-local buffers
+- **Sun Position**: Static at (0,0,0) (heliocentric scene)  
 - **JWT**: RS256 with custom claims `is_telegram_subscribed: boolean`
 - **Database**: PostgreSQL with specific schema: `users`, `refresh_tokens`, `telegram_linking`
 - **Authentication**: Pure Telegram-only, no traditional passwords
@@ -352,6 +352,9 @@ make quality-summary                 # Quick quality status overview
 # Development workflow
 pnpm run clean                       # Clean all build artifacts
 pnpm run clean:wasm                  # Clean only WASM build files
+
+# Frontend only (WASM build + Vite dev server)
+pnpm -w run dev:frontend-only
 ```
 
 ### Quick Development Commands (What Works Now)
@@ -802,12 +805,28 @@ pub trait TelegramApi {
 
 ## Documentation Links
 
-- **Babylon.js 8.21.0 - Main**: https://doc.babylonjs.com/
-- **Babylon.js 8.21.0 - API**: https://doc.babylonjs.com/typedoc/
-- **Babylon.js 8.21.0 - NPM**: https://www.npmjs.com/package/babylonjs
-- **Babylon.js 8.21.0 - GIT**: https://github.com/BabylonJS/Babylon.js
-- **Vite 7.0.6 - Main**: https://vite.dev/
-- **React 19.1.1 - Main**: https://react.dev/
+- **Babylon.js 8 - Main**: https://doc.babylonjs.com/
+- **Babylon.js 8 - API**: https://doc.babylonjs.com/typedoc/
+- **Babylon.js 8 - NPM**: https://www.npmjs.com/package/babylonjs
+- **Babylon.js 8 - GIT**: https://github.com/BabylonJS/Babylon.js
+- **Babylon.js 8 - WebXR**: https://learn.microsoft.com/ru-ru/windows/mixed-reality/develop/javascript/tutorials/babylonjs-webxr-helloworld
+- **Babylon.js 8 - WebXR Pianino**: https://learn.microsoft.com/ru-ru/windows/mixed-reality/develop/javascript/tutorials/babylonjs-webxr-piano
+- **Babylon.js 8 - WebXR**: https://learn.microsoft.com/ru-ru/windows/mixed-reality/develop/javascript/tutorials/babylonjs-webxr-helloworld/
+- **Babylon.js 8 - WebXR Pianino**: https://learn.microsoft.com/ru-ru/windows/mixed-reality/develop/javascript/tutorials/babylonjs-webxr-piano/
+- **Babylon.js 8 - Хук для обновления текста элемента интерфейса например для ФПС**
+```
+engine.runRenderLoop(function () {
+        scene.render();
+        stats.innerHTML = "FPS: <b>" +  BABYLON.Tools.GetFps().toFixed() + "</b>
+});
+```
+- **Babylon.js 8 - старые но ценные сравнения**: https://habr.com/ru/articles/246259/
+- **Babylon.js 8 - старый но ценный туториал создания космической кинематографичной сцены по которой делался референс ч.1**: https://forasoft.github.io/webgl-babylonjs-p1/
+- **Babylon.js 8 - старый но ценный туториал создания космической кинематографичной сцены по которой делался референс ч.2**: https://forasoft.github.io/webgl-babylonjs-p2/
+- **Babylon.js 8 - система координат**: ось X направлена вправо, ось Y направлена вверх, ось Z направлен вперед в глубь экрана а не на меня
+
+- **Vite 7 - Main**: https://vite.dev/
+- **React 19 - Main**: https://react.dev/
 - **TypeScript 5.9.2 - Main**: https://www.typescriptlang.org/
 
 - **Astro Rust - Main**: https://docs.rs/astro/latest/astro/

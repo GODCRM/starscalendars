@@ -72,14 +72,20 @@ wasm-critical:
 		(echo "❌ CRITICAL: Mock data found in WASM - STRICTLY FORBIDDEN" && exit 1)
 	@! grep -r "const.*=.*[0-9]\+\.[0-9]" --include="*.rs" wasm-astro/src/ | grep -v "astro::" || \
 		(echo "❌ CRITICAL: Hardcoded astronomical constants - use astro-rust only" && exit 1)
-    @! grep -r "eval(" --include="*.rs" --include="*.ts" --include="*.js" \
-        --exclude-dir=node_modules --exclude-dir=frontend/node_modules \
-        --exclude-dir=dist --exclude-dir=frontend/dist \
-        --exclude-dir=target --exclude-dir=astro-rust \
-        . | grep -v "// ❌ FORBIDDEN" || \
+	@! grep -r "eval(" --include="*.rs" --include="*.ts" --include="*.js" \
+		--exclude-dir=node_modules --exclude-dir=frontend/node_modules \
+		--exclude-dir=dist --exclude-dir=frontend/dist \
+		--exclude-dir=target --exclude-dir=astro-rust \
+		. | grep -v "// ❌ FORBIDDEN" || \
 		(echo "❌ CRITICAL SECURITY: eval() usage detected - XSS vulnerability!" && exit 1)
-	@! (find wasm-astro/src/ -name "*.rs" -exec grep -l "fn.*calculate" {} \; | xargs grep -L "astro::") || \
-		(echo "❌ CRITICAL: Custom calculations without astro-rust - forbidden!" && exit 1)
+	@echo "🔎 Verifying any calculate* functions use astro-rust APIs..."
+	@violations=$$(find wasm-astro/src/ -name "*.rs" -exec grep -l "fn.*calculate" {} \; \
+		| xargs -I{} sh -c 'grep -q "astro::" "{}" || echo "{}"'); \
+	if [ -n "$$violations" ]; then \
+		echo "❌ CRITICAL: Custom calculations without astro-rust - forbidden!"; \
+		echo "📁 Files:"; echo "$$violations" | sed 's/^/  - /'; \
+		exit 1; \
+	fi
 	@if [ -d "./astro-rust" ]; then \
 		if find ./astro-rust -name "*.rs" -newer ./astro-rust/Cargo.toml 2>/dev/null | grep -q .; then \
 			echo "❌ CRITICAL: astro-rust/ directory modified - READ-ONLY!"; \

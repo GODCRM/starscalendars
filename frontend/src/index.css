@@ -1,6 +1,6 @@
 /**
  * StarsCalendars Frontend Styles
- * 
+ *
  * Performance-optimized CSS for 60fps cinematic 3D astronomy platform
  * HTML/CSS overlay strategy for optimal Babylon.js integration
  */
@@ -29,7 +29,8 @@ body {
   margin: 0;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #16213e 100%);
   color: #ffffff;
-  overflow: hidden; /* Prevent scrolling during 3D interaction */
+  overflow: hidden;
+  /* Prevent scrolling during 3D interaction */
   font-family: inherit;
   min-height: 100vh;
   /* ✅ PERFORMANCE - Hardware acceleration for smooth animations */
@@ -120,31 +121,12 @@ body {
 
 /* ✅ PERFORMANCE - HTML/CSS overlay strategy (faster than Babylon.js GUI) */
 .ui-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 100;
-  /* Prevent interference with 3D scene */
-  transform: translateZ(0);
+  display: none;
 }
 
 /* ✅ CORRECT - Celestial information panel */
 .celestial-info {
-  position: absolute;
-  top: 6rem;
-  right: 2rem;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 1.5rem;
-  min-width: 250px;
-  pointer-events: all;
-  /* Smooth animations */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: none;
 }
 
 .celestial-info:hover {
@@ -177,9 +159,7 @@ body {
 }
 
 .quantum-resonance {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 1rem;
-  margin-top: 1rem;
+  display: none;
 }
 
 .quantum-resonance h3 {
@@ -222,8 +202,13 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg) translateZ(0); }
-  100% { transform: rotate(360deg) translateZ(0); }
+  0% {
+    transform: rotate(0deg) translateZ(0);
+  }
+
+  100% {
+    transform: rotate(360deg) translateZ(0);
+  }
 }
 
 .loading-container p {
@@ -304,30 +289,30 @@ body {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .app-header h1 {
     font-size: 1.25rem;
   }
-  
+
   .status-bar {
     gap: 1rem;
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .celestial-info {
     top: 8rem;
     right: 1rem;
     left: 1rem;
     min-width: auto;
   }
-  
+
   /* Footer styles removed */
 }
 
 /* ✅ CORRECT - High DPI display optimizations */
 @media (-webkit-min-device-pixel-ratio: 2),
-       (min-resolution: 192dpi) {
+(min-resolution: 192dpi) {
   .babylon-canvas {
     /* Enhanced rendering for Retina displays */
     image-rendering: -webkit-optimize-contrast;
@@ -339,12 +324,12 @@ body {
   .loading-spinner {
     animation-duration: 2s;
   }
-  
+
   .celestial-info,
   .error-retry-button {
     transition-duration: 0.1s;
   }
-  
+
   * {
     animation-duration: 0.1s !important;
     transition-duration: 0.1s !important;
@@ -361,7 +346,7 @@ body {
   .app-container {
     display: none;
   }
-  
+
   body::after {
     content: "StarsCalendars is a 3D interactive application and cannot be printed.";
     display: block;

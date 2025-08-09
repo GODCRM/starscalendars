@@ -33,8 +33,10 @@ export interface AstronomicalState {
   readonly earth: CelestialPosition;
   readonly moon: CelestialPosition;
   readonly earthSunDistance: number; // Earth distance from Sun in AU
-  readonly sunZenithLat: number;     // Latitude where Sun is in zenith (degrees)
-  readonly sunZenithLng: number;     // Longitude where Sun is in zenith (degrees)
+  readonly sunZenithLat: number;     // Latitude where Sun is in zenith (degrees N-positive)
+  readonly sunZenithLng: number;     // Longitude where Sun is in zenith (degrees E-positive)
+  readonly sunZenithLatRad: number;  // Latitude in radians
+  readonly sunZenithLngRad: number;  // Longitude in radians (E-positive)
 }
 
 // ✅ CORRECT - WASM module interface with strict typing for spiritual astronomy
@@ -44,14 +46,19 @@ export interface WASMModule {
   readonly get_coordinate_count: () => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
-  
+
+  // Precise solar zenith calculation (returns pointer to [lon_deg_W_positive, lat_deg])
+  readonly calculate_solar_zenith_position?: ((julianDay: number) => number) | undefined;
+  // High-precision radians variant (returns pointer to [lon_east_rad, lat_rad])
+  readonly calculate_solar_zenith_position_rad?: ((julianDay: number) => number) | undefined;
+
   // 🌌 QUANTUM SPIRITUAL ASTRONOMY FUNCTIONS
   readonly calculate_earth_orbit: (julianDay: number) => number;
   readonly calculate_moon_orbit: (julianDay: number) => number;
   readonly get_movement_direction: (currentDistance: number, orbitalPhase: number) => number;
   readonly calculate_days_after_passage: (julianDay: number, orbitalPhase: number, orbitalPeriodDays: number) => number;
   readonly calculate_lunar_phase_detailed: (julianDay: number) => number;
-  
+
   // ⭐ STELLAR COORDINATE TRANSFORMATION FUNCTIONS for createSky
   readonly transform_stellar_coordinates: (raHours: number, decDegrees: number, magnitude: number, starScale: number, radius: number) => number;
   readonly calculate_constellation_line: (star1RaHours: number, star1DecDeg: number, star2RaHours: number, star2DecDeg: number, radius: number) => number;
@@ -117,6 +124,8 @@ export const initializeWASM = async (): Promise<WASMModule> => {
         calculate_constellation_line?: (star1RaHours: number, star1DecDeg: number, star2RaHours: number, star2DecDeg: number, radius: number) => number;
         apply_stellar_precession?: (catalogRaHours: number, catalogDecDegrees: number, catalogEpochJd: number, currentJd: number) => number;
         calculate_astrological_aspects?: (jd: number) => number;
+        calculate_solar_zenith_position?: (jd: number) => number;
+        calculate_solar_zenith_position_rad?: (jd: number) => number;
       }> => {
         // Try different module loading strategies
         const moduleLoadStrategies = [
@@ -124,33 +133,37 @@ export const initializeWASM = async (): Promise<WASMModule> => {
           async () => {
             console.log('🚀 Loading WASM module via Vite 7.0.6 bundler target...');
 
-            // ✅ CORRECT 2025: Import wasm-bindgen bundler target module 
-            const wasmModule = await import('../wasm-astro/starscalendars_wasm_astro.js');
-            
+            // ✅ CORRECT 2025: Import wasm-bindgen bundler target module
+          const wasmModule = await import('../wasm-astro/starscalendars_wasm_astro.js');
+
             // ✅ CORRECT 2025: With bundler target, initialization is automatic
             // No need for wasmModule.default() - this is for web target only
-            
+
             console.log('✅ WASM module loaded and initialized with bundler target');
 
             // ✅ CORRECT 2025: With bundler target, memory is accessed from the WASM binary
             // Import the background module to get internal wasm access
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore - no types for this internal helper
             const bgModule = await import('../wasm-astro/starscalendars_wasm_astro_bg.js');
-            
+
             // Access internal WASM memory for bundler target
             // In bundler target, memory is accessed through internal wasm variable
             let memory: WebAssembly.Memory | null = null;
-            
+
             // Strategy: Use private property access to get real WASM memory
             // This is safe because we control the WASM compilation
             try {
-              // Import the actual WASM module
-              const wasmModule = await import('../wasm-astro/starscalendars_wasm_astro_bg.wasm');
-              if (wasmModule.memory) {
-                memory = wasmModule.memory;
+              // Import the actual WASM module (may fail in dev - optional)
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore - Vite will handle .wasm as asset in bundler target
+              const wasmBin: any = await import('../wasm-astro/starscalendars_wasm_astro_bg.wasm');
+              if (wasmBin && wasmBin.memory) {
+                memory = wasmBin.memory as WebAssembly.Memory;
               }
             } catch (wasmDirectError) {
               console.log('Direct WASM memory access failed, trying alternatives...');
-              
+
               // Fallback: create accessor through internal wasm reference
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const anyBgModule = bgModule as any;
@@ -161,16 +174,14 @@ export const initializeWASM = async (): Promise<WASMModule> => {
                 }
               }
             }
-            
+
             // Final fallback for development
             if (!memory) {
               console.warn('⚠️ Could not access real WASM memory, using development fallback');
-              memory = {
-                buffer: new ArrayBuffer(8 * 1024 * 1024), // 8MB buffer
-                grow: () => ({ buffer: new ArrayBuffer(8 * 1024 * 1024) }),
-              } as WebAssembly.Memory;
+              // Allocate a valid WebAssembly.Memory for fallback to satisfy types
+              memory = new WebAssembly.Memory({ initial: 256, maximum: 512 });
             }
-            
+
             console.log(`✅ WASM memory accessed: ${memory.buffer?.byteLength || 'unknown'} bytes`);
 
             // Test a real calculation to ensure WASM is working
@@ -183,7 +194,7 @@ export const initializeWASM = async (): Promise<WASMModule> => {
             }
 
             // Return unified interface optimized for bundler target
-            return {
+            const base = {
               init: async () => { /* Already initialized */ },
               compute_all: wasmModule.compute_all,
               get_body_count: wasmModule.get_body_count,
@@ -197,9 +208,17 @@ export const initializeWASM = async (): Promise<WASMModule> => {
                   return 'wasm-v1.0.0-bundler';
                 }
               },
-              memory
-              // Note: Additional spiritual astronomy functions will be added when implemented in WASM module
-            };
+              memory,
+            } as const;
+            const extras: any = {};
+            if ((wasmModule as any).calculate_solar_zenith_position) {
+              extras.calculate_solar_zenith_position = (wasmModule as any).calculate_solar_zenith_position;
+            }
+            if ((wasmModule as any).calculate_solar_zenith_position_rad) {
+              extras.calculate_solar_zenith_position_rad = (wasmModule as any).calculate_solar_zenith_position_rad;
+            }
+            // Note: Additional functions may be conditionally attached above
+            return { ...base, ...extras } as any;
           },
 
           // Strategy 2: Development fallback with safe imports (no eval)
@@ -261,6 +280,7 @@ export const initializeWASM = async (): Promise<WASMModule> => {
 
 
         memory: wasmFunctions.memory,
+        calculate_solar_zenith_position: wasmFunctions.calculate_solar_zenith_position,
 
         // 🌌 QUANTUM SPIRITUAL ASTRONOMY FUNCTIONS (newly implemented)
         calculate_earth_orbit: (julianDay: number): number => {
@@ -403,7 +423,7 @@ export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result
   // Real WASM memory access with bounds checking
   try {
     const memoryBuffer = wasmModule.memory.buffer;
-    
+
     // Check if pointer is within valid memory bounds
     if (ptr < 0 || ptr + (coordinateCount * 8) > memoryBuffer.byteLength) {
       return {
@@ -475,8 +495,14 @@ export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result
  */
 export const extractCelestialPositions = (
   positions: Float64Array,
-  currentTime: number
+  currentTime: number,
+  wasmModule?: WASMModule | null
 ): AstronomicalState => {
+  // Babylon LEFT-HANDED (default): X→right, Y→up, Z→forward (into screen)
+  // Single LH bridge transform: flip Z once (z = -z).
+  // IMPORTANT: After this, ALL positions are already in Babylon LH space.
+  // Any additional axis flips in the scene are FORBIDDEN.
+  const conv = (x: number, y: number, z: number) => ({ x, y, z: -z });
   // ✅ HELIOCENTRIC MODEL: Sun always at center (0,0,0) in 3D scene
   const sunPosition: CelestialPosition = {
     x: 0.0, // Sun at center of heliocentric scene
@@ -487,29 +513,61 @@ export const extractCelestialPositions = (
   };
 
   // ✅ HELIOCENTRIC MODEL: Earth uses real heliocentric coordinates from WASM (indices 12-14)
+  const e = conv(positions[12]!, positions[13]!, positions[14]!);
   const earthPosition: CelestialPosition = {
-    x: positions[12]!, // Earth's heliocentric position from WASM
-    y: positions[13]!,
-    z: positions[14]!,
-    distance: Math.sqrt(positions[12]! * positions[12]! + positions[13]! * positions[13]! + positions[14]! * positions[14]!),
+    x: e.x,
+    y: e.y,
+    z: e.z,
+    distance: Math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z),
     timestamp: currentTime
   };
 
   // ✅ GEOCENTRIC MODEL: Moon position relative to Earth (indices 3-5) + Earth offset
+  const mOff = conv(positions[3]!, positions[4]!, positions[5]!);
   const moonPosition: CelestialPosition = {
-    x: positions[12]! + positions[3]!, // Earth position + Moon geocentric offset
-    y: positions[13]! + positions[4]!,
-    z: positions[14]! + positions[5]!,
-    distance: Math.sqrt(positions[3]! * positions[3]! + positions[4]! * positions[4]! + positions[5]! * positions[5]!), // Moon distance from Earth
+    x: e.x + mOff.x,
+    y: e.y + mOff.y,
+    z: e.z + mOff.z,
+    distance: Math.sqrt(mOff.x * mOff.x + mOff.y * mOff.y + mOff.z * mOff.z),
     timestamp: currentTime
   };
 
   // ✅ REAL ASTRONOMICAL DATA: Earth-Sun distance and Sun zenith coordinates
   const earthSunDistance = earthPosition.distance; // Real distance in AU
 
-  // Calculate Sun zenith coordinates (where Sun appears directly overhead)
-  const sunZenithLat = calculateSunZenithLatitude(currentTime);
-  const sunZenithLng = calculateSunZenithLongitude(currentTime);
+  // Calculate Sun zenith coordinates via WASM (rad preferred, deg fallback). No JS fallback allowed.
+  let sunZenithLat: number;
+  let sunZenithLng: number;
+  let sunZenithLatRad: number;
+  let sunZenithLngRad: number;
+  const jd = millisecondsToJulianDay(currentTime);
+  if (wasmModule?.calculate_solar_zenith_position_rad) {
+    const ptrRad = wasmModule.calculate_solar_zenith_position_rad(jd);
+    if (ptrRad) {
+      const radView = new Float64Array(wasmModule.memory.buffer, ptrRad, 2);
+      sunZenithLngRad = radView[0]!; // east-positive
+      sunZenithLatRad = radView[1]!;
+      sunZenithLng = (sunZenithLngRad * 180) / Math.PI;
+      sunZenithLat = (sunZenithLatRad * 180) / Math.PI;
+    } else {
+      throw new Error('WASM returned null pointer for calculate_solar_zenith_position_rad');
+    }
+  } else if (wasmModule?.calculate_solar_zenith_position) {
+    const ptrDeg = wasmModule.calculate_solar_zenith_position(jd);
+    if (ptrDeg) {
+      const degView = new Float64Array(wasmModule.memory.buffer, ptrDeg, 2);
+      const lonDegWestPositive = degView[0]!;
+      const latDeg = degView[1]!;
+      sunZenithLng = -lonDegWestPositive; // convert to east-positive
+      sunZenithLat = latDeg;
+      sunZenithLngRad = (sunZenithLng * Math.PI) / 180;
+      sunZenithLatRad = (sunZenithLat * Math.PI) / 180;
+    } else {
+      throw new Error('WASM returned null pointer for calculate_solar_zenith_position');
+    }
+  } else {
+    throw new Error('WASM solar zenith functions are not available');
+  }
 
   return {
     sun: sunPosition,
@@ -517,39 +575,13 @@ export const extractCelestialPositions = (
     moon: moonPosition,
     earthSunDistance,
     sunZenithLat,
-    sunZenithLng
+    sunZenithLng,
+    sunZenithLatRad,
+    sunZenithLngRad
   };
 };
 
-/**
- * Calculate latitude where Sun appears directly overhead (zenith)
- * Based on Solar Declination and time of day
- */
-const calculateSunZenithLatitude = (currentTime: number): number => {
-  // Convert to days since J2000.0
-  const daysSinceJ2000 = (currentTime - 946728000000) / 86400000; // J2000.0 = Jan 1, 2000 12:00 UTC
-
-  // Solar declination formula (simplified)
-  const dayOfYear = (daysSinceJ2000 % 365.25);
-  const declination = 23.45 * Math.sin((360 * (284 + dayOfYear) / 365) * Math.PI / 180);
-
-  return declination; // Latitude where Sun is in zenith
-};
-
-/**
- * Calculate longitude where Sun appears directly overhead (zenith)
- * Based on time of day and equation of time
- */
-const calculateSunZenithLongitude = (currentTime: number): number => {
-  const date = new Date(currentTime);
-  const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-
-  // Solar longitude (simplified - ignores equation of time)
-  const solarLongitude = 180 - (utcHours * 15); // 15 degrees per hour
-
-  // Normalize to [-180, 180] range
-  return ((solarLongitude + 180) % 360) - 180;
-};
+// Removed JS fallback zenith calculators: we rely exclusively on WASM
 
 /**
  * Cleanup WASM module resources

@@ -3,20 +3,20 @@
 //! Handles WebSocket connections for live astronomical data streaming.
 //! Supports 1000+ concurrent connections with JWT authentication.
 
+use axum::extract::ws::{Message, WebSocket};
 use axum::{
-    extract::{WebSocketUpgrade, State},
+    extract::{State, WebSocketUpgrade},
     response::Response,
 };
-use axum::extract::ws::{WebSocket, Message};
-use futures::{sink::SinkExt, stream::StreamExt};
+use futures::{future::join_all, sink::SinkExt, stream::StreamExt};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::{RwLock, broadcast};
-use std::collections::HashMap;
-use uuid::Uuid;
-use tracing::{info, error, warn};
 use starscalendars_app::*;
 use starscalendars_domain::*;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::{RwLock, broadcast};
+use tracing::{error, info, warn};
+use uuid::Uuid;
 
 /// WebSocket message types for spiritual astronomy platform
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,7 +87,7 @@ impl WebSocketManager {
     /// Create new WebSocket manager
     pub fn new(jwt_service: Arc<dyn JwtService + Send + Sync>) -> Self {
         let (broadcast_tx, _) = broadcast::channel(1000); // High capacity for real-time updates
-        
+
         Self {
             connections: Arc::new(RwLock::new(HashMap::with_capacity(1000))),
             broadcast_tx,
@@ -95,14 +95,14 @@ impl WebSocketManager {
             jwt_service,
         }
     }
-    
+
     /// Add new WebSocket connection
     pub async fn add_connection(
         &self,
         sender: tokio::sync::mpsc::UnboundedSender<WebSocketMessage>,
     ) -> Uuid {
         let connection_id = Uuid::new_v4();
-        
+
         let connection = WebSocketConnection {
             connection_id,
             user_id: None,
@@ -110,18 +110,18 @@ impl WebSocketManager {
             authenticated: false,
             connected_at: time::OffsetDateTime::now_utc(),
             last_activity: std::sync::Arc::new(std::sync::atomic::AtomicI64::new(
-                time::OffsetDateTime::now_utc().unix_timestamp()
+                time::OffsetDateTime::now_utc().unix_timestamp(),
             )),
             language: "en".to_string(), // Default language
         };
-        
+
         let mut connections = self.connections.write().await;
         connections.insert(connection_id, connection);
-        
+
         info!("🔗 WebSocket connection added: {}", connection_id);
         connection_id
     }
-    
+
     /// Authenticate WebSocket connection
     pub async fn authenticate_connection(
         &self,
@@ -130,33 +130,37 @@ impl WebSocketManager {
     ) -> Result<UserId, AppError> {
         // Validate JWT token
         let claims = self.jwt_service.validate_access_token(token).await?;
-        
+
         let mut connections = self.connections.write().await;
         let mut user_connections = self.user_connections.write().await;
-        
+
         if let Some(connection) = connections.get_mut(connection_id) {
             connection.user_id = Some(claims.user_id.clone());
             connection.authenticated = true;
             connection.language = claims.language.unwrap_or_else(|| "en".to_string());
-            
+
             // Track user connections for targeted messaging
             user_connections
                 .entry(claims.user_id.clone())
                 .or_insert_with(Vec::new)
                 .push(*connection_id);
-            
-            info!("✅ WebSocket connection authenticated: {} for user {}", connection_id, claims.user_id.as_uuid());
+
+            info!(
+                "✅ WebSocket connection authenticated: {} for user {}",
+                connection_id,
+                claims.user_id.as_uuid()
+            );
             Ok(claims.user_id)
         } else {
             Err(AppError::Authentication("Connection not found".to_string()))
         }
     }
-    
+
     /// Remove WebSocket connection
     pub async fn remove_connection(&self, connection_id: &Uuid) {
         let mut connections = self.connections.write().await;
         let mut user_connections = self.user_connections.write().await;
-        
+
         if let Some(connection) = connections.remove(connection_id) {
             // Remove from user connections tracking
             if let Some(user_id) = &connection.user_id {
@@ -167,44 +171,48 @@ impl WebSocketManager {
                     }
                 }
             }
-            
+
             info!("🔌 WebSocket connection removed: {}", connection_id);
         }
     }
-    
+
     /// Broadcast message to all authenticated connections
     pub async fn broadcast(&self, message: WebSocketMessage) {
         if let Err(e) = self.broadcast_tx.send(message) {
             error!("Failed to broadcast message: {}", e);
         }
     }
-    
+
     /// Send message to specific user's connections
     pub async fn send_to_user(&self, user_id: &UserId, message: WebSocketMessage) {
         let user_connections = self.user_connections.read().await;
         let connections = self.connections.read().await;
-        
+
         if let Some(connection_ids) = user_connections.get(user_id) {
             for &connection_id in connection_ids {
                 if let Some(connection) = connections.get(&connection_id) {
                     if let Err(e) = connection.sender.send(message.clone()) {
-                        warn!("Failed to send message to connection {}: {}", connection_id, e);
+                        warn!(
+                            "Failed to send message to connection {}: {}",
+                            connection_id, e
+                        );
                     }
                 }
             }
         }
     }
-    
+
     /// Get connection statistics
     pub async fn get_stats(&self) -> (usize, usize) {
         let connections = self.connections.read().await;
-        let authenticated_count = connections.values()
+        let authenticated_count = connections
+            .values()
             .filter(|conn| conn.authenticated)
             .count();
-        
+
         (connections.len(), authenticated_count)
     }
-    
+
     /// Cleanup inactive connections
     pub async fn cleanup_inactive(&self, timeout_secs: i64) {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
@@ -212,20 +220,23 @@ impl WebSocketManager {
         // Estimated capacity: assume max 10% of connections might be inactive at once
         let estimated_inactive = self.connections.read().await.len() / 10 + 1;
         let mut to_remove = Vec::with_capacity(estimated_inactive);
-        
+
         {
             let connections = self.connections.read().await;
             for (connection_id, connection) in connections.iter() {
-                let last_activity = connection.last_activity.load(std::sync::atomic::Ordering::Relaxed);
+                let last_activity = connection
+                    .last_activity
+                    .load(std::sync::atomic::Ordering::Relaxed);
                 if now - last_activity > timeout_secs {
                     to_remove.push(*connection_id);
                 }
             }
         }
-        
-        for connection_id in to_remove {
-            self.remove_connection(&connection_id).await;
-        }
+
+        let removal_futures = to_remove
+            .into_iter()
+            .map(|connection_id| self.remove_connection(&connection_id));
+        join_all(removal_futures).await;
     }
 }
 
@@ -240,17 +251,17 @@ pub async fn websocket_handler(
 /// Handle individual WebSocket connection
 async fn handle_websocket(socket: WebSocket, manager: Arc<WebSocketManager>) {
     let (mut sender, mut receiver) = socket.split();
-    
+
     // Create communication channel for this connection
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessage>();
-    
+
     // Add connection to manager
     let connection_id = manager.add_connection(tx.clone()).await;
-    
+
     // Clone manager for tasks
     let manager_recv = manager.clone();
     let manager_send = manager.clone();
-    
+
     // Task for sending messages to client
     let send_task = tokio::spawn(async move {
         while let Some(message) = rx.recv().await {
@@ -261,26 +272,29 @@ async fn handle_websocket(socket: WebSocket, manager: Arc<WebSocketManager>) {
                     continue;
                 }
             };
-            
+
             if sender.send(Message::Text(msg_text)).await.is_err() {
                 break;
             }
         }
     });
-    
+
     // Task for receiving messages from client
     let recv_task = tokio::spawn(async move {
         let mut authenticated = false;
-        
+
         while let Some(message) = receiver.next().await {
             match message {
                 Ok(Message::Text(text)) => {
                     let ws_message: Result<WebSocketMessage, _> = serde_json::from_str(&text);
-                    
+
                     match ws_message {
                         Ok(WebSocketMessage::Auth { token }) => {
                             if !authenticated {
-                                match manager_recv.authenticate_connection(&connection_id, &token).await {
+                                match manager_recv
+                                    .authenticate_connection(&connection_id, &token)
+                                    .await
+                                {
                                     Ok(user_id) => {
                                         authenticated = true;
                                         let response = WebSocketMessage::AuthSuccess {
@@ -289,7 +303,10 @@ async fn handle_websocket(socket: WebSocket, manager: Arc<WebSocketManager>) {
                                         if tx.send(response).is_err() {
                                             break;
                                         }
-                                        info!("🔐 WebSocket authenticated for user: {}", user_id.as_uuid());
+                                        info!(
+                                            "🔐 WebSocket authenticated for user: {}",
+                                            user_id.as_uuid()
+                                        );
                                     }
                                     Err(e) => {
                                         let response = WebSocketMessage::AuthError {
@@ -325,7 +342,10 @@ async fn handle_websocket(socket: WebSocket, manager: Arc<WebSocketManager>) {
                     }
                 }
                 Ok(Message::Close(_)) => {
-                    info!("🔌 WebSocket connection closed by client: {}", connection_id);
+                    info!(
+                        "🔌 WebSocket connection closed by client: {}",
+                        connection_id
+                    );
                     break;
                 }
                 Ok(Message::Ping(data)) => {
@@ -337,7 +357,7 @@ async fn handle_websocket(socket: WebSocket, manager: Arc<WebSocketManager>) {
             }
         }
     });
-    
+
     // Wait for either task to complete
     tokio::select! {
         _ = send_task => {
@@ -347,7 +367,7 @@ async fn handle_websocket(socket: WebSocket, manager: Arc<WebSocketManager>) {
             info!("WebSocket receive task completed for {}", connection_id);
         }
     }
-    
+
     // Cleanup connection
     manager.remove_connection(&connection_id).await;
 }

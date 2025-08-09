@@ -1,6 +1,6 @@
 # 🚀 StarsCalendars - Getting Started
 
-**High-performance spiritual astronomy platform with TypeScript 5.9.2 + Babylon.js 8.21.0 + WASM astronomical calculations**
+**High-performance spiritual astronomy platform with TypeScript 5.9 + Babylon.js 8 + WASM astronomical calculations**
 
 ## 🎯 Quick Start (First Launch)
 
@@ -50,8 +50,8 @@ cd frontend && pnpm run dev
 ### Current Implementation Status
 
 ✅ **Ready for Development:**
-- **Frontend**: React 19 + TypeScript 5.9.2 + Vite 7.0.6 + Babylon.js 8.21.0
-- **WASM Module**: ✅ ПОЛНОСТЬЮ РЕАЛИЗОВАНО - 24 функции покрывают весь API astro-rust с солнечным зенитом для поворота Земли
+- **Frontend**: React 19 + TypeScript 5.9 + Vite 7 + Babylon.js 8
+- **WASM Module**: ✅ Реализовано ядро: единый `compute_all(jd)` и `calculate_solar_zenith_position_rad(jd)`
 - **3D Scene**: Interactive celestial body visualization with 60fps performance
 - **Build System**: pnpm workspaces with optimized Rust/WASM/TypeScript compilation
 - **Quality Gates**: Comprehensive linting, anti-pattern detection, performance monitoring
@@ -72,10 +72,9 @@ cd frontend && pnpm run dev
 
 **✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
 - ТОЛЬКО функции из astro-rust для астрономических расчетов
-- Полное покрытие API (24 функции в обертке)
-- Реальные эфемеридные данные для тестов
-- Максимальная точность с коррекциями нутации/прецессии
-- Production-ready паттерны Rust 1.88+ с WASM-bindgen
+- Ровно один вызов `compute_all(jd)` на кадр + `calculate_solar_zenith_position_rad(jd)` для зенита
+- Zero-copy Float64Array и thread-local буферы
+- Максимальная точность с коррекциями нутации/прецессии при необходимости
 
 ### 🎯 ПРИМЕР ПРАВИЛЬНОЙ РЕАЛИЗАЦИИ НОВОЙ ФУНКЦИИ:
 ```rust
@@ -116,7 +115,7 @@ pub fn bad_solar_position(julian_day: f64) -> *const f64 {
 
 The **main astronomical 3D scene** is fully functional:
 - Real-time celestial body calculations via WASM
-- Interactive 3D visualization with Babylon.js 8.21.0
+- Interactive 3D visualization with Babylon.js 8
 - High-precision astronomical algorithms (VSOP87, ELP-2000/82)
 - 60fps performance with zero-copy WASM-JS data transfer
 - TypeScript 5.9.2 strict type safety
@@ -263,7 +262,7 @@ chmod +x scripts/build-wasm.sh
 
 ## 🎨 3D Visualization
 
-### Babylon.js 8.21.0 Features
+### Babylon.js 8 Features
 - **WebGPU Support**: Automatic fallback to WebGL 2.0
 - **Material Optimization**: Frozen materials, pre-allocated meshes
 - **Camera System**: ArcRotateCamera with smooth controls
@@ -271,9 +270,9 @@ chmod +x scripts/build-wasm.sh
 - **Performance**: 60fps guaranteed on modern hardware
 
 ### Scene Layout
-- **Geocentric View**: Earth at origin (0,0,0)
-- **Sun**: Dynamic position relative to Earth
-- **Moon**: High-precision lunar position with phase calculations
+- **Heliocentric View**: Sun at origin (0,0,0)
+- **Earth**: Heliocentric VSOP87 position
+- **Moon**: Geocentric offset parented to Earth pivot
 - **Planets**: Scaled artistic proportions for visibility
 - **Scale**: Optimized for cinematic quality vs. astronomical accuracy
 
@@ -299,9 +298,9 @@ chmod +x scripts/build-wasm.sh
 
 ## 📚 Documentation Links
 
-- **TypeScript 5.9.2**: https://www.typescriptlang.org/
-- **Babylon.js 8.21.0**: https://doc.babylonjs.com/
-- **Vite 7.0.6**: https://vite.dev/
+- **TypeScript 5.9**: https://www.typescriptlang.org/
+- **Babylon.js 8**: https://doc.babylonjs.com/
+- **Vite 7**: https://vite.dev/
 - **wasm-pack**: https://rustwasm.github.io/wasm-pack/
 - **astro-rust**: Local copy in `./astro-rust/` (🔒 READ-ONLY)
 

@@ -90,6 +90,7 @@ impl UserRepository for PostgresUserRepository {
 - **Bundle Size**: <2MB initial load
 - **Load Time**: <3s first contentful paint
 - **Memory**: Zero allocations in Babylon.js render loop
+- **Scene Rules**: 1× `compute_all(jd)` per frame; `calculate_solar_zenith_position_rad(jd)` for zenith; no manual mipmap/anisotropy toggles; LH system with Z flip in WASM bridge
 
 ### **Telegram Bot Performance**
 - **Target**: <500ms response time for all commands
@@ -220,7 +221,7 @@ match user.culture_preference {
 
 ### **Astronomical Precision Standards**
 - **Accuracy**: ±0.1 arcsecond for all celestial calculations
-- **Ephemeris**: Swiss Ephemeris DE431 integration required
+- **Ephemeris**: Local `astro-rust/` only (READ-ONLY); Swiss Ephemeris not used
 - **Time Systems**: UTC, TAI, TT, UT1 support with proper conversions
 - **Coordinate Systems**: J2000.0, Date, Apparent with precession/nutation
 

@@ -53,12 +53,12 @@
      Phase 1.2: 3D Визуализация
 
      frontend-expert - Babylon.js 3D сцена:
-     - Создание frontend/ с TypeScript 5.9.2 и Babylon.js 8.21.0
+     - Создание frontend/ с TypeScript 5.9 и Babylon.js 8
      - Реализация кинематографического 3D рендеринга (60 FPS)
      - Интеграция WASM модуля с zero-copy data transfer
-     - Создание HTML/CSS overlay для GUI (performance priority)
+     - Babylon GUI для дат/квантовой даты; единственный `#stats` div для FPS
      - Реализация художественных пропорций небесных тел
-     - Статическое позиционирование Солнца в (0,0,0)
+     - Солнце в (0,0,0) (гелиоцентрическая сцена)
 
      Phase 1.3: Многоязычность базовая
 

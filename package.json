@@ -35,15 +35,16 @@
     "pre-commit": "make pre-commit"
   },
   "devDependencies": {
-    "@types/node": "^22.17.0",
-    "@typescript-eslint/eslint-plugin": "^8.39.0",
-    "@typescript-eslint/parser": "^8.39.0",
-    "concurrently": "^9.2.0",
-    "eslint": "^9.32.0",
-    "prettier": "^3.6.2",
-    "simple-git-hooks": "^2.13.1",
-    "typescript": "^5.9.2",
-    "vite": "^7.0.6"
+    "@babylonjs/procedural-textures": "8",
+    "@types/node": "22",
+    "@typescript-eslint/eslint-plugin": "8",
+    "@typescript-eslint/parser": "8",
+    "concurrently": "9",
+    "eslint": "9",
+    "prettier": "3",
+    "simple-git-hooks": "2",
+    "typescript": "5",
+    "vite": "7"
   },
   "engines": {
     "node": ">=20.0.0",

@@ -7,7 +7,7 @@
 ### Deployment Strategy
 
 #### Frontend
-- Компилируется заранее локально с помощью `pnpm run build:prod`
+- Компилируется заранее локально с помощью `pnpm run build`
 - Результат сборки в `frontend/dist/`
 - Копируется на сервер через rsync
 
@@ -17,7 +17,7 @@
 - Исполняемый файл: `target/release/backend`
 
 #### WASM
-- Компилируется заранее с `wasm-pack build --release --target web`
+- Компилируется заранее с `pnpm run build:wasm` (bundler target → `frontend/src/wasm-astro/`)
 - Интегрируется в frontend build
 
 ### Server Requirements

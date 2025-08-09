@@ -22,10 +22,10 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **JWT RS256** authentication with custom claims
 
 ### Frontend
-- **TypeScript 5.9.2** with strict type checking
-- **Babylon.js 8.21.0** for 3D astronomical visualization
-- **Vite 7.0.6** build system with WASM integration
-- **React 19.1.1** with latest features
+- **TypeScript 5.9** with strict type checking
+- **Babylon.js 8** for 3D astronomical visualization
+- **Vite 7** build system with WASM integration
+- **React 19** with latest features
 - **Fluent** for internationalization (ICU MessageFormat)
 
 ### WASM Core
@@ -33,11 +33,21 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **Zero-copy** data transfer via Float64Array
 - **O(1) горячий путь** for real-time calculations
 - **Thread-local buffers** for performance optimization
+- Output (bundler target) is written to `frontend/src/wasm-astro/` as `starscalendars_wasm_astro.js` + `*_bg.wasm`
+- Use left-handed Babylon system (default); align coordinates once in the WASM bridge (invert Z only)
+
+### Textures & Assets (Frontend)
+- All scene textures are served from `frontend/public/textures` and available at runtime under `/textures/...`
+- Skybox: `/textures/universe/universe_[px,py,pz,nx,ny,nz].jpg`
+- Earth: `/textures/earth-diffuse.jpg`, `/textures/earth-height.png`
+- Moon: `/textures/moon.jpg`, `/textures/moon_bump.jpg`, `/textures/moon_spec.jpg`
+- Stars: `/textures/star.png`
 
 ### Authentication & UI
 - **Dioxus 0.7 ALPHA** fullstack framework for auth/profile/admin
 - **Pure Telegram** authentication (no passwords)
 - **Subscription verification** via getChatMember API
+- **GUI**: Babylon GUI for date/quantum date; a single `#stats` div overlay for FPS; no other HTML overlays
 
 ## 📁 Project Structure
 
@@ -91,8 +101,8 @@ pnpm run build:wasm
 # Run quality checks
 make quality-check
 
-# Start development environment
-pnpm run dev
+# Start frontend only (build WASM first and run Vite)
+pnpm -w run dev:frontend-only
 ```
 
 ### Build Commands
@@ -134,7 +144,7 @@ make wasm-perf            # WASM performance validation
 make pre-commit
 ```
 
-### 🚨 CRITICAL WASM ANTI-PATTERNS (PROJECT FAILURE IF VIOLATED)
+### 🚨 CRITICAL WASM RULES
 
 **🔥 СТРОГО ЗАПРЕЩЕННЫЕ ПАТТЕРНЫ В WASM ОБЕРТКЕ:**
 - ❌ **Mock-данные любого вида** - даже временные или для тестов
@@ -148,9 +158,8 @@ make pre-commit
 
 **✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
 - ТОЛЬКО функции из astro-rust для астрономических расчетов
-- Полное покрытие API (24 функции в обертке)
-- Реальные эфемеридные данные для тестов
-- Максимальная точность с коррекциями нутации/прецессии
+- Единый вызов `compute_all(jd)` на кадр и `calculate_solar_zenith_position_rad(jd)` для зенита
+- Реальные эфемеридные данные, коррекции нутации/прецессии при необходимости
 
 ### General Anti-Patterns
 
@@ -202,7 +211,7 @@ make pre-commit
 - **Fluent L10n**: ICU MessageFormat standard
 - **Cultural Sensitivity**: Spiritual community considerations
 
-## 📋 Development Status - ОБНОВЛЕНО 2025-01-08
+## 📋 Development Status - ОБНОВЛЕНО 2025-08-08
 
 ### 🌟 **ТЕКУЩИЙ СТАТУС: Phase 1.1 → 1.2 (95% готовности к переходу)**
 
@@ -214,9 +223,9 @@ make pre-commit
 - [x] CI/CD pipeline, VS Code интеграция
 
 ✅ **Phase 1.1: Астрономическое ядро** (ЗАВЕРШЕНО)
-- [x] **WASM модуль**: thread-local буферы, O(1) compute_all() интерфейс
-- [x] **Backend**: Axum 0.8.4, JWT RS256, WebSocket auth
-- [x] **Frontend**: TypeScript 5.9.2, React 19.1.1, WASM интеграция  
+- [x] **WASM модуль**: thread-local буферы, O(1) `compute_all()` + `calculate_solar_zenith_position_rad()`
+- [x] **Backend**: Axum 0.8, JWT RS256, WebSocket auth
+- [x] **Frontend**: TypeScript 5.9, React 19, WASM интеграция  
 - [x] **Infrastructure**: wasm-pack, pnpm workspace, сборка успешна
 
 ### 📊 **Build Metrics - ОТЛИЧНЫЕ РЕЗУЛЬТАТЫ:**
@@ -229,14 +238,12 @@ make pre-commit
 ✅ React: 19.1.1 latest features
 ```
 
-🚀 **Phase 1.2: 3D Визуализация** (ГОТОВО К ИМПЛЕМЕНТАЦИИ)
-- [x] Babylon.js 8.21.0 dependencies установлены и обновлены
-- [x] Vite 7.0.6 + React 19.1.1 + TypeScript 5.9.2 стек готов
-- [x] WASM-Frontend интеграция complete с astro-rust
-- [x] Build система работает (17.48s)
-- [ ] **СЛЕДУЮЩИЙ ЭТАП**: Babylon.js 8.21.0 Engine + Scene setup
-- [ ] **СЛЕДУЮЩИЙ ЭТАП**: Cinematic 3D rendering (60fps target)
-- [ ] **СЛЕДУЮЩИЙ ЭТАП**: Real-time astronomical data visualization
+🚀 **Phase 1.2: 3D Визуализация** (В ПРОЦЕССЕ)
+- [x] Babylon.js 8 deps установлены
+- [x] Vite 7 + React 19 + TypeScript 5.9 стек готов
+- [x] WASM-Frontend интеграция complete (z‑flip в мосте)
+- [x] GUI: Babylon GUI для дат, `#stats` overlay для FPS
+- [ ] Пивоты Земли/Луны, true anomaly в поворотах, зенит‑маркер по формуле референса
 
 ### 🎯 **ВСЕ БЛОКЕРЫ УСТРАНЕНЫ - ГОТОВ К ПРОДОЛЖЕНИЮ**
 - ✅ wasm-pack установлен и работает
@@ -277,10 +284,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ## 📜 Documentation
 
-- **[Technical Specification](tz.md)**: Detailed system architecture
+- **[Technical Specification](tz.md)**: Detailed system architecture (canonicalized)
 - **[Product Requirements](prd.md)**: Feature specifications
 - **[Quality Rules](quality-rules.toml)**: Enforced coding standards
 - **[Build System](Makefile)**: Quality assurance automation
+- **[Canonical Context Bootstrap](docs/context-bootstrap.md)**: Single source of truth for agents
 
 ## 📧 License
 
