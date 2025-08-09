@@ -1,36 +1,37 @@
+import { Meteor } from 'meteor/meteor';
 import {
-  ArcRotateCamera,
-  Color3,
-  CubeTexture,
-  Effect,
   Engine,
-  GlowLayer,
-  Matrix,
-  Mesh,
-  MeshBuilder,
-  PointLight,
   Scene,
-  ShaderMaterial,
+  Vector3,
+  ArcRotateCamera,
+  CubeTexture,
+  MeshBuilder,
   StandardMaterial,
   Texture,
-  Tools,
-  TransformNode,
-  Vector3,
-  VertexData,
+  Color3,
+  PointLight,
+  ShaderMaterial,
   VolumetricLightScatteringPostProcess,
+  Mesh,
+  Tools,
+  VertexData,
+  Matrix,
+  TransformNode,
+  Effect,
+  GlowLayer,
 } from "@babylonjs/core";
 import {
   AdvancedDynamicTexture,
   Control,
-  Line,
-  Rectangle,
-  StackPanel,
   TextBlock,
+  StackPanel,
+  Rectangle,
+  Line,
 } from "@babylonjs/gui";
 import { FireProceduralTexture } from "@babylonjs/procedural-textures/fire";
-import { Text } from '@chakra-ui/react';
-import Ephemeris from 'ephemeris';
 import React, { useEffect, useRef, useState } from "react";
+import { useToast, Text } from '@chakra-ui/react';
+import Ephemeris from 'ephemeris';
 import Spinner from './spinner.jsx';
 
 export function SceneComponent() {
@@ -86,7 +87,7 @@ export function SceneComponent() {
       const mid = Math.floor((left + right) / 2);
       if (arr[mid].u <= targetU) {
         // if (arr[mid].u !== targetU) {
-        closestSmaller = arr[mid];
+          closestSmaller = arr[mid];
         // }
         left = mid + 1;
       } else {
@@ -99,7 +100,7 @@ export function SceneComponent() {
   const handleDateChange = (value) => {
     if (value instanceof Date) {
       const val = new Date(value);
-      val.setHours(24 - (val.getTimezoneOffset() / 60 + 4));
+      val.setHours(24-(val.getTimezoneOffset() / 60 + 4));
       val.setMinutes(0);
       val.setSeconds(0);
       val.setMilliseconds(0);
@@ -129,11 +130,11 @@ export function SceneComponent() {
       const yNTr = Math.trunc(res.y);
       const dNTrr = Math.trunc(res.d);
       const dpNTr = Math.trunc(dNTrr / 10);
-      const dNTr = dNTrr - (dpNTr * 10);
-      const yNT = `00${yNTr.toString()}`;
-      const dNT = `00${dNTr.toString()}`;
-      const dpNT = `00${dpNTr.toString()}`;
-      const tNT = `${dNT.substring(dNT.length - 2)}.${dpNT.substring(dpNT.length - 2)}.${yNT.substring(yNT.length - 2)}`;
+      const dNTr = dNTrr-(dpNTr*10);
+      const yNT = `00${  yNTr.toString()}`;
+      const dNT = `00${  dNTr.toString()}`;
+      const dpNT = `00${  dpNTr.toString()}`;
+      const tNT = `${dNT.substring(dNT.length - 2)  }.${  dpNT.substring(dpNT.length - 2)  }.${  yNT.substring(yNT.length - 2)}`;
       setNTY(yNTr);
       setNTD(dNTr);
       setNTDp(dpNTr);
@@ -176,28 +177,28 @@ export function SceneComponent() {
   // function llToXYZ(latitude = 55.7558, longitude = 37.6173, r = 25) {
   //   // Угол наклона земной оси в радианах
   //   const tilt = Tools.ToRadians(latitude);
-
+  
   //   // Переводим градусы в радианы
   //   const phi = Tools.ToRadians(90 - latitude);
   //   const theta = Tools.ToRadians(longitude + 180);
-
+  
   //   // Вычисляем координаты без учета наклона
   //   const x1 = r * Math.sin(phi) * Math.cos(theta);
   //   const z1 = r * Math.sin(phi) * Math.sin(theta);
   //   const y1 = r * Math.cos(phi);
-
+  
   //   // Создаем вектор позиции
   //   let position = new Vector3(x1, y1, z1);
-
+  
   //   // Матрица поворота для наклона оси Земли
   //   const rotationMatrix = Matrix.RotationX(tilt);
-
+  
   //   // Применяем матрицу поворота к координатам точки
   //   position = Vector3.TransformCoordinates(position, rotationMatrix);
-
+  
   //   return position;
   // }
-
+  
   // Функция для вычисления положения Земли на орбите с использованием вычисленных данных
   function calculateEarthPosition(earthData, date) {
     const {
@@ -205,7 +206,7 @@ export function SceneComponent() {
       distance,
       epoch,
     } = earthData;
-    const perihelionRad = (102.9373 + (0.000047082558678 * (epoch - 2451545))) * (Math.PI / 180);
+    const perihelionRad = (102.9373+(0.000047082558678*(epoch-2451545))) * (Math.PI / 180);
     const trueAnomaly = longitude - perihelionRad;
     // if (trueAnomaly < 0) {
     //     trueAnomaly += 2 * Math.PI;
@@ -223,16 +224,16 @@ export function SceneComponent() {
       }
     }
     const direction = (clEv === this.perigeePoint);
-    return { position: { x, y, z }, direction, trueAnomaly, longitude };
+    return { position: { x, y, z }, direction, trueAnomaly, longitude};
   }
 
-  function normalizeCoordinates(points, d = 700, aP = 'apogeePoint', pP = 'perigeePoint', minD = 'minDistance', maxD = 'maxDistance') {
+  function normalizeCoordinates(points,d=700,aP='apogeePoint',pP='perigeePoint',minD='minDistance',maxD='maxDistance') {
     this[aP] = null;
     this[pP] = null;
     this[minD] = Number.MAX_VALUE;
     this[maxD] = 0;
     points.forEach(point => {
-      const { p } = point;
+      const {p} = point;
       const distance = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
       if (distance > this[maxD]) {
         this[maxD] = distance;
@@ -256,7 +257,7 @@ export function SceneComponent() {
     // return normalizedPoints;
   }
 
-  function drawEarthOrbit(date) {// scene,
+  function drawEarthOrbit(date) {// scene, 
     // let mMm = scene.getMeshByName("earthOrbit");
     // if (mMm) {
     //   mMm.dispose();
@@ -300,8 +301,8 @@ export function SceneComponent() {
     // perigeeMarker.material.diffuseColor = new Color3(1, 0, 0); // Красный цвет
     // return orbit;
   }
-
-  function drawMoonOrbit(date) {// scene, , eM
+  
+  function drawMoonOrbit(date) {// scene, , eM 
     // let mMm = scene.getMeshByName("moonOrbit");
     // if (mMm) {
     //   mMm.dispose();
@@ -316,7 +317,7 @@ export function SceneComponent() {
       date = new Date(date.getTime() - perDay);
     }
     points.push(fpz);
-    normalizeCoordinates(points, 200, 'apogeePointM', 'perigeePointM', 'minDistanceM', 'maxDistanceM');
+    normalizeCoordinates(points,200,'apogeePointM','perigeePointM','minDistanceM','maxDistanceM');
     // const orbit = MeshBuilder.CreateLines("moonOrbit", { points: normalizeCoordinates(points,200,'apogeePointM','perigeePointM','minDistanceM','maxDistanceM') }, scene);
     // orbit.color = new Color3(1, 1, 0); // Жёлтый цвет орбиты
     // orbit.parent = eM;
@@ -356,16 +357,16 @@ export function SceneComponent() {
     let L = 0;
     for (let astLimitLoop = starData.rightAscension.length, i = 0; i < astLimitLoop; i++) {
       for (let starLimitLoop = starData.rightAscension[i].length, j = 0; j < starLimitLoop; j++) {
-        const ra = (starData.rightAscension[i][j][0] + starData.rightAscension[i][j][1] / 60 + starData.rightAscension[i][j][2] / 3600) * 15;
+        const ra = (starData.rightAscension[i][j][0] + starData.rightAscension[i][j][1]/60 + starData.rightAscension[i][j][2]/3600) * 15;
         const decDegrees = starData.declination[i][j][0];
         const decMinutes = starData.declination[i][j][1];
         const decSeconds = starData.declination[i][j][2];
         const dec = (decDegrees < 0 || Object.is(decDegrees, -0))
-          ? -(Math.abs(decDegrees) + decMinutes / 60 + decSeconds / 3600)
-          : decDegrees + decMinutes / 60 + decSeconds / 3600;
+                  ? -(Math.abs(decDegrees) + decMinutes/60 + decSeconds/3600)
+                  : decDegrees + decMinutes/60 + decSeconds/3600;
         const rightAscension = Tools.ToRadians(ra);
         const declination = Tools.ToRadians(dec);
-        const scaleFactor = (10.8 - (starData.apparentMagnitude[i][j] * 1.5)) * this.starScale;
+        const scaleFactor = (10.8 - (starData.apparentMagnitude[i][j]*1.5)) * this.starScale;
         let _ = new Vector3(0 * scaleFactor, .7 * scaleFactor, this.radius);
         let C = new Vector3(-.5 * scaleFactor, -.3 * scaleFactor, this.radius);
         let f = new Vector3(.5 * scaleFactor, -.3 * scaleFactor, this.radius);
@@ -408,14 +409,14 @@ export function SceneComponent() {
           const startIdx = starData.asterismIndices[asr][i][j];
           const endIdx = starData.asterismIndices[asr][i][j + 1];
           const start = new Vector3(
-            starsCoordinates[startIdx * 3 * 3],
-            starsCoordinates[startIdx * 3 * 3 + 1],
-            starsCoordinates[startIdx * 3 * 3 + 2]
+              starsCoordinates[startIdx * 3*3],
+              starsCoordinates[startIdx * 3*3 + 1],
+              starsCoordinates[startIdx * 3*3 + 2]
           );
           const end = new Vector3(
-            starsCoordinates[endIdx * 3 * 3],
-            starsCoordinates[endIdx * 3 * 3 + 1],
-            starsCoordinates[endIdx * 3 * 3 + 2]
+              starsCoordinates[endIdx * 3*3],
+              starsCoordinates[endIdx * 3*3 + 1],
+              starsCoordinates[endIdx * 3*3 + 2]
           );
           createLine(start, end);
         }
@@ -426,7 +427,7 @@ export function SceneComponent() {
   function convertLunarCoordinates(lunarData, date) {
     const distanceInKm = lunarData.geometric.distance * 149597870.7;
     const latitudeInRadians = lunarData.geometric.latitude * (Math.PI / 180);
-    const longitudeInRadians = (lunarData.geometric.longitude + 66) * (Math.PI / 180);
+    const longitudeInRadians = (lunarData.geometric.longitude+66) * (Math.PI / 180);
     const x = distanceInKm * Math.cos(latitudeInRadians) * Math.cos(longitudeInRadians);
     const z = distanceInKm * Math.cos(latitudeInRadians) * Math.sin(longitudeInRadians);
     const y = distanceInKm * Math.sin(latitudeInRadians);
@@ -488,9 +489,9 @@ export function SceneComponent() {
     //     longitude = position.coords.longitude;
     //   });
     // } else {
-    const timeDifferenceMilliseconds = localTime - utcTime;
-    const timeDifferenceHours = timeDifferenceMilliseconds / 3600000;
-    longitude = timeDifferenceHours * 15;
+      const timeDifferenceMilliseconds = localTime - utcTime;
+      const timeDifferenceHours = timeDifferenceMilliseconds / 3600000;
+      longitude = timeDifferenceHours * 15;
     // }
     return { latitude, longitude };
   }
@@ -513,7 +514,7 @@ export function SceneComponent() {
     const JD = Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + dayFraction + B - 1524.5;
     return JD;
   }
-
+      
   function calculateGST(julianDate) {
     const T = (julianDate - 2451545.0) / 36525.0;
     let GST = 280.46061837 + 360.98564736629 * (julianDate - 2451545.0) + 0.000387933 * T ** 2 - T ** 3 / 38710000;
@@ -523,20 +524,20 @@ export function SceneComponent() {
     }
     return GST; // В градусах
   }
-
+      
   function calculateZenithPosition(dataSun, date) {
     const julianDate = calculateJulianDate(date); // Использует UTC
     const GST = calculateGST(julianDate); // Передаем julianDate
     const RA_hours = dataSun.ra.hours + dataSun.ra.minutes / 60 + dataSun.ra.seconds / 3600;
     const RA_deg = RA_hours * 15; // 15 градусов на каждый час
-    let longitude = (GST - (RA_deg - 91) + 360) % 360;
+    let longitude = (GST - (RA_deg-91) + 360) % 360;
     const latitude = dataSun.dec.degree + dataSun.dec.minutes / 60 + dataSun.dec.seconds / 3600;
     return {
       longitude,
       latitude,
     };
   }
-
+            
   const onSceneReady = (scene, engine) => {
     // scene.ambientColor = new Color3(1, 1, 1);
     Effect.ShadersStore.shPlanetVertexShader = `
@@ -706,38 +707,36 @@ export function SceneComponent() {
         }
     `;
     // loadAssets(scene);
-    const starData = {
-      rightAscension: [[[2, 31, 48.7], [17, 32, 12.9], [16, 45, 58.1], [15, 44, 3.5], [16, 17, 30.3], [15, 20, 43.7], [14, 50, 42.3]],
-      [[6, 3, 55.2], [6, 11, 56.4], [6, 7, 34.3], [5, 54, 22.9], [6, 2, 23.0], [5, 55, 10.3], [5, 35, 8.3], [5, 25, 7.9], [5, 32, 0.4], [5, 14, 32.3], [5, 47, 45.4], [5, 40, 45.5], [4, 54, 53.8], [4, 50, 36.7], [4, 49, 50.4], [4, 51, 12.4], [4, 54, 15.1], [4, 58, 32.9], [5, 36, 12.8], [5, 35, 26.0], [5, 35, 24.0], [5, 35, 23.2], [5, 35, 12.0]],
-      [[6, 45, 8.92]],
-      [[7, 39, 18.1]],
-      [[7, 45, 18.9]],
-      [[5, 16, 41.4]],
-      [[4, 35, 55.2]]],
-      declination: [[[89, 15, 51.0], [86, 35, 11.0], [82, 2, 14.0], [77, 47, 40.0], [75, 45, 19.0], [71, 50, 2.0], [74, 9, 20.0]],
-      [[20, 8, 18.0], [14, 12, 32.0], [14, 46, 6.0], [20, 16, 34.0], [9, 38, 51.0], [7, 24, 25.0], [9, 56, 3.0], [6, 20, 59.0], [-0, 17, 57.0], [-8, 12, 6.0], [-9, 40, 11.0], [-1, 56, 34.0], [10, 9, 3.0], [8, 54, 1.0], [6, 57, 41.0], [5, 36, 18.0], [2, 26, 26.0], [1, 42, 51.0], [-1, 12, 7.0], [-5, 54, 36.0], [-5, 27, 0.0], [-4, 50, 18.0], [-4, 24, 0.0]],
-      [[-16, 42, 58.02]],
-      [[5, 13, 30.0]],
-      [[28, 1, 34.0]],
-      [[45, 59, 53.0]],
-      [[16, 30, 33.0]]],
-      apparentMagnitude: [[2.02, 4.36, 4.23, 4.32, 4.95, 3.05, 2.08],
-      [4.63, 4.48, 4.42, 4.41, 4.12, 0.5, 3.54, 1.64, 2.23, 0.12, 2.06, 2.05, 4.65, 4.36, 3.19, 3.69, 3.72, 4.47, 1.7, 2.77, 2.9, 4.59, 4.6],
+    const starData = {rightAscension:[[[2,31,48.7],[17,32,12.9],[16,45,58.1],[15,44,3.5],[16,17,30.3],[15,20,43.7],[14,50,42.3]],
+      [[6,3,55.2],[6,11,56.4],[6,7,34.3],[5,54,22.9],[6,2,23.0],[5,55,10.3],[5,35,8.3],[5,25,7.9],[5,32,0.4],[5,14,32.3],[5,47,45.4],[5,40,45.5],[4,54,53.8],[4,50,36.7],[4,49,50.4],[4,51,12.4],[4,54,15.1],[4,58,32.9],[5,36,12.8],[5,35,26.0],[5,35,24.0],[5,35,23.2],[5,35,12.0]],
+      [[6,45,8.92]],
+      [[7,39,18.1]],
+      [[7,45,18.9]],
+      [[5,16,41.4]],
+      [[4,35,55.2]]],
+      declination:[[[89,15,51.0],[86,35,11.0],[82,2,14.0],[77,47,40.0],[75,45,19.0],[71,50,2.0],[74,9,20.0]],
+      [[20,8,18.0],[14,12,32.0],[14,46,6.0],[20,16,34.0],[9,38,51.0],[7,24,25.0],[9,56,3.0],[6,20,59.0],[-0,17,57.0],[-8,12,6.0],[-9,40,11.0],[-1,56,34.0],[10,9,3.0],[8,54,1.0],[6,57,41.0],[5,36,18.0],[2,26,26.0],[1,42,51.0],[-1,12,7.0],[-5,54,36.0],[-5,27,0.0],[-4,50,18.0],[-4,24,0.0]],
+      [[-16,42,58.02]],
+      [[5,13,30.0]],
+      [[28,1,34.0]],
+      [[45,59,53.0]],
+      [[16,30,33.0]]],
+      apparentMagnitude:[[2.02,4.36,4.23,4.32,4.95,3.05,2.08],
+      [4.63,4.48,4.42,4.41,4.12,0.5,3.54,1.64,2.23,0.12,2.06,2.05,4.65,4.36,3.19,3.69,3.72,4.47,1.7,2.77,2.9,4.59,4.6],
       [-3.46],
       [0.38],
       [1.14],
       [0.08],
       [0.85]],
-      color: [[[1.0, 1.0, 0.8, 1.0], [1.0, 1.0, 1.0, 1.0], [0.0, 0.5, 1.0, 1.0], [1.0, 0.9, 0.6, 1.0], [1.0, 0.9, 0.6, 1.0], [0.9, 0.9, 1.0, 1.0], [1.0, 0.5, 0.0, 1.0]],
-      [[1.0, 0.5, 0.5, 1.0], [0.7, 0.7, 1.0, 1.0], [0.6, 0.6, 1.0, 1.0], [1.0, 0.5, 0.2, 1.0], [0.3, 0.3, 1.0, 1.0], [1.0, 0.4, 0.0, 1.0], [0.1, 0.2, 1.0, 1.0], [0.2, 0.2, 1.0, 1.0], [0.15, 0.25, 1.0, 1.0], [0.1, 0.2, 1.0, 1.0], [0.2, 0.3, 1.0, 1.0], [0.0, 0.5, 1.0, 1.0], [1.0, 1.0, 0.98, 1.0], [1.0, 1.0, 0.9, 1.0], [1.0, 0.8, 0.4, 1.0], [0.7, 0.7, 1.0, 1.0], [0.7, 0.7, 1.0, 1.0], [1.0, 0.5, 0.0, 1.0], [0.5, 0.5, 1.0, 1.0], [0.7, 0.7, 1.0, 1.0], [1.0, 0.2, 0.2, 1.0], [0.6, 0.8, 1.0, 1.0], [0.5, 0.7, 1.0, 1.0]],
+      color:[[[1.0, 1.0, 0.8, 1.0],[1.0, 1.0, 1.0, 1.0],[0.0, 0.5, 1.0, 1.0],[1.0, 0.9, 0.6, 1.0],[1.0, 0.9, 0.6, 1.0],[0.9, 0.9, 1.0, 1.0],[1.0, 0.5, 0.0, 1.0]],
+      [[1.0, 0.5, 0.5, 1.0],[0.7, 0.7, 1.0, 1.0],[0.6, 0.6, 1.0, 1.0],[1.0, 0.5, 0.2, 1.0],[0.3, 0.3, 1.0, 1.0],[1.0, 0.4, 0.0, 1.0],[0.1, 0.2, 1.0, 1.0],[0.2, 0.2, 1.0, 1.0],[0.15, 0.25, 1.0, 1.0],[0.1, 0.2, 1.0, 1.0],[0.2, 0.3, 1.0, 1.0],[0.0, 0.5, 1.0, 1.0],[1.0, 1.0, 0.98, 1.0],[1.0, 1.0, 0.9, 1.0],[1.0, 0.8, 0.4, 1.0],[0.7, 0.7, 1.0, 1.0],[0.7, 0.7, 1.0, 1.0],[1.0, 0.5, 0.0, 1.0],[0.5, 0.5, 1.0, 1.0],[0.7, 0.7, 1.0, 1.0],[1.0, 0.2, 0.2, 1.0],[0.6, 0.8, 1.0, 1.0],[0.5, 0.7, 1.0, 1.0]],
       [[0.8, 0.8, 1.0, 1.0]],
       [[1.0, 0.9, 0.7, 1.0]],
       [[1.0, 0.65, 0.13, 1.0]],
       [[1.0, 1.0, 0.5, 1.0]],
       [[1.0, 0.0, 0.0, 1.0]]],
-      asterismIndices: [[[0, 1, 2, 3, 4, 5, 6, 3]],
-      [[7, 8, 9, 10], [8, 11, 12, 13, 14, 15, 16, 17, 18, 12], [12, 14, 21], [19, 20, 21, 22, 23, 24]]]
-    };
+      asterismIndices:[[[0,1,2,3,4,5,6,3]],
+      [[7,8,9,10],[8,11,12,13,14,15,16,17,18,12],[12,14,21],[19,20,21,22,23,24]]]};
     createSky(scene, starData);
     const date = new Date();
     const timezoneOffset = date.getTimezoneOffset() * 60000;
@@ -748,7 +747,7 @@ export function SceneComponent() {
     // console.log(Ephemeris.getPlanet('sun', new Date(2024, 6, 25, 0, 0, 0, 0), 0, 0, 0).observed.sun.raw.position.apparent);
     // console.log(calculateZenithPosition(Ephemeris.getPlanet('sun', new Date(2024, 6, 25, 0, 0, 0, 0), 0, 0, 0).observed.sun.raw.position.apparent,new Date(2024, 6, 25, 0, 0, 0, 0)));
     // console.log(Date.now());
-    drawEarthOrbit(date);// scene,
+    drawEarthOrbit(date);// scene, 
     const pd = calculateEarthPosition(Ephemeris.getPlanet('earth', utcTime, 0, 0, 0).observed.earth.raw, date);
     if (dirPA !== pd.direction) setDirPA(pd.direction);
     // создаем камеру, которая вращается вокруг заданной цели (это может быть меш или точка)
@@ -814,10 +813,10 @@ export function SceneComponent() {
 
     // Материал Земли
     const planetMat = new ShaderMaterial("planetMat", scene, "shPlanet",
-      {
-        attributes: ["position", "normal", "uv"],
-        uniforms: ["world", "worldView", "worldViewProjection", "diffuseTexture", "nightTexture"],
-      });
+    {
+      attributes: ["position", "normal", "uv"],
+      uniforms: ["world", "worldView", "worldViewProjection", "diffuseTexture", "nightTexture"],
+    });
 
     const diffuseTexture = new Texture("textures/earth-diffuse.jpg", scene);
     const nightTexture = new Texture("textures/earth-night-o2.png", scene);
@@ -831,7 +830,7 @@ export function SceneComponent() {
     // Создание маркера
     const marker = MeshBuilder.CreateSphere('llMarker', { diameter: 0.3 }, scene);
     const LL = calculateLL(date, utcTime);
-    const zp = calculateZenithPosition(Ephemeris.getPlanet('sun', utcTime, 0, 0, 0).observed.sun.raw.position.apparent, utcTime);
+    const zp = calculateZenithPosition(Ephemeris.getPlanet('sun', utcTime, 0, 0, 0).observed.sun.raw.position.apparent,utcTime);
     const tp = llToXYZ(zp.latitude, LL.longitude);
     marker.position = tp;
     marker.material = new StandardMaterial("llMarkerMat", scene);
@@ -848,19 +847,19 @@ export function SceneComponent() {
     const cameraGlobalPosition = surfacePointGlobal.add(surfaceNormal.scale(45));
     camera.setPosition(cameraGlobalPosition);
     // camera.lockedTarget = planet;
-    // Атмосфера
+// Атмосфера
     const cloudsMaterial = new ShaderMaterial("cloudsMaterial", scene, "shClouds",
-      {
-        attributes: ["position", "normal", "uv"],
-        uniforms: ["world", "worldView", "worldViewProjection", "cloudsTexture", "lightPosition", "cameraPosition"],
-        needAlphaBlending: true,
-      });
+    {
+      attributes: ["position", "normal", "uv"],
+      uniforms: ["world", "worldView", "worldViewProjection", "cloudsTexture", "lightPosition", "cameraPosition"],
+      needAlphaBlending: true,
+    });
 
     const cloudsTexture = new Texture("textures/earth-c.jpg", scene);
 
     cloudsMaterial.setTexture("cloudsTexture", cloudsTexture);
     cloudsMaterial.setVector3("cameraPosition", Vector3.Zero());
-    //        cloudsMaterial.backFaceCulling = false;
+//        cloudsMaterial.backFaceCulling = false;
 
     const cloudsMesh = MeshBuilder.CreateSphere("clouds", { segments: config.PLANET_V, diameter: config.PLANET_RADIUS + config.ENV_H }, scene);
     cloudsMesh.material = cloudsMaterial;
@@ -875,12 +874,12 @@ export function SceneComponent() {
     const fireTexture = new FireProceduralTexture("fire", 128, scene);
     // задаем 6 основных цветов
     fireTexture.fireColors = [
-      new Color3(1.0, 0.7, 0.3),
-      new Color3(1.0, 0.7, 0.3),
-      new Color3(1.0, 0.5, 0.0),
-      new Color3(1.0, 0.5, 0.0),
-      new Color3(1.0, 1.0, 1.0),
-      new Color3(1.0, 0.5, 0.0),
+      new Color3(1.0,0.7,0.3),
+      new Color3(1.0,0.7,0.3),
+      new Color3(1.0,0.5,0.0),
+      new Color3(1.0,0.5,0.0),
+      new Color3(1.0,1.0,1.0),
+      new Color3(1.0,0.5,0.0),
     ];
 
     // задаем материалу emissiveTexture
@@ -897,12 +896,12 @@ export function SceneComponent() {
     godrays.weight = 0.78767;
     godrays.density = 1.0;
 
-    /* Раскомментируйте чтобы инициировать нужный эффект */
-    //        var postProcess = new BABYLON.BlackAndWhitePostProcess("bandw", 1.0, null, null, engine, true); //black and white
-    //        var postProcess = new BABYLON.BlurPostProcess("Horizontal blur", new BABYLON.Vector2(1.5, 0), 1.0, 1.0, null, null, engine, true); //blur
-    //        var postProcess = new BABYLON.FxaaPostProcess("fxaa", 1.0, null, null, engine, true); //fxaa
-    /* добавляем эффект к камере */
-    //        camera.attachPostProcess(postProcess);
+        /* Раскомментируйте чтобы инициировать нужный эффект */
+//        var postProcess = new BABYLON.BlackAndWhitePostProcess("bandw", 1.0, null, null, engine, true); //black and white
+//        var postProcess = new BABYLON.BlurPostProcess("Horizontal blur", new BABYLON.Vector2(1.5, 0), 1.0, 1.0, null, null, engine, true); //blur
+//        var postProcess = new BABYLON.FxaaPostProcess("fxaa", 1.0, null, null, engine, true); //fxaa
+        /* добавляем эффект к камере */
+//        camera.attachPostProcess(postProcess);
 
     // генерируем космическую пыль
     // const spriteManagerDust = new SpriteManager("dustManager", "textures/particle32.png", config.DUST, 32, scene);
@@ -920,7 +919,7 @@ export function SceneComponent() {
     // pipeline.imageProcessingEnabled = true;
     // pipeline.imageProcessing.contrast = 1.2; // увеличиваем контраст
     // pipeline.imageProcessing.exposure = 1.2; // увеличиваем экспозицию
-
+    
     const advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
     advancedTexture.renderScale = 1.0;
     const uiPanel = new StackPanel();
@@ -1001,7 +1000,7 @@ export function SceneComponent() {
           const date = new Date();
           const timezoneOffset = date.getTimezoneOffset() * 60000;
           const utcTime = new Date(date.getTime() + timezoneOffset);
-          const zp = calculateZenithPosition(Ephemeris.getPlanet('sun', utcTime, 0, 0, 0).observed.sun.raw.position.apparent, utcTime);
+          const zp = calculateZenithPosition(Ephemeris.getPlanet('sun', utcTime, 0, 0, 0).observed.sun.raw.position.apparent,utcTime);
           const LL = calculateLL(date, utcTime);
           const tp = llToXYZ(zp.latitude, LL.longitude);
           mPivot.rotation.z = zp.latitude * (Math.PI / 180);
@@ -1114,44 +1113,44 @@ export function SceneComponent() {
     uiPanel.addControl(tbMA);
     uiPanel.addControl(tbDA);
     buiPanel.addControl(menuContainer);
-    setTbNT(tbNT);
-    setTbDA(tbDA);
-    setTbMA(tbMA);
-    setTbMP(tbMP);
-    setTbTD(tbTD);
-    setUiPanel(uiPanel);
-    setBtnMenu(btnMenu);
-    setBuiPanel(buiPanel);
-    setMenuItem2(menuItem2);
-    setMenuContainer(menuContainer);
-    setAdvancedTexture(advancedTexture);
+    setTbNT(tbNT);  
+    setTbDA(tbDA);  
+    setTbMA(tbMA);  
+    setTbMP(tbMP);  
+    setTbTD(tbTD);  
+    setUiPanel(uiPanel);  
+    setBtnMenu(btnMenu);  
+    setBuiPanel(buiPanel);  
+    setMenuItem2(menuItem2);  
+    setMenuContainer(menuContainer);  
+    setAdvancedTexture(advancedTexture);  
   };
-  // var currentCamera = arcCamera;
-  // function switchCamera() {
-  //     if (currentCamera === arcCamera) {
-  //         arcCamera.detachControl(canvas);
-  //         currentCamera = universalCamera;
-  //         var cameraPosition = new BABYLON.Vector3(x, y, z);
-  //         var camera = new BABYLON.UniversalCamera("camera", cameraPosition, scene);
-  //         var forwardVector = new BABYLON.Vector3(-x, -y, -z).normalize();
-  //         camera.setTarget(cameraPosition.add(forwardVector));
-  //         camera.attachControl(canvas, true);
-  //     } else {
-  //         universalCamera.detachControl(canvas);
-  //         camera.setTarget(tp);
-  //         var cameraRadius = 5;
-  //         var cameraX = cameraRadius * Math.cos(latitude) * Math.cos(longitude + Math.PI); // Смещение по долготе на 180 градусов
-  //         var cameraY = cameraRadius * Math.sin(latitude);
-  //         var cameraZ = cameraRadius * Math.cos(latitude) * Math.sin(longitude + Math.PI);
-  //         camera.setPosition(new BABYLON.Vector3(cameraX, cameraY, cameraZ));
-  //         arcCamera.attachControl(canvas, true);
-  //         currentCamera = arcCamera;
-  //     }
-  //     scene.activeCamera = currentCamera;
-  // }
+// var currentCamera = arcCamera;
+// function switchCamera() {
+//     if (currentCamera === arcCamera) {
+//         arcCamera.detachControl(canvas);
+//         currentCamera = universalCamera;
+//         var cameraPosition = new BABYLON.Vector3(x, y, z);
+//         var camera = new BABYLON.UniversalCamera("camera", cameraPosition, scene);
+//         var forwardVector = new BABYLON.Vector3(-x, -y, -z).normalize();
+//         camera.setTarget(cameraPosition.add(forwardVector));
+//         camera.attachControl(canvas, true);
+//     } else {
+//         universalCamera.detachControl(canvas);
+//         camera.setTarget(tp);
+//         var cameraRadius = 5;
+//         var cameraX = cameraRadius * Math.cos(latitude) * Math.cos(longitude + Math.PI); // Смещение по долготе на 180 градусов
+//         var cameraY = cameraRadius * Math.sin(latitude);
+//         var cameraZ = cameraRadius * Math.cos(latitude) * Math.sin(longitude + Math.PI);
+//         camera.setPosition(new BABYLON.Vector3(cameraX, cameraY, cameraZ));
+//         arcCamera.attachControl(canvas, true);
+//         currentCamera = arcCamera;
+//     }
+//     scene.activeCamera = currentCamera;
+// }
 
   useEffect(() => {
-    if (!menuItem2 || !menuContainer) return;
+    if (!menuItem2 || !menuContainer ) return;
     // menuItem1.text = "Тенденции Дня";//adm ? "Тенденции Дня(adm)" : "Тенденции Дня";
     menuItem2.onPointerUpObservable.add(() => {
       if (menuContainer) {
@@ -1174,7 +1173,7 @@ export function SceneComponent() {
       //   setShowNT(true);
       // }
     });
-  }, [menuItem2, menuContainer])
+  }, [menuItem2,menuContainer])
 
   useEffect(() => {
     if (!start || !advancedTexture || !uiPanel || !btnMenu || !tbTD || !tbNT || !buiPanel) return;
@@ -1183,7 +1182,7 @@ export function SceneComponent() {
     advancedTexture.addControl(uiPanel);
     advancedTexture.addControl(btnMenu);
     advancedTexture.addControl(buiPanel);
-  }, [start, advancedTexture, uiPanel, btnMenu, tbTD, tbNT, buiPanel])
+  }, [start,advancedTexture,uiPanel,btnMenu,tbTD,tbNT,buiPanel])
 
   useEffect(() => {
     if (!tbTD) return;
@@ -1197,32 +1196,32 @@ export function SceneComponent() {
 
   useEffect(() => {
     if (!tbDA) return;
-    tbDA.text = `${dirPA ? 'Восходящее' : 'Нисходящее'} движение активности природных сил.`;
+    tbDA.text = `${dirPA ? 'Восходящее' : 'Нисходящее'  } движение активности природных сил.`;
   }, [tbDA, CNT, dirPA])
 
   useEffect(() => {
     if (!tbMA) return;
-    tbMA.text = `${this.daysNum[dirMD]} день движения Луны ${dirMA ? 'к апогею.' : 'к перигею.'}`;
+    tbMA.text = `${this.daysNum[dirMD]} день движения Луны ${  dirMA ? 'к апогею.' : 'к перигею.'}`;
   }, [tbMA, dirMA, dirMD])
 
   useEffect(() => {
     if (!tbMP) return;
     tbMP.text = `возраст ${dayM.toString()} д., `;
-    if (phaM === 0) {
+    if (phaM===0) {
       tbMP.text += 'новолуние,';
-    } else if (phaM === 1) {
+    } else if (phaM===1) {
       tbMP.text += 'растущий серп,';
-    } else if (phaM === 2) {
+    } else if (phaM===2) {
       tbMP.text += 'первая четверть,';
-    } else if (phaM === 3) {
+    } else if (phaM===3) {
       tbMP.text += 'растущая Луна,';
-    } else if (phaM === 4) {
+    } else if (phaM===4) {
       tbMP.text += 'полнолуние,';
-    } else if (phaM === 5) {
+    } else if (phaM===5) {
       tbMP.text += 'убывающая Луна,';
-    } else if (phaM === 6) {
+    } else if (phaM===6) {
       tbMP.text += 'последняя четверть,';
-    } else if (phaM === 7) {
+    } else if (phaM===7) {
       tbMP.text += 'убывающий серп,';
     }
   }, [tbMP, phaM, dayM])
@@ -1250,15 +1249,15 @@ export function SceneComponent() {
     if (!reactCanvas.current) { return; }
     function isTransformNodeReady(transformNode) {
       if (transformNode.getChildTransformNodes().length === 0) {
-        return true;
+          return true;
       }
       return transformNode.getChildTransformNodes().every(childNode => {
-        if (childNode instanceof Mesh) {
-          return childNode.isReady(true);
-        } if (childNode instanceof TransformNode) {
-          return isTransformNodeReady(childNode);
-        }
-        return true;
+          if (childNode instanceof Mesh) {
+              return childNode.isReady(true);
+          } if (childNode instanceof TransformNode) {
+              return isTransformNodeReady(childNode);
+          }
+          return true;
       });
     }
     if (!loaded) {
@@ -1292,9 +1291,9 @@ export function SceneComponent() {
       }
       this.DDD = new Date();
       handleDateChange(this.DDD);
-      this.month = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
-      this.days = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-      this.daysNum = ["первый", "второй", "третий", "четвертый", "пятый", "шестой", "седьмой", "восьмой", "девятый", "десятый", "одиннадцатый", "двенадцатый", "тринадцатый", "четырнадцатый", "пятнадцатый", "шестнадцатый", "семнадцатый", "восемнадцатый", "девятнадцатый", "двадцатый"];
+      this.month = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+      this.days = ["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
+      this.daysNum = ["первый","второй","третий","четвертый","пятый","шестой","седьмой","восьмой","девятый","десятый","одиннадцатый","двенадцатый","тринадцатый","четырнадцатый","пятнадцатый","шестнадцатый","семнадцатый","восемнадцатый","девятнадцатый","двадцатый"];
       this.prevSE = 0;
       this.prevIncSE = false;
       this.apogeePoint = null;
@@ -1330,7 +1329,7 @@ export function SceneComponent() {
         const mMarker = scene.getMeshByName("llMarker");
         if (mMoonPivot && mPivot && mPlanet && mMoon && mOmni && mMarker) { // && mMarker
           const date = new Date();
-          if ((date.getTime() - this.DDD.getTime()) > 333333) { this.DDD = date; setIsDDD(true); }
+          if ((date.getTime() - this.DDD.getTime()) > 333333) {this.DDD = date; setIsDDD(true);}
           const timezoneOffset = date.getTimezoneOffset() * 60000;
           const utcTime = new Date(date.getTime() + timezoneOffset);
           const pd = calculateEarthPosition(Ephemeris.getPlanet('earth', utcTime, 0, 0, 0).observed.earth.raw, date);
@@ -1342,7 +1341,7 @@ export function SceneComponent() {
             const tH = `00${date.getHours().toString()}`;
             const tMm = `00${date.getMinutes().toString()}`;
             const tS = `00${sec.toString()}`;
-            setTDate(`${tH.substring(tH.length - 2)}:${tMm.substring(tMm.length - 2)}:${tS.substring(tS.length - 2)}, ${tDn}, ${tD} ${tM} ${date.getFullYear().toString()} г.`);
+            setTDate(`${tH.substring(tH.length - 2)}:${tMm.substring(tMm.length - 2)}:${tS.substring(tS.length - 2)  }, ${  tDn  }, ${  tD  } ${  tM  } ${  date.getFullYear().toString()  } г.`);
             setTDateS(sec);
           }
           if (dirPA !== pd.direction) setDirPA(pd.direction);
@@ -1352,11 +1351,11 @@ export function SceneComponent() {
           mMoonPivot.position.x = mPivot.position.x;
           mMoonPivot.position.y = mPivot.position.y;
           mMoonPivot.position.z = mPivot.position.z;
-          const zp = calculateZenithPosition(Ephemeris.getPlanet('sun', utcTime, 0, 0, 0).observed.sun.raw.position.apparent, utcTime);
+          const zp = calculateZenithPosition(Ephemeris.getPlanet('sun', utcTime, 0, 0, 0).observed.sun.raw.position.apparent,utcTime);
           mPivot.rotation.z = zp.latitude * (Math.PI / 180);
           mPivot.rotation.x = mPivot.rotation.z;
           mPlanet.rotation.y = -(zp.longitude * (Math.PI / 180));
-          mMarker.position = llToXYZ(-zp.latitude, -(zp.longitude - 7 + (pd.trueAnomaly / Math.PI * 180)));
+          mMarker.position = llToXYZ(-zp.latitude, -(zp.longitude-7 + (pd.trueAnomaly/Math.PI*180)));
           // const mMm = scene.getMeshByName("line1");
           // if (mMm) {
           //   mMm.dispose();
@@ -1384,7 +1383,7 @@ export function SceneComponent() {
         engine.stopRenderLoop();
       }
       if (scene !== null) {
-        scene.dispose();
+          scene.dispose();
       }
       if (engine !== null) {
         engine.dispose();
@@ -1400,7 +1399,7 @@ export function SceneComponent() {
       handleDateChange(this.DDD);
       //const mMoonPivot = scene.getTransformNodeByName("moonPivot");
       //if (mMoonPivot)
-      if (this.DDD.getDate() < 9 && (this.DDD.getMonth() === 0 || this.DDD.getMonth() === 6)) drawEarthOrbit(this.DDD);// scene,
+      if (this.DDD.getDate() < 9 && (this.DDD.getMonth() === 0 || this.DDD.getMonth() === 6)) drawEarthOrbit(this.DDD);// scene, 
       drawMoonOrbit(this.DDD);// scene, , mMoonPivot
     }
   }, [isDDD])
