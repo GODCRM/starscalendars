@@ -18,16 +18,16 @@ import {
   VertexData,
   VolumetricLightScatteringPostProcess
 } from '@babylonjs/core';
-import '@babylonjs/core/Materials/Textures/Loaders/envTextureLoader';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { AdvancedDynamicTexture, Control, TextBlock } from '@babylonjs/gui';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import * as React from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { WASMModule } from '../wasm/init';
-import { createPositionsView, extractCelestialPositions } from '../wasm/init';
+// zero-copy view will be created inline without helper
 // Fire procedural texture (procedural flames for Sun surface)
 import { FireProceduralTexture } from '@babylonjs/procedural-textures';
 
-// ✅ CORRECT - Interface for 3D scene management (Babylon.js 8.21.0)
+// ✅ CORRECT - Interface for 3D scene management (Babylon.js 8 — latest minor at runtime)
 interface BabylonSceneProps {
   readonly wasmModule: WASMModule | null; // ✅ Direct WASM access for 60fps updates
   readonly isInitialized: boolean;
@@ -471,7 +471,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     return starMesh;
   }, []);
 
-  // ✅ CORRECT - Main scene initialization function (Babylon.js 8.21.0 patterns)
+  // ✅ CORRECT - Main scene initialization function (Babylon.js 8 patterns)
   const initializeBabylonScene = useCallback(async (canvas: HTMLCanvasElement): Promise<void> => {
 
     const timer = new PerformanceTimer('babylon_scene_initialization');
@@ -572,7 +572,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       camera.attachControl(renderingCanvas, true);
     }
 
-    // ✅ OPTIMAL CONTROLS following Babylon.js 8.21.0 best practices
+    // ✅ OPTIMAL CONTROLS following Babylon.js 8 best practices
     camera.wheelPrecision = 3.0;       // Standard wheel zoom precision
     camera.pinchPrecision = 12.0;      // Standard touch zoom precision
     camera.panningSensibility = 1000;  // Standard panning sensitivity
@@ -660,7 +660,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
 
     sceneObjects.set('sun', sunMesh);
 
-    // ✅ Enhanced Earth with 8.21.0 optimizations
+    // ✅ Enhanced Earth with Babylon.js 8 optimizations
     const earthMesh = MeshBuilder.CreateSphere("earth", {
       diameter: earthDiameter, // value is DIAMETER in reference
       segments: 300 // PLANET_V (референс)
@@ -819,7 +819,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
 
     sceneObjects.set('earth', earthMesh);
 
-    // ✅ Enhanced Moon with 8.21.0 optimizations
+    // ✅ Enhanced Moon with Babylon.js 8 optimizations
     const moonConfig = CELESTIAL_BODIES.moon!;
     const moonMesh = MeshBuilder.CreateSphere("moon", {
       diameter: moonConfig.radius, // value is DIAMETER in reference
@@ -871,25 +871,32 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     cloudsMesh.rotation.z = Math.PI;
     cloudsMesh.parent = earthMesh; // Follow Earth
 
-    // ✅ Skybox – use prefiltered .env on all platforms (no fallbacks)
+    // ✅ Skybox – load from 6 JPG faces in /textures/universe with guard against premature GL texParameter
     const skybox = MeshBuilder.CreateBox('universe', { size: 10000 }, scene);
     const skyboxMaterial = new StandardMaterial('universe', scene);
     skyboxMaterial.backFaceCulling = false;
-    const envTex = CubeTexture.CreateFromPrefilteredData('/textures/universe/environment.env', scene);
-    envTex.onLoadObservable.addOnce(() => {
-      envTex.coordinatesMode = Texture.SKYBOX_MODE;
-      skyboxMaterial.reflectionTexture = envTex;
+    const cube = CubeTexture.CreateFromImages([
+      '/textures/universe/universe_px.jpg',
+      '/textures/universe/universe_py.jpg',
+      '/textures/universe/universe_pz.jpg',
+      '/textures/universe/universe_nx.jpg',
+      '/textures/universe/universe_ny.jpg',
+      '/textures/universe/universe_nz.jpg',
+    ], scene);
+    cube.onLoadObservable.addOnce(() => {
+      cube.coordinatesMode = Texture.SKYBOX_MODE;
+      skyboxMaterial.reflectionTexture = cube;
       // brighten the skybox only (not affecting PBR exposure)
       try { (skyboxMaterial as any).reflectionTextureLevel = SKYBOX_INTENSITY; } catch { }
       skyboxMaterial.markDirty();
       // Freeze only after reflection is bound
       skyboxMaterial.disableLighting = true;
       skybox.material = skyboxMaterial;
-      skybox.position = new Vector3(0, 0, 0);
+      skybox.position = Vector3.Zero();
       skyboxMaterial.freeze();
       skybox.freezeWorldMatrix();
     });
-    // If load is very slow, keep material attached but unfrozen
+    // Keep material attached for visibility while loading
     skybox.material = skyboxMaterial;
 
     timer.mark('skybox_created');
@@ -957,7 +964,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       moonPivot
     };
 
-    // ✅ CRITICAL - 60FPS RENDER LOOP with FPS tracking (Babylon.js 8.21.0 pattern)
+    // ✅ CRITICAL - 60FPS RENDER LOOP with FPS tracking (Babylon.js 8 pattern)
     console.log('🔁 Starting render loop...');
     engine.runRenderLoop(() => {
       // Use absolute UTC time for correct Julian Day
@@ -1035,8 +1042,12 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       // ✅ Calculate current Julian Day based on absolute time
       const julianDay = JULIAN_DAY_UNIX_EPOCH + currentTimeMs / 86400000.0;
 
-      // ✅ CRITICAL: Exactly ONE compute_all() call per frame (60fps)
-      const positionsPtr = wasmModule.compute_all(julianDay);
+      // ✅ CRITICAL: Exactly ONE compute_*() call per frame — SEM only (no fallback)
+      if (typeof wasmModule.compute_state !== 'function') {
+        console.error('❌ WASM compute_state export is missing. Scene requires unified STATE path.');
+        return;
+      }
+      const positionsPtr = wasmModule.compute_state(julianDay);
 
       // Add debug logging for first few frames
       if (!((window as any).__debugCallCount)) (window as any).__debugCallCount = 0;
@@ -1049,15 +1060,31 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
         return;
       }
 
-      // ✅ Zero-copy access via Float64Array view to WASM memory
-      const positionsResult = createPositionsView(wasmModule, positionsPtr);
-      if (!positionsResult.success) {
-        console.error('❌ Failed to create positions view:', positionsResult.error.message);
+      // ✅ Zero-copy access via Float64Array view to WASM memory (STATE: 11 f64)
+      const mem = wasmModule.memory.buffer;
+      if (positionsPtr < 0 || positionsPtr + (11 * 8) > mem.byteLength) {
+        console.error('❌ STATE pointer out of bounds');
         return;
       }
+      const buf = new Float64Array(mem, positionsPtr, 11);
+      // Buffer layout: Sun(0..2) geocentric, Moon(3..5) geocentric, Earth(6..8) heliocentric, Zenith(9..10)
+      const ex = buf[6]!, ey = buf[7]!, ez = buf[8]!;
+      const mx = buf[3]!, my = buf[4]!, mz = buf[5]!;
+      const sx = 0.0, sy = 0.0, sz = 0.0; // Sun at center in scene
 
-      // ✅ Extract all celestial positions using the dedicated function
-      const astronomicalData = extractCelestialPositions(positionsResult.data, currentTimeMs, wasmModule);
+      // Zenith from state buffer (radians)
+      const sunZenithLngRad = buf[9]!;
+      const sunZenithLatRad = buf[10]!;
+      const sunZenithLng = sunZenithLngRad * 180 / Math.PI;
+      const sunZenithLat = sunZenithLatRad * 180 / Math.PI;
+
+      const astronomicalData = {
+        sun: { x: sx, y: sy, z: sz, distance: 0, timestamp: currentTimeMs },
+        earth: { x: ex, y: ey, z: ez, distance: Math.hypot(ex, ey, ez), timestamp: currentTimeMs },
+        moon: { x: ex + mx, y: ey + my, z: ez + mz, distance: Math.hypot(mx, my, mz), timestamp: currentTimeMs },
+        earthSunDistance: Math.hypot(ex, ey, ez),
+        sunZenithLat, sunZenithLng, sunZenithLatRad, sunZenithLngRad,
+      } as const;
 
       // ✅ HELIOCENTRIC/GEOCENTRIC VISUALIZATION: Correct astronomical model
       const scaleAU = 700.0; // Match reference orbit scaling (~700 units per 1 AU)

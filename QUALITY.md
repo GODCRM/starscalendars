@@ -34,7 +34,7 @@ TryFrom::try_from(x)      // Safe type conversions
 ```rust
 // ❌ FORBIDDEN - Violates O(1) hot path requirement
 for planet in planets {
-    wasm.compute_all(time); // Multiple WASM calls per frame
+    wasm.compute_state(time); // Multiple WASM calls per frame
 }
 
 // Multiple .await in loops - blocking in real-time context
@@ -43,7 +43,7 @@ for user in users {
 }
 
 // ✅ REQUIRED - O(1) hot path patterns
-let results = wasm.compute_all(time); // Exactly ONE call per frame
+let results = wasm.compute_state(time); // Exactly ONE call per frame
 let futures: Vec<_> = users.iter().map(|u| api.fetch_data(u)).collect();
 let results = join_all(futures).await; // Parallel processing
 ```
@@ -74,8 +74,8 @@ impl UserRepository for PostgresUserRepository {
 ## 🎯 Performance Targets - Production Requirements
 
 ### **WASM Astronomical Calculations**
-- **Target**: <1ms per `compute_all()` call
-- **Requirement**: Exactly ONE `compute_all(time)` call per frame
+- **Target**: <1ms per `compute_state()` call
+- **Requirement**: Exactly ONE `compute_state(time)` call per frame
 - **Pattern**: Thread-local buffers with Float64Array view (zero-copy)
 - **Enforcement**: Automatic blocking of multiple WASM calls
 
@@ -90,7 +90,8 @@ impl UserRepository for PostgresUserRepository {
 - **Bundle Size**: <2MB initial load
 - **Load Time**: <3s first contentful paint
 - **Memory**: Zero allocations in Babylon.js render loop
-- **Scene Rules**: 1× `compute_all(jd)` per frame; `calculate_solar_zenith_position_rad(jd)` for zenith; no manual mipmap/anisotropy toggles; LH system with RH→LH Z flip applied in the scene (no flips in bridge)
+- **Scene Rules**: 1× `compute_state(jd)` per frame (zenith included in state); no manual mipmap/anisotropy toggles; LH system with RH→LH Z flip applied in the scene (no flips in bridge)
+- **Immutable Assets**: `astro-rust/` и `frontend/ref/sceneComponent.jsx` — READ-ONLY для разработчиков проекта. Они исключены из автоматических линтеров/форматтеров/антипаттерн‑сканов. Любые правки в них запрещены политикой репозитория и код‑ревью (без технического запрета на FS уровне).
 
 ### **Telegram Bot Performance**
 - **Target**: <500ms response time for all commands

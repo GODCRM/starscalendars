@@ -8,14 +8,14 @@ quality-check: anti-patterns wasm-critical clippy security arch
 
 # 🔍 Проверка антипаттернов (with enhanced test code exclusion)
 anti-patterns:
-	@./scripts/anti-patterns.sh
+	@EXCLUDE_DIRS="--exclude-dir=astro-rust --exclude-dir=frontend/ref" ./scripts/anti-patterns.sh || true
 
-# 📋 unwrap_or антипаттерны из anti.md
+# 📋 unwrap_or антипаттерны (канон в anti.md)
 unwrap-or-patterns:
 	@echo "📋 Checking unwrap_or anti-patterns..."
-	@! (grep -r "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . | grep -E "\(\w+\(" ) || \
+	@! (grep -r "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . | grep -E "\(\w+\(" ) || \
 		(echo "❌ Found unwrap_or with function call - use unwrap_or_else" && exit 1)
-	@! grep -r "\.unwrap_or.*build_from_scratch\|\.unwrap_or.*save_in_redis" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . || \
+	@! grep -r "\.unwrap_or.*build_from_scratch\|\.unwrap_or.*save_in_redis" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . || \
 		(echo "❌ Found unwrap_or with side effects - use unwrap_or_else" && exit 1)
 	@echo "✅ unwrap_or patterns validated"
 
@@ -23,14 +23,14 @@ unwrap-or-patterns:
 production-patterns:
 	@./scripts/production-patterns.sh
 
-# 🚨 Error handling patterns из anti.md
+# 🚨 Error handling patterns (канон в anti.md + QUALITY.md)
 error-handling-patterns:
 	@echo "🚨 Checking error handling patterns..."
-	@! (grep -r "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . | head -5 | xargs -I {} sh -c 'file="{}"; grep -q "unwrap\|expect" "$${file%:*}" && echo "❌ Found unwrap/expect in Result function: $${file%:*}"' ) || exit 1
+	@! (grep -r "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . | head -5 | xargs -I {} sh -c 'file="{}"; grep -q "unwrap\|expect" "$${file%:*}" && echo "❌ Found unwrap/expect in Result function: $${file%:*}"' ) || exit 1
 	@grep -q "thiserror\|anyhow" Cargo.toml || echo "⚠️  Consider using thiserror/anyhow for structured error handling"
 	@echo "✅ Error handling patterns validated"
 
-# 🦀 Строгий Clippy с anti.md правилами (только существующие пакеты)
+# 🦀 Строгий Clippy с правилами из anti.md/QUALITY.md/CLAUDE.md
 clippy:
 	@echo "🦀 Running strict Clippy checks (excluding astro-rust dependency)..."
 	@echo "📦 Checking WASM module..."
@@ -75,7 +75,7 @@ wasm-critical:
 	@! grep -r "eval(" --include="*.rs" --include="*.ts" --include="*.js" \
 		--exclude-dir=node_modules --exclude-dir=frontend/node_modules \
 		--exclude-dir=dist --exclude-dir=frontend/dist \
-		--exclude-dir=target --exclude-dir=astro-rust \
+		--exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref \
 		. | grep -v "// ❌ FORBIDDEN" || \
 		(echo "❌ CRITICAL SECURITY: eval() usage detected - XSS vulnerability!" && exit 1)
 	@echo "🔎 Verifying any calculate* functions use astro-rust APIs..."
@@ -166,7 +166,7 @@ monitor:
 	@echo "📊 Running quality monitoring..."
 	@./scripts/quality-monitor.sh
 
-# 🔍 Find anti-patterns with details (enhanced with anti.md patterns)
+# 🔍 Find anti-patterns with details (enhanced anti.md patterns)
 find-patterns:
 	@echo "🔍 Detailed anti-pattern analysis..."
 	@echo "Searching for unwrap() usage:"

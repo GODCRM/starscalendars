@@ -75,7 +75,7 @@ echo >> "$REPORT_FILE"
 log_info "Analyzing codebase structure..."
 
 # Count Rust files
-RUST_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" | wc -l | tr -d ' ')
+RUST_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -not -path "./frontend/ref/*" | wc -l | tr -d ' ')
 TOTAL_FILES_CHECKED=$RUST_FILES
 
 echo "- **Rust Files**: $RUST_FILES" >> "$REPORT_FILE"
@@ -84,14 +84,14 @@ echo "- **Rust Files**: $RUST_FILES" >> "$REPORT_FILE"
 if command -v tokei >/dev/null 2>&1; then
     log_info "Generating code statistics with tokei..."
     tokei --output json > "$REPORT_DIR/tokei_$TIMESTAMP.json" 2>/dev/null || true
-    
+
     if [ -f "$REPORT_DIR/tokei_$TIMESTAMP.json" ]; then
         TOTAL_LINES=$(jq -r '.Total.code' "$REPORT_DIR/tokei_$TIMESTAMP.json" 2>/dev/null || echo "N/A")
         echo "- **Lines of Code**: $TOTAL_LINES" >> "$REPORT_FILE"
     fi
 else
     log_warning "tokei not installed - install with 'cargo install tokei' for detailed code metrics"
-    TOTAL_LINES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec wc -l {} + 2>/dev/null | tail -1 | awk '{print $1}' || echo "N/A")
+    TOTAL_LINES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -not -path "./frontend/ref/*" -exec wc -l {} + 2>/dev/null | tail -1 | awk '{print $1}' || echo "N/A")
     echo "- **Lines of Code (estimated)**: $TOTAL_LINES" >> "$REPORT_FILE"
 fi
 
@@ -116,12 +116,12 @@ declare -A ANTI_PATTERNS=(
 PATTERN_VIOLATIONS=0
 
 for pattern in "${!ANTI_PATTERNS[@]}"; do
-    violations=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "$pattern" {} \; 2>/dev/null | wc -l | tr -d ' ')
-    
+    violations=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -not -path "./frontend/ref/*" -exec grep -l "$pattern" {} \; 2>/dev/null | wc -l | tr -d ' ')
+
     if [ "$violations" -gt 0 ]; then
         echo "- ❌ **$pattern**: $violations files (${ANTI_PATTERNS[$pattern]})" >> "$REPORT_FILE"
         PATTERN_VIOLATIONS=$((PATTERN_VIOLATIONS + violations))
-        
+
         if [[ "$pattern" == *"unwrap()"* ]] || [[ "$pattern" == *"expect("* ]] || [[ "$pattern" == *"panic!("* ]]; then
             TOTAL_ERRORS=$((TOTAL_ERRORS + violations))
         else
@@ -203,10 +203,10 @@ log_info "Analyzing performance patterns..."
 # WASM performance check
 if [ -d "wasm-astro" ]; then
     log_info "Checking WASM performance patterns..."
-    
+
     # Check for O(1) hot path compliance
     wasm_violations=$(grep -r -A10 -B10 "compute_all" wasm-astro/src/ 2>/dev/null | grep -c "for\|while\|loop" || echo "0")
-    
+
     if [ "$wasm_violations" -eq 0 ]; then
         echo "✅ **WASM Performance**: O(1) hot path compliance verified" >> "$REPORT_FILE"
         log_success "WASM performance patterns validated"
@@ -220,7 +220,7 @@ else
 fi
 
 # Check for async performance issues
-async_violations=$(grep -r -B3 -A3 "for\|while\|loop" . --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust | grep -c "\.await" || echo "0")
+async_violations=$(grep -r -B3 -A3 "for\|while\|loop" . --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref | grep -c "\.await" || echo "0")
 if [ "$async_violations" -gt 0 ]; then
     echo "⚠️ **Async Performance**: $async_violations potential blocking operations in loops" >> "$REPORT_FILE"
     log_warning "Async performance issues detected"
@@ -241,7 +241,7 @@ ARCH_VIOLATIONS=0
 # Check domain layer dependencies
 if [ -d "libs/domain" ]; then
     domain_violations=$(find libs/domain -name "*.rs" -exec grep -l "use.*infrastructure\|use.*app" {} \; 2>/dev/null | wc -l | tr -d ' ')
-    
+
     if [ "$domain_violations" -eq 0 ]; then
         echo "✅ **Domain Layer**: Clean dependency structure" >> "$REPORT_FILE"
     else
@@ -255,7 +255,7 @@ fi
 # Check application layer dependencies
 if [ -d "libs/app" ]; then
     app_violations=$(find libs/app -name "*.rs" -exec grep -l "use.*postgres\|use.*sqlx::Pool\|use.*reqwest" {} \; 2>/dev/null | wc -l | tr -d ' ')
-    
+
     if [ "$app_violations" -eq 0 ]; then
         echo "✅ **Application Layer**: Proper abstraction usage" >> "$REPORT_FILE"
     else

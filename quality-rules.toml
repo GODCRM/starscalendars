@@ -8,9 +8,9 @@ panic = "deny"
 unimplemented = "deny"
 todo = "deny"
 
-# Error handling антипаттерны из anti.md (Rust 1.88+ compliance)
+# Error handling антипаттерны (канон в anti.md; отражены также в QUALITY.md/CLAUDE.md)
 unwrap_or_default = "warn"          # Предпочтительнее unwrap_or_else
-or_fun_call = "deny"                # unwrap_or(func()) -> unwrap_or_else(|| func())  
+or_fun_call = "deny"                # unwrap_or(func()) -> unwrap_or_else(|| func())
 ok_expect = "deny"                  # result.ok().expect() -> result.expect()
 
 # Производительность
@@ -32,7 +32,7 @@ async_yields_async = "deny"
 mem_forget = "deny"
 box_collection = "warn"
 
-# Production-ready patterns из anti.md
+# Production-ready patterns (anti.md/QUALITY.md/CLAUDE.md)
 missing_panics_doc = "warn"         # Документирование потенциальных panic
 unwrap_in_result = "deny"           # unwrap/expect внутри Result-returning функции
 needless_question_mark = "warn"     # Избыточное использование ?
@@ -41,7 +41,7 @@ result_map_or_into_option = "warn"  # Неэффективные Result -> Optio
 
 # Structured error handling patterns
 missing_errors_doc = "warn"         # Документирование возможных ошибок
-error_impl_error = "deny"           # Custom errors должны impl std::error::Error  
+error_impl_error = "deny"           # Custom errors должны impl std::error::Error
 fallible_impl_from = "deny"         # From impl не должны fallible
 
 [lints.rust]
@@ -55,10 +55,10 @@ unused_must_use = "deny"
 # rust = { level = "deny", priority = -1 }
 
 # ==============================================================================
-# НОВЫЕ АНТИПАТТЕРНЫ ИЗ anti.md (2025-01-08) - Обработка ошибок готовая к производству
+# НОВЫЕ АНТИПАТТЕРНЫ (2025-01-08) - Обработка ошибок готовая к производству
 # ==============================================================================
 #
-# Ключевые anti-patterns добавленные из документа anti.md:
+# Ключевые anti-patterns перечислены в anti.md (этот файл отражает их в конфиге):
 #
 # 1. unwrap_or() АНТИПАТТЕРНЫ:
 #    - or_fun_call: unwrap_or(func()) должен быть unwrap_or_else(|| func())

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,29 +14,35 @@
             background-color: #0a0a0a;
             color: #e0e0e0;
         }
+
         .test-result {
             padding: 10px;
             margin: 10px 0;
             border-radius: 5px;
         }
+
         .success {
             background-color: #1a4d3a;
             border-left: 4px solid #4caf50;
         }
+
         .error {
             background-color: #4d1a1a;
             border-left: 4px solid #f44336;
         }
+
         .warning {
             background-color: #4d3a1a;
             border-left: 4px solid #ff9800;
         }
+
         pre {
             background-color: #1a1a1a;
             padding: 10px;
             border-radius: 5px;
             overflow-x: auto;
         }
+
         button {
             background-color: #4caf50;
             color: white;
@@ -45,21 +52,25 @@
             cursor: pointer;
             margin: 5px;
         }
+
         button:hover {
             background-color: #45a049;
         }
+
         .disabled {
             background-color: #666 !important;
             cursor: not-allowed;
         }
     </style>
 </head>
+
 <body>
     <h1>🚀 WASM Bundler Target Debug - StarsCalendars</h1>
-    <p>Debug page for testing WASM module with <strong>--target bundler</strong> (Vite 7.0.6 + vite-plugin-wasm 3.5.0)</p>
-    
+    <p>Debug page for testing WASM module with <strong>--target bundler</strong> (Vite 7.0.6 + vite-plugin-wasm 3.5.0)
+    </p>
+
     <div id="results"></div>
-    
+
     <button onclick="runTest()">🧪 Run WASM Test</button>
     <button onclick="runMemoryTest()">🧠 Test Memory Access</button>
     <button onclick="runCalculationTest()">🌌 Test Astronomical Calculations</button>
@@ -70,38 +81,33 @@
 
         window.runTest = async () => {
             const resultsDiv = document.getElementById('results');
-            
+
             try {
                 addResult('🚀 Starting WASM bundler target test...', 'warning');
-                
+
                 // Test 1: Import main WASM module
                 addResult('📦 Importing WASM module...', 'warning');
                 wasmModule = await import('./src/wasm-astro/starscalendars_wasm_astro.js');
                 addResult('✅ WASM module imported successfully', 'success');
                 console.log('WASM module:', wasmModule);
-                
+
                 // Test 2: Check available functions
                 const functions = Object.keys(wasmModule).filter(key => typeof wasmModule[key] === 'function');
                 addResult(`✅ Available functions: ${functions.join(', ')}`, 'success');
-                
+
                 // Test 3: Test basic functions
-                if (wasmModule.get_body_count) {
-                    const bodyCount = wasmModule.get_body_count();
-                    addResult(`✅ Body count: ${bodyCount}`, 'success');
-                }
-                
-                if (wasmModule.get_coordinate_count) {
-                    const coordCount = wasmModule.get_coordinate_count();
-                    addResult(`✅ Coordinate count: ${coordCount}`, 'success');
-                }
-                
                 if (wasmModule.get_version) {
                     const version = wasmModule.get_version();
                     addResult(`✅ Version: ${version}`, 'success');
                 }
-                
+
+                if (wasmModule.get_version) {
+                    const version = wasmModule.get_version();
+                    addResult(`✅ Version: ${version}`, 'success');
+                }
+
                 addResult('🎉 All basic tests passed!', 'success');
-                
+
             } catch (error) {
                 addResult(`❌ WASM test failed: ${error.message}`, 'error');
                 console.error('WASM test error:', error);
@@ -113,25 +119,25 @@
                 addResult('⚠️ Run basic WASM test first!', 'warning');
                 return;
             }
-            
+
             try {
                 addResult('🧠 Testing memory access...', 'warning');
-                
+
                 // Test memory access through background module
                 const bgModule = await import('./src/wasm-astro/starscalendars_wasm_astro_bg.js');
                 addResult('✅ Background module imported', 'success');
                 console.log('Background module:', bgModule);
-                
+
                 // Check if memory is accessible
                 const memoryKeys = Object.keys(bgModule).filter(key => key.includes('memory') || key.includes('Memory'));
                 addResult(`🔍 Memory-related exports: ${memoryKeys.join(', ') || 'none found'}`, 'warning');
-                
+
                 // Try to access memory through wasm global
                 if (typeof window !== 'undefined') {
                     window.__wasmBgModule = bgModule;
                     addResult('✅ Background module saved to window.__wasmBgModule for inspection', 'success');
                 }
-                
+
             } catch (error) {
                 addResult(`❌ Memory test failed: ${error.message}`, 'error');
                 console.error('Memory test error:', error);
@@ -143,16 +149,16 @@
                 addResult('⚠️ Run basic WASM test first!', 'warning');
                 return;
             }
-            
+
             try {
                 addResult('🌌 Testing astronomical calculations...', 'warning');
-                
+
                 // Test compute_all function
                 if (wasmModule.compute_all) {
                     const testJD = 2451545.0; // J2000 epoch
                     const ptr = wasmModule.compute_all(testJD);
                     addResult(`✅ compute_all(${testJD}) returned pointer: ${ptr}`, 'success');
-                    
+
                     if (ptr !== 0) {
                         addResult('🎯 Pointer is non-zero - calculation succeeded!', 'success');
                     } else {
@@ -161,16 +167,16 @@
                 } else {
                     addResult('❌ compute_all function not found', 'error');
                 }
-                
+
                 // Test other astronomical functions
                 const testFunctions = [
                     'get_sun_position',
-                    'get_moon_position', 
+                    'get_moon_position',
                     'get_planet_position',
                     'get_nutation',
                     'calculate_solar_zenith_position'
                 ];
-                
+
                 for (const funcName of testFunctions) {
                     if (wasmModule[funcName]) {
                         try {
@@ -190,7 +196,7 @@
                         addResult(`⚠️ ${funcName}() not available`, 'warning');
                     }
                 }
-                
+
             } catch (error) {
                 addResult(`❌ Calculation test failed: ${error.message}`, 'error');
                 console.error('Calculation test error:', error);
@@ -207,7 +213,7 @@
             div.className = `test-result ${type}`;
             div.innerHTML = message;
             resultsDiv.appendChild(div);
-            
+
             // Auto-scroll to bottom
             div.scrollIntoView({ behavior: 'smooth' });
         }
@@ -219,4 +225,5 @@
         });
     </script>
 </body>
+
 </html>

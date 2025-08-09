@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import * as React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 // import UIOverlay from './components/UIOverlay';
 import BabylonScene from './scene/BabylonScene';
 import './styles/BabylonScene.css';
@@ -87,15 +88,20 @@ const App: React.FC = () => {
       const wasmModule = await initializeWASM();
       timer.mark('wasm_loaded');
 
-      // Pre-validate WASM module interface
-      const bodyCount = wasmModule.get_body_count();
-      const coordCount = wasmModule.get_coordinate_count();
-
-      if (bodyCount !== 11 || coordCount !== 33) {
-        return {
-          success: false,
-          error: `Invalid WASM module: expected 11 bodies and 33 coordinates, got ${bodyCount} bodies and ${coordCount} coordinates`
-        };
+      // Жёсткая проверка версии обёртки (без ENV, строго из обёртки)
+      const EXPECTED_WASM_WRAPPER_VERSION = 'wasm-v1.0.0-bundler';
+      try {
+        const version = wasmModule.get_version();
+        if (version !== EXPECTED_WASM_WRAPPER_VERSION) {
+          return {
+            success: false,
+            error: `WASM wrapper version mismatch: expected '${EXPECTED_WASM_WRAPPER_VERSION}', got '${version}'`
+          };
+        }
+        // eslint-disable-next-line no-console
+        console.log(`✅ WASM wrapper version OK: ${version}`);
+      } catch {
+        return { success: false, error: 'WASM get_version() export not available' };
       }
 
       timer.mark('validation_complete');

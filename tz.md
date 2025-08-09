@@ -11,7 +11,7 @@
 
 **🚨 КРИТИЧЕСКИ ВАЖНО - РЕАЛИЗАЦИЯ В WASM С ПОЛНЫМ ПОКРЫТИЕМ ASTRO-RUST:**
 - **✅ СТАТУС**: 24 функции в WASM обертке полностью покрывают всю библиотеку astro-rust
-- **🌟 СОЛНЕЧНЫЙ ЗЕНИТ**: Реализована функция `calculate_solar_zenith_position()` для точного поворота Земли
+- **🌟 СОЛНЕЧНЫЙ ЗЕНИТ**: Возвращается в составе буфера `compute_state()` (lon_east_rad, lat_rad)
 - **🔥 СТРОГИЙ ЗАПРЕТ**: Любые mock-данные, отсебятина или кастомные формулы АБСОЛЮТНО ЗАПРЕЩЕНЫ
 - Солнце: статически в позиции (0,0,0) - центр системы
 - Земля: позиция рассчитывается ТОЛЬКО через astro-rust VSOP87 (гелиоцентрическая орбита)
@@ -62,7 +62,7 @@ ops/ (миграции, Helm/compose, CI/CD) - МЫ НЕ ИСПОЛЬЗУЕМ Д
 
 **2. ✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
 - **ТОЛЬКО функции из astro-rust** для всех астрономических расчетов
-- **compute_all(jd) один раз на кадр** + **calculate_solar_zenith_position_rad(jd)** для зенита
+- **compute_state(jd) один раз на кадр** (буфер 11 f64: Sun xyz, Moon xyz, Earth xyz, Zenith [lon_east_rad, lat_rad])
 - **Zero-copy data transfer** через Float64Array и thread-local буферы
 - **Максимальная точность** с коррекциями нутации/прецессии при необходимости
 - **Production-ready паттерны** Rust 1.88+ с WASM-bindgen
@@ -71,7 +71,7 @@ ops/ (миграции, Helm/compose, CI/CD) - МЫ НЕ ИСПОЛЬЗУЕМ Д
 ```rust
 // ✅ ПРАВИЛЬНО - только astro-rust функции
 #[wasm_bindgen]
-pub fn calculate_solar_zenith_position(julian_day: f64) -> *const f64 {
+// Зенит включён в compute_state; отдельная функция не используется в сцене
     // Используем ТОЛЬКО astro::sun::geocent_ecl_pos()
     let (sun_ecl, _) = astro::sun::geocent_ecl_pos(julian_day);
     // Применяем ТОЛЬКО astro::nutation::nutation()
@@ -111,11 +111,11 @@ Vite: 7.0.6 (latest stable, major upgrade from 5.x)
 React: 19.1.1 (latest stable, major upgrade from 18.x)
 TypeScript: 5.9.2 (latest stable)
 @vitejs/plugin-react: 4.7.0 (latest stable)
-Babylon.js: 8.21.0 (latest stable, published 2 days ago)
-@babylonjs/core: 8.21.0
-@babylonjs/materials: 8.21.0
-@babylonjs/loaders: 8.21.0
-@babylonjs/gui: 8.21.0
+Babylon.js: 8 (major pin; runtime uses latest 8.x, e.g., 8.22.x at time of build)
+@babylonjs/core: 8 (major pin)
+@babylonjs/materials: 8 (major pin)
+@babylonjs/loaders: 8 (major pin)
+@babylonjs/gui: 8 (major pin)
 
 **Backend Stack**:
 Axum: 0.8.4 (latest stable)
@@ -143,7 +143,7 @@ config: 0.14.1 / figment: 0.10.21 (latest stable)
 
 Принципы производительности и O(1)
 
-Горячий путь кадра: ровно один вызов WASM compute_all(t) на кадр; доступ к результатам через view на WebAssembly.Memory (Float64Array) без копирования; O(1) доступ к значениям.
+Горячий путь кадра: ровно один вызов WASM compute_state(t) на кадр; доступ к результатам через view на WebAssembly.Memory (Float64Array) без копирования; O(1) доступ к значениям.
 В Babylon.js: ни одной аллокации в кадре — переиспользование Vector3/Quaternion; обновления через методы ToRef/copyFromFloats.
 В бэкенде: пути аутентификации и WS-авторизации — O(1) по времени обработки запроса с учётом кэширования Telegram статуса; асимптотика зависит от конкретных внешних I/O, но внутренние операции не вводят лишних аллокаций/копий.
 SQL: индексные планы, целевые SELECT по первичным/уникальным ключам, подготовленные запросы; использовать SQLX compile-time проверки; строгое ограничение N+1; транзакции минимальной длительности.
@@ -227,7 +227,7 @@ static OUT_BUF: RefCell<[f64; OUT_LEN]> = RefCell::new([0.0; OUT_LEN]);
 pub fn out_len() -> usize { OUT_LEN }
 
 #[wasm_bindgen]
-pub fn compute_all(jd: f64) -> *const f64 {
+// compute_all устарел для сцены; используем compute_state
 OUT_BUF.with(|b| {
 let mut buf = b.borrow_mut();
 // TODO: использовать исключительно astro-rust библиотеку из ./astro-rust/ (локальная копия с багфиксами) : VSOP87 + ELP-2000/82; учесть ΔT/TT
@@ -276,7 +276,7 @@ Frontend (frontend/, Vite + TS + Babylon.js)
 
 TS строгий (noImplicitAny, strictNullChecks).
 Импорт WASM как ESM. Использовать vite-plugin-wasm/top-level-await.
-Рендер‑цикл: один вызов compute_all(jd), чтение Float64Array(memory.buffer, ptr, len), без аллокаций.
+Рендер‑цикл: один вызов compute_state(jd), чтение Float64Array(memory.buffer, ptr, 11), без аллокаций.
 Babylon.js: переиспользование объектов; freeze для статичных.
 Пример TS:
 import { Engine, Scene, ArcRotateCamera, HemisphericLight, MeshBuilder, Vector3 } from "@babylonjs/core";
@@ -307,7 +307,7 @@ const posMoon = new Vector3(0,0,0);
 scene.onBeforeRenderObservable.add(() => {
 const now = performance.now();
 const jd = toJulianDay(now); // реализовать корректно
-const ptr = compute_all(jd);
+const ptr = compute_state(jd);
 if (!outView) outView = new Float64Array((memory as WebAssembly.Memory).buffer, ptr, outLen);
 
 
@@ -662,7 +662,7 @@ impl Language {
 ### WASM-JS интероперабельность
 - **Float64Array view** на WebAssembly.Memory без копирования
 - **Thread-local буферы** для нулевого копирования
-- **Единый вызов** `compute_all(t)` на кадр
+- **Единый вызов** `compute_state(t)` на кадр
 - **Избегание** передачи строк между WASM-JS
 
 ### Процесс привязки Telegram

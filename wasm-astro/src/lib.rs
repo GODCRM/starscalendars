@@ -162,6 +162,64 @@ pub fn compute_all(julian_day: f64) -> *const f64 {
     })
 }
 
+/// Compute main state in a single call (future-extensible):
+/// Layout [11 f64]: Sun(x,y,z) geocentric, Moon(x,y,z) geocentric, Earth(x,y,z) heliocentric, Zenith(lon_east_rad, lat_rad)
+#[wasm_bindgen]
+pub fn compute_state(julian_day: f64) -> *const f64 {
+    thread_local! {
+        static STATE_BUFFER: RefCell<[f64; 11]> = const { RefCell::new([0.0; 11]) };
+    }
+
+    STATE_BUFFER.with(|buffer| {
+        let mut out = buffer.borrow_mut();
+
+        // Validate JD
+        let jd = match JulianDay::new(julian_day) {
+            Ok(jd) => jd.as_f64(),
+            Err(_) => {
+                console_log!("❌ Invalid Julian Day: {}", julian_day);
+                return std::ptr::null();
+            }
+        };
+
+        // Nutation for precision
+        let (nut_long, _nut_oblq) = astro::nutation::nutation(jd);
+
+        // Sun geocentric
+        let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(jd);
+        let sun_dist_au = sun_dist_km / 149597870.7;
+        let sun_corrected_long = sun_ecl.long + nut_long;
+        let sun_pos = ecliptic_to_cartesian(sun_corrected_long, sun_ecl.lat, sun_dist_au);
+        out[0] = sun_pos.x;
+        out[1] = sun_pos.y;
+        out[2] = sun_pos.z;
+
+        // Moon geocentric
+        let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(jd);
+        let moon_dist_au = moon_dist_km / 149597870.7;
+        let moon_corrected_long = moon_ecl.long + nut_long;
+        let moon_pos = ecliptic_to_cartesian(moon_corrected_long, moon_ecl.lat, moon_dist_au);
+        out[3] = moon_pos.x;
+        out[4] = moon_pos.y;
+        out[5] = moon_pos.z;
+
+        // Earth heliocentric
+        let (earth_long, earth_lat, earth_r) =
+            astro::planet::heliocent_coords(&astro::planet::Planet::Earth, jd);
+        let earth_pos = ecliptic_to_cartesian(earth_long, earth_lat, earth_r);
+        out[6] = earth_pos.x;
+        out[7] = earth_pos.y;
+        out[8] = earth_pos.z;
+
+        // Solar zenith in radians (lon E+, lat N+)
+        let (zenith_lon_east_rad, zenith_lat_rad) = solar_zenith_position_rad_internal(jd);
+        out[9] = zenith_lon_east_rad;
+        out[10] = zenith_lat_rad;
+
+        out.as_ptr()
+    })
+}
+
 /// Get the number of celestial bodies (for JavaScript buffer size calculation)
 #[wasm_bindgen]
 pub fn get_body_count() -> usize {

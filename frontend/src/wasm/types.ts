@@ -1,14 +1,13 @@
 /**
  * WASM Module Type Definitions for starscalendars-wasm-astro
- * 
+ *
  * TypeScript 5.9.2 strict definitions for zero-copy WASM integration
  */
 
 // ✅ CORRECT - Strict WASM function signatures (TypeScript 5.9.2+)
 export interface WASMExports {
   readonly compute_all: (julianDay: number) => number;
-  readonly get_body_count: () => number;
-  readonly get_coordinate_count: () => number;
+  readonly compute_state?: (julianDay: number) => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
 }
@@ -17,8 +16,7 @@ export interface WASMExports {
 export interface WASMModuleInit {
   readonly default: () => Promise<void>;
   readonly compute_all: (julianDay: number) => number;
-  readonly get_body_count: () => number;
-  readonly get_coordinate_count: () => number;
+  readonly compute_state?: (julianDay: number) => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
 }
@@ -67,14 +65,14 @@ export interface WASMModuleState {
   readonly isInitialized: boolean;
   readonly isAvailable: boolean;
   readonly version: string;
-  readonly bodyCount: number;
-  readonly coordinateCount: number;
+  readonly bodyCount?: number;
+  readonly coordinateCount?: number;
   readonly performance: WASMPerformanceMetrics;
 }
 
 // ✅ CORRECT - Zero-copy position extraction utility type
 export type PositionBuffer = Float64Array & {
-  readonly byteLength: 264; // 33 coordinates * 8 bytes per f64
+  readonly byteLength: number;
 };
 
 // ✅ CORRECT - Strict error types for WASM operations
@@ -94,8 +92,8 @@ export interface WASMError {
   readonly timestamp: number;
 }
 
-// ✅ CORRECT - Result pattern for WASM operations (anti.md compliant)
-export type WASMResult<T> = 
+// ✅ CORRECT - Result pattern for WASM operations (anti.md/QUALITY.md/CLAUDE.md compliant)
+export type WASMResult<T> =
   | { readonly success: true; readonly data: T }
   | { readonly success: false; readonly error: WASMError };
 
@@ -138,9 +136,36 @@ export const validateWASMBuffer = (buffer: Float64Array): WASMResult<PositionBuf
   };
 };
 
+// Variant validators (strict):
+export const validateSEMBuffer = (buffer: Float64Array): WASMResult<PositionBuffer> => {
+  const expectedLen = 9; // Sun, Moon, Earth (3 bodies * 3)
+  const expectedBytes = expectedLen * WASM_CONSTANTS.BYTES_PER_COORDINATE;
+  if (buffer.length !== expectedLen) {
+    return {
+      success: false,
+      error: {
+        type: WASMErrorType.BufferSizeMismatch,
+        message: `Expected ${expectedLen} coordinates (SEM), got ${buffer.length}`,
+        timestamp: performance.now(),
+      }
+    };
+  }
+  if (buffer.byteLength !== expectedBytes) {
+    return {
+      success: false,
+      error: {
+        type: WASMErrorType.BufferSizeMismatch,
+        message: `Expected ${expectedBytes} bytes (SEM), got ${buffer.byteLength}`,
+        timestamp: performance.now(),
+      }
+    };
+  }
+  return { success: true, data: buffer as PositionBuffer };
+};
+
 // ✅ CORRECT - Position extraction with zero allocation (TypeScript 5.9.2 optimized)
 export const extractBodyPosition = (
-  buffer: PositionBuffer, 
+  buffer: PositionBuffer,
   bodyIndex: CelestialBodyIndex
 ): readonly [number, number, number] => {
   const baseIndex = bodyIndex * WASM_CONSTANTS.COORDINATES_PER_BODY;

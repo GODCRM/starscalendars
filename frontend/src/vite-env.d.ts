@@ -23,9 +23,7 @@ declare global {
 declare module '../wasm-astro/starscalendars_wasm_astro.js' {
   export default function init(input?: any): Promise<any>;
   export function compute_all(jd: number): number;
-  export function get_body_count(): number;
-  export function get_coordinate_count(): number;  
+  export function compute_state(jd: number): number;
   export function get_version(): string;
-  export function get_memory(): WebAssembly.Memory;
   export const memory: WebAssembly.Memory;
 }

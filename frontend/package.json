@@ -16,12 +16,12 @@
     "build:wasm": "cd ../wasm-astro && wasm-pack build --release --target web -- --features wasm"
   },
   "dependencies": {
-    "@babylonjs/core": "^8.22.2",
-    "@babylonjs/gui": "^8.22.2",
-    "@babylonjs/inspector": "^8.22.2",
-    "@babylonjs/loaders": "^8.22.2",
-    "@babylonjs/materials": "^8.22.2",
-    "@babylonjs/procedural-textures": "^8.22.2",
+    "@babylonjs/core": "8",
+    "@babylonjs/gui": "8",
+    "@babylonjs/inspector": "8",
+    "@babylonjs/loaders": "8",
+    "@babylonjs/materials": "8",
+    "@babylonjs/procedural-textures": "8",
     "@fluent/bundle": "0.19",
     "@fluent/react": "0.15",
     "date-fns": "4.1",

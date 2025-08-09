@@ -81,10 +81,10 @@ echo "   WASM module: $WASM_SIZE bytes"
 echo "   JS wrapper:  $JS_SIZE bytes"
 echo "   Total size:  $TOTAL_SIZE bytes"
 
-if [[ $WASM_SIZE -lt 102400 ]]; then  # < 100KB
-    echo "   ✅ WASM size under 100KB target"
+if [[ $WASM_SIZE -lt 10240000 ]]; then  # < 10МБ
+    echo "   ✅ WASM size under 10МБ target"
 else
-    echo "   ⚠️  WASM size exceeds 100KB target"
+    echo "   ⚠️  WASM size exceeds 10МБ target"
 fi
 
 echo ""

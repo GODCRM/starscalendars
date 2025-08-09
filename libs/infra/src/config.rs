@@ -46,7 +46,7 @@ pub struct JwtConfig {
 impl AppConfig {
     pub fn load() -> Result<Self, crate::InfraError> {
         let config = Figment::new()
-            .merge(Toml::file("config.toml"))
+            .merge(Toml::file("config.toml")) // optional dev-only; safe to delete in minimal setups
             .merge(Env::prefixed("STARS_"))
             .extract()
             .map_err(|e| crate::InfraError::Configuration(e.to_string()))?;

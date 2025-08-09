@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 🛡️ Quality Guardian: Enhanced anti-pattern scanning with test code exclusion
-# Based on anti.md patterns and CLAUDE.md rules
+# Canonical patterns source: anti.md (plus QUALITY.md and CLAUDE.md)
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 VIOLATIONS=0
-TOTAL_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" | wc -l | tr -d ' ')
+TOTAL_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -not -path "./frontend/ref/*" | wc -l | tr -d ' ')
 
 echo "📊 Scanning $TOTAL_FILES Rust files"
 
@@ -23,47 +23,47 @@ echo "📊 Scanning $TOTAL_FILES Rust files"
 is_in_test_code() {
     local file="$1"
     local line_number="$2"
-    
+
     # Primary check: #[cfg(test)] module with proper scope detection
     local cfg_test_line=$(awk '/#\[cfg\(test\)\]/ { print NR }' "$file" | tail -1)
-    
+
     if [[ -n "$cfg_test_line" ]] && [[ $line_number -gt $cfg_test_line ]]; then
         # Check if we're still within the test module by finding the next non-test module
         local next_mod_line=$(awk -v start="$cfg_test_line" '
             NR > start && /^[[:space:]]*#\[cfg\(.*\)\][[:space:]]*$/ && !/cfg\(test\)/ { print NR; exit }
         ' "$file")
-        
+
         # If no next module found, or we're before it, we're in test code
         if [[ -z "$next_mod_line" ]] || [[ $line_number -lt $next_mod_line ]]; then
             echo "IN_TEST"
             return 0
         fi
     fi
-    
+
     # Secondary check: individual #[test] functions (works regardless of cfg_test)
     local test_fn_line=$(awk -v target="$line_number" '
         /#\[test\]/ { if (NR < target && target - NR <= 20) print NR }
     ' "$file" | tail -1)
-    
+
     if [[ -n "$test_fn_line" ]]; then
         echo "IN_TEST"
         return 0
     fi
-    
+
     # Tertiary check: inside mod tests { } block
     local in_test_mod=$(awk -v target="$line_number" '
         /^[[:space:]]*mod[[:space:]]+tests[[:space:]]*\{/ { test_start = NR }
-        /^[[:space:]]*\}[[:space:]]*$/ && test_start && NR > test_start { 
+        /^[[:space:]]*\}[[:space:]]*$/ && test_start && NR > test_start {
             if (target > test_start && target < NR) { print "IN_TEST"; exit }
             test_start = ""
         }
     ' "$file")
-    
+
     if [[ "$in_test_mod" == "IN_TEST" ]]; then
         echo "IN_TEST"
         return 0
     fi
-    
+
     # Not in test code
     echo "NOT_IN_TEST"
 }
@@ -74,44 +74,44 @@ scan_pattern() {
     local description="$2"
     local suggestion="$3"
     local allow_in_tests="${4:-true}"
-    
+
     echo "🔍 Scanning for: $pattern"
-    
-    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
-    
+
+    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null || true)
+
     if [[ -z "$matches" ]]; then
         echo "✅ No violations found for: $pattern"
         return 0
     fi
-    
+
     local production_violations=""
     local test_violations=""
     local total_matches=0
-    
+
     while IFS= read -r match; do
         if [[ -z "$match" ]]; then
             continue
         fi
-        
+
         file=$(echo "$match" | cut -d: -f1)
         line_num=$(echo "$match" | cut -d: -f2)
         content=$(echo "$match" | cut -d: -f3-)
-        
+
         if [[ ! -r "$file" ]]; then
             continue
         fi
-        
+
         ((total_matches++))
-        
+
         local test_result=$(is_in_test_code "$file" "$line_num")
-        
+
         if [[ "$test_result" == "IN_TEST" ]]; then
             test_violations+="  $file:$line_num:${content}"$'\n'
         else
             production_violations+="  $file:$line_num:${content}"$'\n'
         fi
     done <<< "$matches"
-    
+
     # Report results
     if [[ -n "$production_violations" ]]; then
         echo -e "${RED}❌ CRITICAL: Found forbidden pattern: $pattern${NC}"
@@ -140,7 +140,7 @@ scan_pattern() {
     fi
 }
 
-# Core anti-patterns from anti.md and CLAUDE.md
+# Core anti-patterns from anti.md, QUALITY.md and CLAUDE.md
 echo "🚨 Checking core anti-patterns..."
 
 scan_pattern "HashMap::new()" "HashMap initialization without capacity" "Use HashMap::with_capacity(n) for pre-allocation" "false"
@@ -163,13 +163,13 @@ echo "  - Production code must use proper error handling"
 echo ""
 echo "🦀 Rust 1.88+ specific pattern validation..."
 
-# Enhanced patterns from anti.md (2025-01-08)
+# Enhanced anti.md patterns (2025-01-08)
 echo "🔍 Checking enhanced anti.md patterns..."
 
 # unwrap_or with eager evaluation (improved regex to avoid false positives)
 echo "🔍 Scanning for unwrap_or eager evaluation anti-pattern..."
 # Look for unwrap_or( followed by function calls like func(), build_something(), etc.
-eager_unwrap_or=$(grep -rn "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null | grep -E "unwrap_or\([^\)]*[a-zA-Z_][a-zA-Z0-9_]*\s*\(" || true)
+eager_unwrap_or=$(grep -rn "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null | grep -E "unwrap_or\([^\)]*[a-zA-Z_][a-zA-Z0-9_]*\s*\(" || true)
 if [[ -n "$eager_unwrap_or" ]]; then
     echo -e "${RED}❌ CRITICAL: Found unwrap_or() with potential eager evaluation${NC}"
     echo -e "${YELLOW}📝 Suggestion: Use unwrap_or_else(|| expensive_operation()) for lazy evaluation${NC}"
@@ -182,7 +182,7 @@ fi
 
 # Missing error documentation in Result functions
 echo "🔍 Checking for missing error documentation..."
-result_functions=$(grep -rn "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
+result_functions=$(grep -rn "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null || true)
 if [[ -n "$result_functions" ]]; then
     echo -e "${BLUE}📋 Found $(echo "$result_functions" | wc -l) Result-returning functions${NC}"
     # Note: Full documentation check would require more sophisticated analysis

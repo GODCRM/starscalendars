@@ -20,10 +20,10 @@ VIOLATIONS=0
 is_in_test_code() {
     local file="$1"
     local line_number="$2"
-    
+
     # Primary check: #[cfg(test)] module (covers most test code)
     local cfg_test_line=$(awk '/#\[cfg\(test\)\]/ { print NR }' "$file" | tail -1)
-    
+
     if [[ -n "$cfg_test_line" ]] && [[ $line_number -gt $cfg_test_line ]]; then
         local lines_after=$((line_number - cfg_test_line))
         if [[ $lines_after -lt 200 ]]; then  # Reasonable test module size
@@ -31,19 +31,19 @@ is_in_test_code() {
             return 0
         fi
     fi
-    
+
     # Fallback: individual #[test] functions (only if no cfg_test found)
     if [[ -z "$cfg_test_line" ]]; then
         local test_fn_line=$(awk -v target="$line_number" '
             /#\[test\]/ { if (NR < target && target - NR <= 15) print NR }
         ' "$file" | tail -1)
-        
+
         if [[ -n "$test_fn_line" ]]; then
             echo "IN_TEST"
             return 0
         fi
     fi
-    
+
     # Not in test code
     echo "NOT_IN_TEST"
 }
@@ -53,42 +53,42 @@ validate_pattern() {
     local pattern="$1"
     local description="$2"
     local suggestion="$3"
-    
+
     echo "🔍 Scanning for: $pattern"
-    
+
     # Find all matches
-    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
-    
+    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null || true)
+
     if [[ -z "$matches" ]]; then
         echo "✅ No violations found for: $pattern"
         return 0
     fi
-    
+
     local production_violations=""
-    
+
     # Check each match to see if it's in test code
     while IFS= read -r match; do
         if [[ -z "$match" ]]; then
             continue
         fi
-        
+
         local file=$(echo "$match" | cut -d: -f1)
         local line_num=$(echo "$match" | cut -d: -f2)
         local content=$(echo "$match" | cut -d: -f3-)
-        
+
         # Skip if file doesn't exist or is not readable
         if [[ ! -r "$file" ]]; then
             continue
         fi
-        
+
         # Check if this violation is in test code
         local test_result=$(is_in_test_code "$file" "$line_num")
-        
+
         if [[ "$test_result" != "IN_TEST" ]]; then
             production_violations+="  - $file:$line_num: $content"$'\n'
         fi
     done <<< "$matches"
-    
+
     if [[ -n "$production_violations" ]]; then
         echo -e "${RED}❌ CRITICAL: Found forbidden pattern: $pattern${NC}"
         echo -e "${YELLOW}📝 Suggestion: $suggestion${NC}"

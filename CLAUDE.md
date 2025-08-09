@@ -115,7 +115,7 @@ starscalendars/
 
 ## Key Technologies & Stack
 
-- **Frontend Main Scene**: Babylon.js 8 with TypeScript 5.9/Vite 7/React 19
+- **Frontend Main Scene**: Babylon.js 8 (major; latest 8.x at build time) with TypeScript 5.9/Vite 7/React 19
 - **Astronomical Calculations**: Rust + WebAssembly using local astro-rust library (📚 READ-ONLY: astro-rust/ folder must NOT be modified!)
 - **🌟 WASM ОБЕРТКА**: Полное покрытие всех функций astro-rust с СТРОГИМ ЗАПРЕТОМ на mock-данные и отсебятину!
 - **Backend**: Axum (Rust 1.88+) with PostgreSQL and WebSockets
@@ -173,8 +173,8 @@ JWT_SECRET="your_jwt_secret_here"
 git clone <repository-url>
 cd starscalendars
 
-# 2. Install all dependencies
-pnpm install
+# 2. Install all dependencies (workspace)
+pnpm -w install
 
 # 3. Build WASM astronomical core first
 pnpm run build:wasm
@@ -182,8 +182,8 @@ pnpm run build:wasm
 # 4. Run quality checks (should pass)
 make quality-check
 
-# 5. Start development environment
-pnpm run dev
+# 5. Start development environment (frontend only)
+pnpm -w run dev:frontend-only
 ```
 
 ### Project Setup
@@ -195,7 +195,7 @@ pnpm run dev
 
 ### Key Design Decisions (per tz.md)
 - **Clean Architecture**: Domain → UseCases → Adapters → Delivery layers
-- **WASM Interface**: Exactly `compute_all(jd: f64) -> *const f64` plus `calculate_solar_zenith_position_rad(jd)`; thread-local buffers
+- **WASM Interface**: Exactly `compute_state(jd: f64) -> *const f64` (11 f64: Sun xyz, Moon xyz, Earth xyz, Zenith [lon_east_rad, lat_rad]); thread-local buffers
 - **Sun Position**: Static at (0,0,0) (heliocentric scene)  
 - **JWT**: RS256 with custom claims `is_telegram_subscribed: boolean`
 - **Database**: PostgreSQL with specific schema: `users`, `refresh_tokens`, `telegram_linking`
@@ -575,7 +575,7 @@ cargo test --release -- --ignored bench_
 - All user interactions route through Telegram for community building
 - 10-language support with cultural sensitivity for global spiritual community
 - GUI performance: HTML/CSS overlay significantly faster than Babylon.js GUI
-- WASM performance: exactly one `compute_all(t)` call per frame
+- WASM performance: exactly one `compute_state(t)` call per frame
 - Multilingual system: Fluent with ICU MessageFormat for 10-language support
 
 ## Code Quality Requirements (tz.md Standards)
@@ -587,7 +587,7 @@ cargo test --release -- --ignored bench_
 - **Delivery**: HTTP/WS handlers, depend on use-cases through DI
 
 ### **Performance Requirements (O(1) горячий путь):**
-- Горячий путь кадра: ровно один вызов WASM `compute_all(t)`
+- Горячий путь кадра: ровно один вызов WASM `compute_state(t)`
 - Доступ к результатам через view на WebAssembly.Memory
 - Ни одной аллокации в Babylon.js в кадре
 - SQL: индексные планы, подготовленные запросы
@@ -596,7 +596,7 @@ cargo test --release -- --ignored bench_
 - Thread-local буфер как в примере tz.md
 - Нолевое копирование через Float64Array view
 - Feature flags для browser/Node.js
-- Exactly one `compute_all(t)` call per frame
+- Exactly one `compute_state(t)` call per frame
 - No string passing between WASM-JS
 
 ### **Database Requirements:**
@@ -623,8 +623,8 @@ cargo test --release -- --ignored bench_
 **ПРИМЕР ПРАВИЛЬНОЙ РЕАЛИЗАЦИИ НОВОЙ ФУНКЦИИ:**
 ```rust
 // ✅ ПРАВИЛЬНО - только astro-rust функции
-#[wasm_bindgen]
-pub fn calculate_solar_zenith_position(julian_day: f64) -> *const f64 {
+// Zenith is included in compute_state buffer; a separate export is no longer required
+// (legacy example below is intentionally removed)
     // Используем ТОЛЬКО astro::sun::geocent_ecl_pos()
     let (sun_ecl, _) = astro::sun::geocent_ecl_pos(julian_day);
     // Применяем ТОЛЬКО astro::nutation::nutation()
@@ -647,7 +647,7 @@ pub fn bad_solar_position(julian_day: f64) -> *const f64 {
 - Circular dependencies between layers
 
 ### **Performance Critical (O(1) requirement):**
-- Multiple WASM calls per frame (only ONE `compute_all(t)` allowed)
+- Multiple WASM calls per frame (only ONE `compute_state(t)` allowed)
 - Data copying between WASM-JS (use Float64Array view only)
 - Babylon.js allocations in render loop
 - SQL N+1 queries (use indexed queries only)
@@ -786,7 +786,7 @@ pub trait TelegramApi {
 ```
 
 ### **Performance Patterns (O(1) горячий путь):**
-- Ровно один вызов WASM `compute_all(t)` на кадр
+- Ровно один вызов WASM `compute_state(t)` на кадр
 - Float64Array view без копирования
 - Переиспользование Vector3/Quaternion в Babylon.js
 - O(1) SQL операции с индексами
@@ -888,7 +888,7 @@ make pre-commit
 - `HashMap::new()`, `Vec::new()` - только `with_capacity()` (detected by make anti-patterns)
 - `as` conversions - только `TryFrom` (clippy as_conversions = deny)
 - `unsafe_code` - полностью запрещен (rust lint deny)
-- Multiple WASM calls per frame - только один `compute_all(t)` (make wasm-perf)
+- Multiple WASM calls per frame - только один `compute_state(t)` (make wasm-perf)
 - `.await` в циклах - блокирующие операции в real-time контексте (clippy await_holding_lock = deny)
 - `mem_forget` - denial rule (clippy mem_forget = deny)
 - `todo!()`, `unimplemented!()` - блокируется компиляцией (clippy deny)

@@ -7,8 +7,10 @@ set -e
 echo "🎨 Frontend Development Setup"
 echo "============================"
 
-echo "📥 Installing dependencies (always fresh majors)..."
-pnpm -w i --prefer-offline=false --frozen-lockfile=false || pnpm -w i
+echo "📥 Installing dependencies (workspace, always fresh majors)..."
+pnpm -w install --prefer-offline=false --frozen-lockfile=false || pnpm -w install
+# Ensure workspace-local symlinks for frontend exist (avoids 'node_modules missing' in workspace)
+pnpm --filter starscalendars-frontend install || true
 echo "✅ Dependencies ready"
 echo ""
 

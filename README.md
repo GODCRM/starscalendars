@@ -23,7 +23,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 
 ### Frontend
 - **TypeScript 5.9** with strict type checking
-- **Babylon.js 8** for 3D astronomical visualization
+- **Babylon.js 8 (major pin; latest 8.x at build time)** for 3D astronomical visualization
 - **Vite 7** build system with WASM integration
 - **React 19** with latest features
 - **Fluent** for internationalization (ICU MessageFormat)
@@ -35,6 +35,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **Thread-local buffers** for performance optimization
 - Output (bundler target) is written to `frontend/src/wasm-astro/` as `starscalendars_wasm_astro.js` + `*_bg.wasm`
 - Use left-handed Babylon system (default). Scientific coordinates remain RH (WASM). Apply single RH→LH Z flip in the scene when assigning positions; no flips in WASM bridge
+- Single-call per frame: `compute_state(jd)` returns 11 f64 values: Sun xyz (geocentric), Moon xyz (geocentric), Earth xyz (heliocentric), and Solar zenith [lon_east_rad, lat_rad].
 
 ### Textures & Assets (Frontend)
 - All scene textures are served from `frontend/public/textures` and available at runtime under `/textures/...`
@@ -74,6 +75,9 @@ The `astro-rust/` folder contains the local copy of the astronomical calculation
 - **📚 Contains**: VSOP87, ELP-2000/82 implementations with decimal_day and lunar equation fixes
 - **🎯 Usage**: Referenced via `astro = { path = "./astro-rust" }` in Cargo.toml
 - **⚠️ WARNING**: Any modifications will break astronomical precision and corrupt calculations
+
+### Reference Scene - READ-ONLY
+`frontend/ref/sceneComponent.jsx` is a canonical reference implementation used only for study and porting. **Do not modify** this file.
 
 ## 🚀 Quick Start
 
@@ -158,7 +162,7 @@ make pre-commit
 
 **✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
 - ТОЛЬКО функции из astro-rust для астрономических расчетов
-- Единый вызов `compute_all(jd)` на кадр и `calculate_solar_zenith_position_rad(jd)` для зенита
+- Единый вызов `compute_state(jd)` на кадр (зенит уже в буфере)
 - Реальные эфемеридные данные, коррекции нутации/прецессии при необходимости
 
 ### General Anti-Patterns
@@ -166,7 +170,7 @@ make pre-commit
 - ❌ **`unwrap()`**, **`expect()`**, **`panic!()`** - Use `Result<T, E>` everywhere
 - ❌ **`HashMap::new()`**, **`Vec::new()`** - Use `with_capacity()` for performance
 - ❌ **`as` conversions** - Use `TryFrom` for safe type conversion
-- ❌ **Multiple WASM calls per frame** - Only one `compute_all(t)` allowed
+- ❌ **Multiple WASM calls per frame** - Only one `compute_state(t)` allowed
 - ❌ **`.await` in loops** - Violates real-time performance requirements
 
 ### Performance Requirements
@@ -223,7 +227,7 @@ make pre-commit
 - [x] CI/CD pipeline, VS Code интеграция
 
 ✅ **Phase 1.1: Астрономическое ядро** (ЗАВЕРШЕНО)
-- [x] **WASM модуль**: thread-local буферы, O(1) `compute_all()` + `calculate_solar_zenith_position_rad()`
+- [x] **WASM модуль**: thread-local буферы, O(1) `compute_state()` (zenith included)
 - [x] **Backend**: Axum 0.8, JWT RS256, WebSocket auth
 - [x] **Frontend**: TypeScript 5.9, React 19, WASM интеграция  
 - [x] **Infrastructure**: wasm-pack, pnpm workspace, сборка успешна

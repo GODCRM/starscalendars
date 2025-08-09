@@ -1,5 +1,5 @@
 /**
- * WASM Astronomical Module Integration (TypeScript 5.9.2 + Babylon.js 8.21.0)
+ * WASM Astronomical Module Integration (TypeScript 5.9.2 + Babylon.js 8 major — latest minor at runtime)
  *
  * High-performance WASM integration with zero-copy data transfer and strict typing.
  * Implements exactly one compute_all() call per frame for O(1) performance.
@@ -7,14 +7,9 @@
 
 import type {
   PositionBuffer,
-  WASMError
+  WASMError,
 } from './types.js';
-import {
-  validateJulianDay,
-  validateWASMBuffer,
-  WASM_CONSTANTS,
-  WASMErrorType
-} from './types.js';
+import { validateJulianDay, validateWASMBuffer, WASM_CONSTANTS, WASMErrorType } from './types.js';
 
 // ✅ CORRECT - Result type pattern for strict error handling (TypeScript 5.9.2+)
 export type Result<T, E> = { success: true; data: T } | { success: false; error: E };
@@ -42,8 +37,7 @@ export interface AstronomicalState {
 // ✅ CORRECT - WASM module interface with strict typing for spiritual astronomy
 export interface WASMModule {
   readonly compute_all: (julianDay: number) => number;
-  readonly get_body_count: () => number;
-  readonly get_coordinate_count: () => number;
+  readonly compute_state?: (julianDay: number) => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
 
@@ -89,6 +83,16 @@ let globalWasmModule: WASMModule | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<WASMModule> | null = null;
 
+// Internal strict type for dynamic import so we don't use `any` downstream
+type RawWasmModule = {
+  readonly memory: WebAssembly.Memory;
+  readonly compute_all: (jd: number) => number;
+  readonly compute_state?: (jd: number) => number;
+  readonly get_version: () => string;
+  readonly calculate_solar_zenith_position?: (jd: number) => number;
+  readonly calculate_solar_zenith_position_rad?: (jd: number) => number;
+};
+
 /**
  * Initialize WASM module with runtime module loading
  */
@@ -110,8 +114,7 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       const loadWASMModule = async (): Promise<{
         init: () => Promise<void>;
         compute_all: (jd: number) => number;
-        get_body_count: () => number;
-        get_coordinate_count: () => number;
+        // minimal interface + extras
         get_version: () => string;
         memory: WebAssembly.Memory;
         // Spiritual astronomy functions (optional - may not be available in all builds)
@@ -134,91 +137,53 @@ export const initializeWASM = async (): Promise<WASMModule> => {
             console.log('🚀 Loading WASM module via Vite 7.0.6 bundler target...');
 
             // ✅ CORRECT 2025: Import wasm-bindgen bundler target module
-          const wasmModule = await import('../wasm-astro/starscalendars_wasm_astro.js');
+          const wasmModule = (await import('../wasm-astro/starscalendars_wasm_astro.js')) as unknown as RawWasmModule;
 
             // ✅ CORRECT 2025: With bundler target, initialization is automatic
             // No need for wasmModule.default() - this is for web target only
 
             console.log('✅ WASM module loaded and initialized with bundler target');
 
-            // ✅ CORRECT 2025: With bundler target, memory is accessed from the WASM binary
-            // Import the background module to get internal wasm access
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore - no types for this internal helper
-            const bgModule = await import('../wasm-astro/starscalendars_wasm_astro_bg.js');
-
-            // Access internal WASM memory for bundler target
-            // In bundler target, memory is accessed through internal wasm variable
-            let memory: WebAssembly.Memory | null = null;
-
-            // Strategy: Use private property access to get real WASM memory
-            // This is safe because we control the WASM compilation
-            try {
-              // Import the actual WASM module (may fail in dev - optional)
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore - Vite will handle .wasm as asset in bundler target
-              const wasmBin: any = await import('../wasm-astro/starscalendars_wasm_astro_bg.wasm');
-              if (wasmBin && wasmBin.memory) {
-                memory = wasmBin.memory as WebAssembly.Memory;
-              }
-            } catch (wasmDirectError) {
-              console.log('Direct WASM memory access failed, trying alternatives...');
-
-              // Fallback: create accessor through internal wasm reference
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const anyBgModule = bgModule as any;
-              if (anyBgModule.__wbg_get_wasm) {
-                const internalWasm = anyBgModule.__wbg_get_wasm();
-                if (internalWasm?.memory) {
-                  memory = internalWasm.memory;
-                }
-              }
-            }
-
-            // Final fallback for development
+            // Access memory directly from bundler export (no fallbacks/mocks)
+            const memory: WebAssembly.Memory | undefined = wasmModule.memory as WebAssembly.Memory | undefined;
             if (!memory) {
-              console.warn('⚠️ Could not access real WASM memory, using development fallback');
-              // Allocate a valid WebAssembly.Memory for fallback to satisfy types
-              memory = new WebAssembly.Memory({ initial: 256, maximum: 512 });
+              throw new Error('WASM memory export is missing');
             }
-
-            console.log(`✅ WASM memory accessed: ${memory.buffer?.byteLength || 'unknown'} bytes`);
+            console.log(`✅ WASM memory accessed: ${memory.buffer.byteLength} bytes`);
 
             // Test a real calculation to ensure WASM is working
             const testJD = 2451545.0; // J2000 epoch
+            if (typeof wasmModule.compute_all !== 'function') {
+              throw new Error('WASM export compute_all is missing');
+            }
             const testResult = wasmModule.compute_all(testJD);
-            if (testResult !== 0) {
-              console.log(`✅ WASM compute_all test successful: pointer ${testResult}`);
-            } else {
-              console.warn('⚠️ WASM compute_all returned null pointer - calculation may have failed');
+            if (testResult === 0) {
+              throw new Error('WASM compute_all returned null pointer during init test');
             }
 
             // Return unified interface optimized for bundler target
             const base = {
               init: async () => { /* Already initialized */ },
               compute_all: wasmModule.compute_all,
-              get_body_count: wasmModule.get_body_count,
-              get_coordinate_count: wasmModule.get_coordinate_count,
-              get_version: () => {
-                try {
-                  // Try the export function first (should return string)
-                  return wasmModule.get_version ? wasmModule.get_version() : 'wasm-v1.0.0-bundler';
-                } catch {
-                  // Fallback if there's a signature mismatch
-                  return 'wasm-v1.0.0-bundler';
+              compute_state: typeof wasmModule.compute_state === 'function' ? wasmModule.compute_state : undefined,
+              get_version: (() => {
+                if (typeof wasmModule.get_version !== 'function') {
+                  throw new Error('WASM export get_version is missing');
                 }
-              },
+                return wasmModule.get_version();
+              }) as () => string,
               memory,
             } as const;
-            const extras: any = {};
-            if ((wasmModule as any).calculate_solar_zenith_position) {
-              extras.calculate_solar_zenith_position = (wasmModule as any).calculate_solar_zenith_position;
-            }
-            if ((wasmModule as any).calculate_solar_zenith_position_rad) {
-              extras.calculate_solar_zenith_position_rad = (wasmModule as any).calculate_solar_zenith_position_rad;
-            }
-            // Note: Additional functions may be conditionally attached above
-            return { ...base, ...extras } as any;
+            // Note: Additional functions may be conditionally attached below without mutation
+            return {
+              ...base,
+              ...(typeof wasmModule.calculate_solar_zenith_position === 'function'
+                ? { calculate_solar_zenith_position: wasmModule.calculate_solar_zenith_position }
+                : {}),
+              ...(typeof wasmModule.calculate_solar_zenith_position_rad === 'function'
+                ? { calculate_solar_zenith_position_rad: wasmModule.calculate_solar_zenith_position_rad }
+                : {}),
+            } as any;
           },
 
           // Strategy 2: Development fallback with safe imports (no eval)
@@ -250,16 +215,12 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       timer.mark('wasm_functions_loaded');
 
       // Validate WASM module interface using strict constants
-      const bodyCount = wasmFunctions.get_body_count();
-      const coordinateCount = wasmFunctions.get_coordinate_count();
-      const version = wasmFunctions.get_version();
-
-      if (bodyCount !== WASM_CONSTANTS.EXPECTED_BODY_COUNT) {
-        throw new Error(`Invalid body count: expected ${WASM_CONSTANTS.EXPECTED_BODY_COUNT}, got ${bodyCount}`);
+      if (typeof wasmFunctions.get_version !== 'function') {
+        throw new Error('WASM get_version export is missing');
       }
-
-      if (coordinateCount !== WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT) {
-        throw new Error(`Invalid coordinate count: expected ${WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT}, got ${coordinateCount}`);
+      const version = wasmFunctions.get_version();
+      if (typeof version !== 'string' || version.length === 0) {
+        throw new Error('WASM get_version returned invalid value');
       }
 
       timer.mark('validation_complete');
@@ -274,8 +235,6 @@ export const initializeWASM = async (): Promise<WASMModule> => {
           return wasmFunctions.compute_all(julianDay);
         },
 
-        get_body_count: (): number => bodyCount,
-        get_coordinate_count: (): number => coordinateCount,
         get_version: (): string => version,
 
 
@@ -342,11 +301,7 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       isInitialized = true;
       timer.mark('module_ready');
 
-      console.log(`✅ WASM Module Initialized Successfully:
-        Version: ${version}
-        Bodies: ${bodyCount}
-        Coordinates: ${coordinateCount}
-        Memory Buffer Size: ${wasmFunctions.memory.buffer.byteLength} bytes`);
+      console.log(`✅ WASM Module Initialized Successfully: Version: ${version}; Memory: ${wasmFunctions.memory.buffer.byteLength} bytes`);
 
       return module;
 
@@ -416,7 +371,8 @@ export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result
     };
   }
 
-  const coordinateCount = wasmModule.get_coordinate_count();
+  // Expect 33 coordinates (11 bodies * 3) — from single source of truth
+  const coordinateCount = WASM_CONSTANTS.EXPECTED_COORDINATE_COUNT;
 
   // No mock data allowed - WASM must be available for real astronomical calculations
 
@@ -474,6 +430,17 @@ export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result
 };
 
 /**
+ * Create zero-copy Float64Array view for SEM (Sun/Earth/Moon) buffer
+ */
+// SEM-only view removed. Unified STATE is used instead.
+
+/**
+ * Create zero-copy Float64Array view for STATE buffer (S/E/M + zenith rad)
+ * Layout length: 11 (9 coords + 2 zenith values)
+ */
+// createSTATEView no longer needed; scene inlines zero-copy view
+
+/**
  * ✅ CRITICAL: Extract celestial body positions from WASM buffer (HELIOCENTRIC/GEOCENTRIC MODEL)
  *
  * 🌟 ПРАВИЛЬНАЯ АСТРОНОМИЧЕСКАЯ СИСТЕМА КООРДИНАТ:
@@ -493,91 +460,7 @@ export const createPositionsView = (wasmModule: WASMModule, ptr: number): Result
  * - Neptune: indices 27-29 (x, y, z) - HELIOCENTRIC position
  * - Pluto: indices 30-32 (x, y, z) - HELIOCENTRIC position
  */
-export const extractCelestialPositions = (
-  positions: Float64Array,
-  currentTime: number,
-  wasmModule?: WASMModule | null
-): AstronomicalState => {
-  // Coordinates from WASM are returned in scientific (right-handed ecliptic) space.
-  // NO LH transforms here. Rendering conversion is applied at scene assignment time.
-  const conv = (x: number, y: number, z: number) => ({ x, y, z });
-  // ✅ HELIOCENTRIC MODEL: Sun always at center (0,0,0) in 3D scene
-  const sunPosition: CelestialPosition = {
-    x: 0.0, // Sun at center of heliocentric scene
-    y: 0.0,
-    z: 0.0,
-    distance: 0.0,
-    timestamp: currentTime
-  };
-
-  // ✅ HELIOCENTRIC MODEL: Earth uses real heliocentric coordinates from WASM (indices 12-14)
-  const e = conv(positions[12]!, positions[13]!, positions[14]!);
-  const earthPosition: CelestialPosition = {
-    x: e.x,
-    y: e.y,
-    z: e.z,
-    distance: Math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z),
-    timestamp: currentTime
-  };
-
-  // ✅ GEOCENTRIC MODEL: Moon position relative to Earth (indices 3-5) + Earth offset
-  const mOff = conv(positions[3]!, positions[4]!, positions[5]!);
-  const moonPosition: CelestialPosition = {
-    x: e.x + mOff.x,
-    y: e.y + mOff.y,
-    z: e.z + mOff.z,
-    distance: Math.sqrt(mOff.x * mOff.x + mOff.y * mOff.y + mOff.z * mOff.z),
-    timestamp: currentTime
-  };
-
-  // ✅ REAL ASTRONOMICAL DATA: Earth-Sun distance and Sun zenith coordinates
-  const earthSunDistance = earthPosition.distance; // Real distance in AU
-
-  // Calculate Sun zenith coordinates via WASM (rad preferred, deg fallback). No JS fallback allowed.
-  let sunZenithLat: number;
-  let sunZenithLng: number;
-  let sunZenithLatRad: number;
-  let sunZenithLngRad: number;
-  const jd = millisecondsToJulianDay(currentTime);
-  if (wasmModule?.calculate_solar_zenith_position_rad) {
-    const ptrRad = wasmModule.calculate_solar_zenith_position_rad(jd);
-    if (ptrRad) {
-      const radView = new Float64Array(wasmModule.memory.buffer, ptrRad, 2);
-      sunZenithLngRad = radView[0]!; // east-positive
-      sunZenithLatRad = radView[1]!;
-      sunZenithLng = (sunZenithLngRad * 180) / Math.PI;
-      sunZenithLat = (sunZenithLatRad * 180) / Math.PI;
-    } else {
-      throw new Error('WASM returned null pointer for calculate_solar_zenith_position_rad');
-    }
-  } else if (wasmModule?.calculate_solar_zenith_position) {
-    const ptrDeg = wasmModule.calculate_solar_zenith_position(jd);
-    if (ptrDeg) {
-      const degView = new Float64Array(wasmModule.memory.buffer, ptrDeg, 2);
-      const lonDegWestPositive = degView[0]!;
-      const latDeg = degView[1]!;
-      sunZenithLng = -lonDegWestPositive; // convert to east-positive
-      sunZenithLat = latDeg;
-      sunZenithLngRad = (sunZenithLng * Math.PI) / 180;
-      sunZenithLatRad = (sunZenithLat * Math.PI) / 180;
-    } else {
-      throw new Error('WASM returned null pointer for calculate_solar_zenith_position');
-    }
-  } else {
-    throw new Error('WASM solar zenith functions are not available');
-  }
-
-  return {
-    sun: sunPosition,
-    earth: earthPosition,
-    moon: moonPosition,
-    earthSunDistance,
-    sunZenithLat,
-    sunZenithLng,
-    sunZenithLatRad,
-    sunZenithLngRad
-  };
-};
+// Old extractCelestialPositions removed; state provides zenith inline
 
 // Removed JS fallback zenith calculators: we rely exclusively on WASM
 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
             padding: 20px;
             line-height: 1.6;
         }
+
         .debug-section {
             background: #1a1a1a;
             border: 1px solid #333;
@@ -19,16 +21,30 @@
             margin: 10px 0;
             border-radius: 5px;
         }
-        .success { color: #00ff00; }
-        .error { color: #ff4444; }
-        .warning { color: #ffaa00; }
-        .info { color: #4488cc; }
+
+        .success {
+            color: #00ff00;
+        }
+
+        .error {
+            color: #ff4444;
+        }
+
+        .warning {
+            color: #ffaa00;
+        }
+
+        .info {
+            color: #4488cc;
+        }
+
         pre {
             background: #000;
             padding: 10px;
             border-left: 3px solid #00ff00;
             overflow-x: auto;
         }
+
         button {
             background: #2a2a2a;
             color: #00ff00;
@@ -38,14 +54,16 @@
             margin: 5px;
             border-radius: 3px;
         }
+
         button:hover {
             background: #3a3a3a;
         }
     </style>
 </head>
+
 <body>
     <h1>🌌 WASM Astronomical Module Debug Console</h1>
-    
+
     <div class="debug-section">
         <h2>📋 Module Status</h2>
         <div id="module-status">Loading...</div>
@@ -90,39 +108,37 @@
         async function initWasm() {
             try {
                 log('🚀 Loading WASM module...', 'info');
-                
+
                 // Import the WASM module
                 const wasmImport = await import('./src/wasm-astro/starscalendars_wasm_astro.js');
                 log('✅ WASM JavaScript wrapper loaded', 'success');
-                
+
                 // Initialize WASM
                 const initOutput = await wasmImport.default();
                 log('✅ WASM module initialized', 'success');
-                
+
                 // Test basic functions
-                const bodyCount = initOutput.get_body_count();
-                const coordCount = initOutput.get_coordinate_count();
                 const version = initOutput.get_version();
-                
+
                 log(`📊 Body count: ${bodyCount}`, 'info');
                 log(`📊 Coordinate count: ${coordCount}`, 'info');
                 log(`📊 Version: ${version}`, 'info');
                 log(`📊 Memory buffer size: ${initOutput.memory.buffer.byteLength} bytes`, 'info');
-                
+
                 wasmModule = initOutput;
                 updateModuleStatus();
-                
+
                 // Test a single calculation
                 const testJD = 2451545.0; // J2000 epoch
                 const ptr = wasmModule.compute_all(testJD);
                 log(`🧪 Test calculation result: pointer = ${ptr}`, ptr !== 0 ? 'success' : 'error');
-                
+
                 if (ptr !== 0) {
                     // Test memory access
                     const positions = new Float64Array(wasmModule.memory.buffer, ptr, coordCount);
                     log(`📊 First few coordinates: [${positions.slice(0, 6).map(v => v.toFixed(6)).join(', ')}]`, 'info');
                 }
-                
+
                 return true;
             } catch (error) {
                 log(`❌ WASM initialization failed: ${error.message}`, 'error');
@@ -137,8 +153,7 @@
             if (wasmModule) {
                 statusDiv.innerHTML = `
                     <div class="success">✅ WASM Module Loaded</div>
-                    <div>Bodies: ${wasmModule.get_body_count()}</div>
-                    <div>Coordinates: ${wasmModule.get_coordinate_count()}</div>
+                        <div>Version: ${wasmModule.get_version ? wasmModule.get_version() : 'unknown'}</div>
                     <div>Version: ${wasmModule.get_version()}</div>
                     <div>Memory: ${wasmModule.memory.buffer.byteLength} bytes</div>
                 `;
@@ -148,7 +163,7 @@
         }
 
         // Test all WASM functions
-        window.testWasmFunctions = function() {
+        window.testWasmFunctions = function () {
             const resultsDiv = document.getElementById('test-results');
             if (!wasmModule) {
                 resultsDiv.innerHTML = '<div class="error">❌ WASM module not loaded</div>';
@@ -156,30 +171,26 @@
             }
 
             let results = '<h3>Function Test Results:</h3>';
-            
+
             try {
                 // Test basic info functions
-                const bodyCount = wasmModule.get_body_count();
-                const coordCount = wasmModule.get_coordinate_count();
                 const version = wasmModule.get_version();
-                
-                results += `<div class="success">✅ get_body_count(): ${bodyCount}</div>`;
-                results += `<div class="success">✅ get_coordinate_count(): ${coordCount}</div>`;  
+
                 results += `<div class="success">✅ get_version(): ${version}</div>`;
-                
+
                 // Test calculation with different Julian Days
                 const testDates = [
                     { name: 'J2000 Epoch', jd: 2451545.0 },
                     { name: 'Now', jd: 2440587.5 + Date.now() / 86400000.0 },
                     { name: 'Future', jd: 2451545.0 + 365.25 * 10 } // 10 years from J2000
                 ];
-                
+
                 for (const testDate of testDates) {
                     const ptr = wasmModule.compute_all(testDate.jd);
                     if (ptr !== 0) {
                         const positions = new Float64Array(wasmModule.memory.buffer, ptr, coordCount);
-                        const sunDist = Math.sqrt(positions[0]**2 + positions[1]**2 + positions[2]**2);
-                        const moonDist = Math.sqrt(positions[3]**2 + positions[4]**2 + positions[5]**2);
+                        const sunDist = Math.sqrt(positions[0] ** 2 + positions[1] ** 2 + positions[2] ** 2);
+                        const moonDist = Math.sqrt(positions[3] ** 2 + positions[4] ** 2 + positions[5] ** 2);
                         results += `<div class="success">✅ ${testDate.name} (JD: ${testDate.jd.toFixed(1)})</div>`;
                         results += `<div class="info">   Sun distance: ${sunDist.toFixed(6)} AU</div>`;
                         results += `<div class="info">   Moon distance: ${moonDist.toFixed(6)} AU</div>`;
@@ -187,16 +198,16 @@
                         results += `<div class="error">❌ ${testDate.name} - calculation failed</div>`;
                     }
                 }
-                
+
             } catch (error) {
                 results += `<div class="error">❌ Test failed: ${error.message}</div>`;
             }
-            
+
             resultsDiv.innerHTML = results;
         };
 
         // Test single calculation with detailed output
-        window.testCalculation = function() {
+        window.testCalculation = function () {
             const resultsDiv = document.getElementById('test-results');
             if (!wasmModule) {
                 resultsDiv.innerHTML = '<div class="error">❌ WASM module not loaded</div>';
@@ -205,25 +216,25 @@
 
             const jd = 2440587.5 + Date.now() / 86400000.0; // Current Julian Day
             log(`🧪 Testing calculation for JD: ${jd.toFixed(6)}`, 'info');
-            
+
             const ptr = wasmModule.compute_all(jd);
             log(`📊 Returned pointer: ${ptr}`, ptr !== 0 ? 'success' : 'error');
-            
+
             if (ptr !== 0) {
-                const coordCount = wasmModule.get_coordinate_count();
+                const coordCount = 33;
                 const positions = new Float64Array(wasmModule.memory.buffer, ptr, coordCount);
-                
+
                 const bodyNames = ['Sun', 'Moon', 'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
                 let output = '<h3>Current Celestial Positions:</h3><pre>';
-                
+
                 for (let i = 0; i < 11; i++) {
                     const x = positions[i * 3];
                     const y = positions[i * 3 + 1];
                     const z = positions[i * 3 + 2];
-                    const dist = Math.sqrt(x*x + y*y + z*z);
+                    const dist = Math.sqrt(x * x + y * y + z * z);
                     output += `${bodyNames[i].padEnd(8)}: [${x.toFixed(6)}, ${y.toFixed(6)}, ${z.toFixed(6)}] (${dist.toFixed(6)} AU)\\n`;
                 }
-                
+
                 output += '</pre>';
                 resultsDiv.innerHTML = output;
             } else {
@@ -232,7 +243,7 @@
         };
 
         // Test memory access patterns
-        window.testMemoryAccess = function() {
+        window.testMemoryAccess = function () {
             const resultsDiv = document.getElementById('test-results');
             if (!wasmModule) {
                 resultsDiv.innerHTML = '<div class="error">❌ WASM module not loaded</div>';
@@ -240,12 +251,12 @@
             }
 
             let results = '<h3>Memory Access Test:</h3>';
-            
+
             // Test multiple rapid calculations
             const start = performance.now();
             let successCount = 0;
             const testCount = 100;
-            
+
             for (let i = 0; i < testCount; i++) {
                 const jd = 2451545.0 + i; // Different Julian Days
                 const ptr = wasmModule.compute_all(jd);
@@ -253,50 +264,50 @@
                     successCount++;
                 }
             }
-            
+
             const duration = performance.now() - start;
             results += `<div class="success">✅ ${successCount}/${testCount} calculations successful</div>`;
             results += `<div class="info">📊 Average time: ${(duration / testCount).toFixed(3)}ms per calculation</div>`;
             results += `<div class="info">📊 Total time: ${duration.toFixed(3)}ms</div>`;
-            
+
             resultsDiv.innerHTML = results;
         };
 
         // Start real-time testing
-        window.startRealtimeTest = function() {
+        window.startRealtimeTest = function () {
             const btn = document.getElementById('realtime-btn');
             const dataDiv = document.getElementById('realtime-data');
-            
+
             if (realtimeInterval) {
                 clearInterval(realtimeInterval);
                 realtimeInterval = null;
                 btn.textContent = 'Start Real-time Test';
                 return;
             }
-            
+
             if (!wasmModule) {
                 dataDiv.innerHTML = '<div class="error">❌ WASM module not loaded</div>';
                 return;
             }
-            
+
             btn.textContent = 'Stop Real-time Test';
             let frameCount = 0;
             let totalTime = 0;
-            
+
             realtimeInterval = setInterval(() => {
                 const start = performance.now();
                 const jd = 2440587.5 + Date.now() / 86400000.0;
                 const ptr = wasmModule.compute_all(jd);
                 const calcTime = performance.now() - start;
-                
+
                 frameCount++;
                 totalTime += calcTime;
-                
+
                 if (ptr !== 0) {
-                    const positions = new Float64Array(wasmModule.memory.buffer, ptr, wasmModule.get_coordinate_count());
+                    const positions = new Float64Array(wasmModule.memory.buffer, ptr, 33);
                     const earthPos = [positions[12], positions[13], positions[14]];
-                    const earthDist = Math.sqrt(earthPos[0]**2 + earthPos[1]**2 + earthPos[2]**2);
-                    
+                    const earthDist = Math.sqrt(earthPos[0] ** 2 + earthPos[1] ** 2 + earthPos[2] ** 2);
+
                     dataDiv.innerHTML = `
                         <div class="success">✅ Frame ${frameCount} - Calculation: ${calcTime.toFixed(3)}ms</div>
                         <div class="info">📊 Average time: ${(totalTime / frameCount).toFixed(3)}ms</div>
@@ -314,7 +325,7 @@
         window.addEventListener('load', async () => {
             log('🌌 Debug console loaded', 'success');
             updateModuleStatus();
-            
+
             const success = await initWasm();
             if (success) {
                 log('🎉 WASM module ready for testing!', 'success');
@@ -324,4 +335,5 @@
         });
     </script>
 </body>
+
 </html>
