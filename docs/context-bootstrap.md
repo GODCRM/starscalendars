@@ -47,16 +47,20 @@ Notes:
   - Zenith comes directly from the last 2 buffer values (radians)
 - Z-convention: any required axis flips are handled once in the scene when assigning coordinates (single Z flip RH→LH). No flips in WASM bridge.
 
--## Zenith marker and orientation (as in reference)
-- Create Earth pivot (TransformNode). Place `pivot.position` from Earth heliocentric position (scaled). Parent `earth` and `moonPivot` to `pivot`.
-- Use zenith from `compute_state` buffer: `(lonE, lat)` in radians are in the last two slots.
-- Apply reference rotations:
-  - `pivot.rotation.z = lat`
-  - `pivot.rotation.x = pivot.rotation.z`
-  - `earth.rotation.y = -lonE`
-- Marker position each frame in Earth-local:
-  - Reference tweak: longitude used in ref was `-(zp.longitude - 7 + trueAnomalyDeg)`; replicate with true anomaly derived from Earth heliocentric vector via `atan2(y, x)`.
-- Marker sphere is red, diameter=1, parent=earth.
+## Zenith marker and orientation (LOCKED — canonical)
+- Create Earth pivot (`TransformNode`). Set `pivot.position` from Earth heliocentric position (scaled). Parent `earth` and `moonPivot` to `pivot`.
+- Use zenith from `compute_state` buffer: `(lon_east_rad, lat_rad)` — exact radians. No degree conversions, no constants, no true anomaly tweaks.
+- Place zenith marker in Earth-local spherical coordinates using ONLY WASM radians:
+  - Let `phi = (π/2) - lat_rad`
+  - Let `theta = (-lon_east_rad) + π`  // west-positive, place on correct surface side
+  - `x = r * sin(phi) * cos(theta)`; `z = r * sin(phi) * sin(theta)`; `y = r * cos(phi)`; where `r = EarthDiameter * 0.5`
+- Orient pivot so the line EarthCenter→Marker goes through scene origin (Sun):
+  - `pivot.rotation.y = -((-lon_east_rad) + π)`
+  - `pivot.rotation.z = lat_rad`
+  - `pivot.rotation.x = lat_rad`
+- Earth mesh keeps `rotation = (0,0,0)`; only pivot orients the hierarchy so Moon orbit follows tilt/azimuth.
+- Single RH→LH Z-flip applies ONLY when assigning world positions from WASM; not used for marker math.
+- This behavior is CANONICAL. Do not change without updating this file and running visual/ephemeris tests.
 
 ## Textures
 - Do not force `noMipmap` or `anisotropicFilteringLevel`. Use Babylon defaults.
@@ -75,10 +79,7 @@ Notes:
 
 ## What is implemented now (BabylonScene.tsx)
 - Reference mesh sizes/segments set. Fire=128, GodRays=100. Skybox via base path. GUI matches ref. No manual mipmaps.
-- Remaining deltas to finalize parity:
-  1) Introduce `pivot`/`moonPivot` hierarchy and move Earth/ Moon placement to those nodes.
-  2) Compute true anomaly from Earth vector; apply reference marker longitude tweak `- (lonE - 7 + trueAnomalyDeg)`.
-  3) Ensure Moon uses local geocentric offset under `moonPivot`/`earth`.
+- Zenith marker placement is LOCKED per rules above (pure WASM radians, no tweaks). Pivot orientation aligns marker to the Sun. Moon follows pivot tilt.
 
 ## Agent initialization prompt (paste into new chat)
 ```

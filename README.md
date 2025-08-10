@@ -36,6 +36,11 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - Output (bundler target) is written to `frontend/src/wasm-astro/` as `starscalendars_wasm_astro.js` + `*_bg.wasm`
 - Use left-handed Babylon system (default). Scientific coordinates remain RH (WASM). Apply single RH→LH Z flip in the scene when assigning positions; no flips in WASM bridge
 - Single-call per frame: `compute_state(jd)` returns 11 f64 values: Sun xyz (geocentric), Moon xyz (geocentric), Earth xyz (heliocentric), and Solar zenith [lon_east_rad, lat_rad].
+- Zenith marker placement is canonical and must not be altered:
+  - Use WASM radians directly; no degree conversions or constants
+  - Local Earth-space spherical: `phi=(π/2)-lat`, `theta=(-lon_east_rad)+π`
+  - Pivot orientation: `pivot.y = -((-lon_east_rad)+π)`, `pivot.z = lat`, `pivot.x = lat`; Earth mesh rotations remain zero
+  - Moon orbit must follow pivot tilt/azimuth
 
 ### Textures & Assets (Frontend)
 - All scene textures are served from `frontend/public/textures` and available at runtime under `/textures/...`

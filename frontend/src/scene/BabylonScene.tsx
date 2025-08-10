@@ -4,7 +4,6 @@ import {
   CubeTexture,
   Effect,
   Engine,
-  GlowLayer,
   Matrix,
   Mesh,
   MeshBuilder,
@@ -67,8 +66,12 @@ const CELESTIAL_BODIES: Record<string, CelestialBodyConfig> = {
 // ✅ CONSTANTS for astronomical calculations
 const JULIAN_DAY_UNIX_EPOCH = 2440587.5;
 const SKYBOX_INTENSITY = 1.6; // brighten env background without touching scene exposure
-// Visual moon orbit radius (units), reference parity uses ~200
+// Visual moon orbit radius target (~mean distance), reference parity uses ~200
 const MOON_ORBIT_RADIUS_UNITS = 200;
+// Mean lunar distance in AU (~384400 km / 1 AU)
+const MEAN_LUNAR_DISTANCE_AU = 0.00257;
+// Scale factor so that mean lunar distance maps to ~200 units; preserves ellipse shape
+const MOON_UNITS_PER_AU = MOON_ORBIT_RADIUS_UNITS / MEAN_LUNAR_DISTANCE_AU;
 
 // ✅ КРИТИЧЕСКИЙ БЛОК 1: STAR DATA МАССИВ из референсной сцены (строки 710-739)
 // Точные астрономические данные звезд для созвездий
@@ -169,6 +172,7 @@ interface SceneState {
   earthShaderMaterial?: ShaderMaterial | null;
   cloudsShaderMaterial?: ShaderMaterial | null;
   zenithMarker?: Mesh | null;
+  lunarZenithMarker?: Mesh | null;
   earthPivot?: TransformNode | null;
   moonPivot?: TransformNode | null;
 }
@@ -676,8 +680,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     earthMesh.parent = earthPivot;
     earthMesh.position.set(0, 0, 0);
 
-    // Flip Earth mesh 180° around Z so texture aligns like reference
-    earthMesh.rotation.z = Math.PI;
+    // Do NOT flip Earth mesh; reference flips only the clouds shell (see cloudsMesh.rotation.z = Math.PI)
 
     // ===== Earth day/night shader (exact port of reference) =====
     // Register shaders (Planet + Clouds) into Effect.ShadersStore
@@ -831,10 +834,9 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       segments: 25 // reference value
     }, scene);
 
-    // ✅ MOON via dedicated pivot under Earth pivot for correct geocentric local offset
+    // ✅ MOON via dedicated independent pivot (NOT parented to earthPivot)
     const moonPivot = new TransformNode('moonPivot', scene);
-    moonPivot.parent = earthPivot;
-    moonPivot.position.set(0, 0, 0);
+    moonPivot.position.copyFrom(earthPivot.position);
     moonMesh.parent = moonPivot;
     moonMesh.position = new Vector3(16, 0, 0); // Initial local position - will be updated by WASM
 
@@ -907,8 +909,8 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     timer.mark('skybox_created');
 
     // ✨ Subtle glow for bright emissive objects (Sun)
-    const glow = new GlowLayer('glow', scene);
-    glow.intensity = 0.5; // only to soften stars/constellations like ref; not for sun
+    // const glow = new GlowLayer('glow', scene);
+    // glow.intensity = 0.5; // only to soften stars/constellations like ref; not for sun
 
     // ✅ STELLAR SKY - создаем настоящие звезды и созвездия
     const starMesh = createSky(scene);
@@ -922,6 +924,15 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     zenithMat.specularColor = new Color3(0, 0, 0);
     zenithMarker.material = zenithMat;
     zenithMarker.parent = earthMesh; // local to Earth
+
+    // Lunar zenith (sublunar) marker (green)
+    const lunarZenithMarker = MeshBuilder.CreateSphere('lunarZenithMarker', { diameter: 1.0, segments: 8 }, scene);
+    const lunarZenithMat = new StandardMaterial('lunarZenithMat', scene);
+    lunarZenithMat.diffuseColor = new Color3(0, 1, 0);
+    lunarZenithMat.emissiveColor = new Color3(0, 1, 0);
+    lunarZenithMat.specularColor = new Color3(0, 0, 0);
+    lunarZenithMarker.material = lunarZenithMat;
+    lunarZenithMarker.parent = earthMesh; // local to Earth
 
     // ✅ GUI (Babylon GUI) — current date and quantum date like reference
     const gui = AdvancedDynamicTexture.CreateFullscreenUI('UI', true, scene);
@@ -965,6 +976,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       earthShaderMaterial: planetMaterial,
       cloudsShaderMaterial: cloudsMaterial,
       zenithMarker,
+      lunarZenithMarker,
       earthPivot,
       moonPivot
     };
@@ -1113,13 +1125,14 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
         sunMesh.position.copyFrom(sunPositionVector);
       }
 
-      // ✅ EARTH ORBITS AROUND SUN - use real heliocentric coordinates
+      // ✅ EARTH ORBITS AROUND SUN - use real heliocentric coordinates (strict astronomy mapping)
       // ✅ Update Earth pivot world position and Earth-local zenith marker
       if (sceneState.earthPivot) {
+        // Axis mapping aligned to ecliptic tilt visually: X->X, Z(ecliptic)->Y(scene), Y(ecliptic)->Z(scene) with single Z flip
         earthPositionVector.set(
           astronomicalData.earth.x * scaleAU,
-          astronomicalData.earth.y * scaleAU,
-          -astronomicalData.earth.z * scaleAU // RH→LH Z-flip applied at scene layer (not in WASM)
+          astronomicalData.earth.z * scaleAU,
+          -(astronomicalData.earth.y * scaleAU)
         );
         sceneState.earthPivot.position.copyFrom(earthPositionVector);
 
@@ -1128,46 +1141,76 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
           sceneState.camera.setTarget(earthPositionVector);
         }
 
-        // ✅ Apply Earth tilt/rotation using WASM zenith (reference parity)
+        // ✅ Earth pivot: orient so zenith-marked surface points exactly to origin
         const latRad = astronomicalData.sunZenithLatRad;
-        const lonRad = astronomicalData.sunZenithLngRad; // east-positive
-        // pivot tilt
+        const markerLngRad = -astronomicalData.sunZenithLngRad; // west-positive
+        sceneState.earthPivot.rotation.y = -(markerLngRad + Math.PI);
         sceneState.earthPivot.rotation.z = latRad;
         sceneState.earthPivot.rotation.x = latRad;
-        // planet self-rotation
+        // Earth mesh remains unrotated; only pivot orients the hierarchy (Moon orbit included)
         const earthMesh = sceneState.celestialMeshes.get('earth');
         if (earthMesh) {
-          earthMesh.rotation.y = -lonRad;
+          earthMesh.rotation.x = 0;
+          earthMesh.rotation.y = 0;
+          earthMesh.rotation.z = 0;
         }
 
-        // ✅ Update zenith marker on Earth's surface using reference tweak for longitude
+        // ✅ Update zenith marker (Earth-local) — spherical from WASM, theta = markerLng + PI
         if (sceneState.zenithMarker) {
           const r = CELESTIAL_BODIES.earth!.radius * 0.5; // visual radius
-          // True anomaly from Earth heliocentric vector
-          const trueAnomalyDeg = Math.atan2(astronomicalData.earth.y, astronomicalData.earth.x) * 180 / Math.PI;
-          const lonEDeg = astronomicalData.sunZenithLngRad * 180 / Math.PI;
-          const markerLngDeg = -(lonEDeg - 7 + trueAnomalyDeg);
-          const markerLngRad = markerLngDeg * Math.PI / 180;
-          const x = r * Math.cos(latRad) * Math.cos(markerLngRad);
-          const z = -r * Math.cos(latRad) * Math.sin(markerLngRad); // apply scene-level Z-flip
-          const y = r * Math.sin(latRad);
+          const markerLatRad = astronomicalData.sunZenithLatRad;
+          const phi = (Math.PI / 2) - markerLatRad;
+          const theta = markerLngRad + Math.PI;
+          const sinPhi = Math.sin(phi);
+          const x = r * sinPhi * Math.cos(theta);
+          const z = r * sinPhi * Math.sin(theta);
+          const y = r * Math.cos(phi);
           sceneState.zenithMarker.position.set(x, y, z);
+        }
+
+        // ✅ Compute and place sublunar (lunar zenith) marker locally BEFORE pivot transforms
+        if (sceneState.lunarZenithMarker) {
+          const r = CELESTIAL_BODIES.earth!.radius * 0.5;
+          // Geocentric lunar vector in AU from WASM buffer (ecliptic): (mxAU,myAU,mzAU)
+          const mxAU = buf[3]!; const myAU = buf[4]!; const mzAU = buf[5]!;
+          // Use the SAME mapping as for Earth (X->X, Y->Y, Z->-Z) in local Earth space
+          const vx = mxAU;             // X(ecl) -> X(local)
+          const vy = -myAU;             // Y(ecl) -> Y(local)
+          const vz = mzAU;            // Z(ecl) -> Z(local) with Z-flip
+          // Convert to spherical lon/lat in Earth-local coordinates (no explicit normalization)
+          const latLunar = Math.atan2(vy, Math.hypot(vx, vz));
+          const lonLunar = Math.atan2(vz, vx);
+          const phiL = (Math.PI / 2) - latLunar;
+          const thetaL = lonLunar;
+          const sinPhiL = Math.sin(phiL);
+          const xl = r * sinPhiL * Math.cos(thetaL);
+          const zl = r * sinPhiL * Math.sin(thetaL);
+          const yl = r * Math.cos(phiL);
+          sceneState.lunarZenithMarker.position.set(xl, yl, zl);
         }
       }
 
-      // ✅ MOON ORBITS AROUND EARTH - already positioned correctly in WASM
-      // ✅ Moon local geocentric offset under moonPivot
+      // ✅ MOON ORBITS AROUND EARTH - strict geocentric offset from WASM (1 AU = 200 units), single Z-flip, same axis mapping
       if (sceneState.moonPivot) {
-        // Raw geocentric offset in scene units
-        const mx = (astronomicalData.moon.x - astronomicalData.earth.x) * scaleAU;
-        const my = (astronomicalData.moon.y - astronomicalData.earth.y) * scaleAU;
-        const mz = -(astronomicalData.moon.z - astronomicalData.earth.z) * scaleAU; // scene-level Z-flip
-        const dist = Math.hypot(mx, my, mz);
-        const k = dist > 0 ? (MOON_ORBIT_RADIUS_UNITS / dist) : 0;
-        sceneState.moonPivot.position.set(0, 0, 0); // pivot at Earth's center
+        const mxAU = buf[3]!; // geocentric X (AU)
+        const myAU = buf[4]!; // geocentric Y (AU)
+        const mzAU = buf[5]!; // geocentric Z (AU)
+        // Preserve elliptical shape: scale AU→units so that mean distance (~0.00257 AU) ≈ 200 units
+        // Apply the SAME RH→LH transform as Earth (X->X, Y->Y, Z->-Z) so full moon aligns opposite Sun
+        const vx = mxAU;
+        const vy = -myAU;
+        const vz = mzAU;
+        const mx = vx * MOON_UNITS_PER_AU;
+        const my = vy * MOON_UNITS_PER_AU;
+        const mz = vz * MOON_UNITS_PER_AU;
         const moonMesh = sceneState.celestialMeshes.get('moon');
         if (moonMesh) {
-          moonMesh.position.set(mx * k, my * k, mz * k);
+          moonMesh.position.set(mx, my, mz);
+        }
+        // ✅ Sync moonPivot POSITION only (keep geocentric vector in inertial ecliptic frame)
+        if (sceneState.moonPivot && sceneState.earthPivot) {
+          sceneState.moonPivot.position.copyFrom(sceneState.earthPivot.position);
+          //sceneState.moonPivot.rotation.set(0, 0, 0);
         }
       }
 
