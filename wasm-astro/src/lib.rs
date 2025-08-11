@@ -119,7 +119,11 @@ pub fn init() {
 // Legacy compute_all API removed. Use compute_state(julian_day).
 
 /// Compute main state in a single call (future-extensible):
-/// Layout [11 f64]: Sun(x,y,z) geocentric, Moon(x,y,z) geocentric, Earth(x,y,z) heliocentric, Zenith(lon_east_rad, lat_rad)
+/// Layout [11 f64]:
+/// - Sun(0..2): zeros by design (Sun fixed at scene origin; skip per-frame solar math)
+/// - Moon(3..5): geocentric ecliptic Cartesian (x,y,z) in AU
+/// - Earth(6..8): heliocentric ecliptic Cartesian (x,y,z) in AU
+/// - Zenith(9..10): Solar zenith [lon_east_rad, lat_rad]
 #[wasm_bindgen]
 pub fn compute_state(julian_day: f64) -> *const f64 {
     thread_local! {
@@ -141,14 +145,10 @@ pub fn compute_state(julian_day: f64) -> *const f64 {
         // Nutation for precision
         let (nut_long, _nut_oblq) = astro::nutation::nutation(jd);
 
-        // Sun geocentric
-        let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(jd);
-        let sun_dist_au = sun_dist_km / 149597870.7;
-        let sun_corrected_long = sun_ecl.long + nut_long;
-        let sun_pos = ecliptic_to_cartesian(sun_corrected_long, sun_ecl.lat, sun_dist_au);
-        out[0] = sun_pos.x;
-        out[1] = sun_pos.y;
-        out[2] = sun_pos.z;
+        // Sun position/derived values are not used in hot path; keep zeros to minimize per-frame work
+        out[0] = 0.0; // reserved
+        out[1] = 0.0; // reserved
+        out[2] = 0.0; // reserved
 
         // Moon geocentric
         let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(jd);
@@ -174,6 +174,83 @@ pub fn compute_state(julian_day: f64) -> *const f64 {
 
         out.as_ptr()
     })
+}
+
+/// Find next winter solstice (minimum solar declination) starting from given UTC JD.
+/// Returns JD in UTC of the event. Heavy: use off-frame (idle) only.
+#[wasm_bindgen]
+pub fn next_winter_solstice_from(jd_utc_start: f64) -> f64 {
+    // Validate
+    let jd_utc = match JulianDay::new(jd_utc_start) {
+        Ok(jd) => jd.as_f64(),
+        Err(_) => return f64::NAN,
+    };
+
+    // Helper: convert UTC JD to TT JD using ΔT(year, month)
+    let to_tt = |jd: f64| -> f64 {
+        let (year, month, _day) = match astro::time::date_frm_julian_day(jd) {
+            Ok((y, m, d)) => (y as i32, m as u8, d),
+            Err(_) => return f64::NAN,
+        };
+        let delta_t_sec = astro::time::delta_t(year, month);
+        astro::time::julian_ephemeris_day(jd, delta_t_sec)
+    };
+
+    // Solar declination δ⊙ (apparent) at TT JD
+    let solar_decl_tt = |jd_tt: f64| -> f64 {
+        let (nut_long, nut_oblq) = astro::nutation::nutation(jd_tt);
+        let mean_oblq = astro::ecliptic::mn_oblq_IAU(jd_tt);
+        let true_oblq = mean_oblq + nut_oblq;
+        let (sun_ecl, _sun_dist_km) = astro::sun::geocent_ecl_pos(jd_tt);
+        let corrected_long = sun_ecl.long + nut_long;
+        astro::coords::dec_frm_ecl(corrected_long, sun_ecl.lat, true_oblq)
+    };
+
+    // Start from TT corresponding to start UTC
+    let jd_tt0 = to_tt(jd_utc);
+    if !jd_tt0.is_finite() {
+        return f64::NAN;
+    }
+
+    // Coarse scan forward up to ~200 days to find vicinity of minimum
+    let mut best_jd = jd_tt0;
+    let mut best_val = f64::INFINITY;
+    let mut jd = jd_tt0;
+    let end = jd_tt0 + 200.0;
+    while jd <= end {
+        let v = solar_decl_tt(jd);
+        if v < best_val {
+            best_val = v;
+            best_jd = jd;
+        }
+        jd += 1.0;
+    }
+
+    // Refine around best_jd with ternary search
+    let mut a = best_jd - 5.0;
+    let mut b = best_jd + 5.0;
+    for _ in 0..40 {
+        let m1 = a + (b - a) / 3.0;
+        let m2 = b - (b - a) / 3.0;
+        let f1 = solar_decl_tt(m1);
+        let f2 = solar_decl_tt(m2);
+        if f1 < f2 {
+            b = m2;
+        } else {
+            a = m1;
+        }
+    }
+    let jd_tt_min = (a + b) / 2.0;
+
+    // Convert TT -> UTC using ΔT at event date
+    let (year_ev, month_ev, _day_ev) = match astro::time::date_frm_julian_day(jd_tt_min) {
+        Ok((y, m, d)) => (y as i32, m as u8, d),
+        Err(_) => return f64::NAN,
+    };
+    let delta_t_sec_ev = astro::time::delta_t(year_ev, month_ev);
+    let jd_utc_ev = jd_tt_min - (delta_t_sec_ev / 86400.0);
+
+    jd_utc_ev
 }
 
 // Removed legacy helpers get_body_count/get_coordinate_count (no longer used by frontend)

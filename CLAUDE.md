@@ -1,3 +1,9 @@
+### Earth axis and seasons (for future VR sky fidelity)
+
+- Constant tilt modulus: yes. Per-frame Earth orientation derives from solar zenith: φ = δ⊙, longitude from apparent sidereal time. That reproduces correct axial tilt relative to the ecliptic at the current epoch. Solstices give φ ≈ ±ε, equinoxes φ ≈ 0.
+- “Same direction” in inertial space: partially. We don’t keep an inertial axis vector; instead we orient Earth each frame so the local zenith points to the Sun. This preserves seasonal geometry and illumination but doesn’t explicitly maintain a persistent axis pointing to Polaris. Visually seasons/zenith are correct.
+- Polaris alignment: you can’t hold axis to Polaris and keep “zenith under the Sun” for all dates without modeling diurnal rotation properly. We don’t model diurnal rotation and precession as separate kinematics; we target correct zenith on the surface, which is sufficient for lighting/seasons.
+- If literal constant axis is required later: add `earthAxisNode` in inertial (ecliptic) space aligned to J2000 axis and apply precession/nutation. Then compute zenith from meridian/parallel intersection using current axis and diurnal angle θ⊕. This increases complexity and requires explicit diurnal model but yields a persistent axis towards Polaris.
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -73,6 +79,7 @@ irrelevant
 - **Frontend**: React 19 + Babylon.js 8 + TypeScript 5.9 with Vite 7 (needs TypeScript config fixes)
 - **Backend**: Axum server with clean architecture layers implemented (needs SQLX database setup)  
 - **WASM Module**: ✅ ПОЛНОСТЬЮ РАБОТАЕТ — полный набор оберток соответствует astro-rust; горячий путь — единый `compute_state(jd)` (включая солнечный зенит для поворота Земли)
+  - Новое: сцена использует единый вектор на Луну, полученный из RA/Dec+AST; сублунарная точка и позиция Луны совпадают. Завтра переносим расчёт RA/Dec/AST и сублунарных φ/λ в буфер `compute_state` для полного O(1) на кадр без тригонометрии в TS. Добавим вспомогательные компоненты для визуального tidal lock (одна сторона Луны к Земле)
 - **Domain/App/Infra Libraries**: Clean architecture implementation (some import issues)
 - **Dioxus App**: Authentication and profile management (configured)
 - **Quality System**: Comprehensive Makefile and quality rules (fully working)
@@ -195,8 +202,9 @@ pnpm -w run dev:frontend-only
 
 ### Key Design Decisions (per tz.md)
 - **Clean Architecture**: Domain → UseCases → Adapters → Delivery layers
-- **WASM Interface**: Exactly `compute_state(jd: f64) -> *const f64` (11 f64: Sun xyz, Moon xyz, Earth xyz, Zenith [lon_east_rad, lat_rad]); thread-local buffers
+- **WASM Interface**: Exactly `compute_state(jd: f64) -> *const f64` (11 f64: Sun zeros [0..2], Moon xyz [3..5], Earth xyz [6..8], Zenith [lon_east_rad, lat_rad] [9..10]); thread-local buffers
 - **Sun Position**: Static at (0,0,0) (heliocentric scene)  
+- Hot path optimization: Sun slots are zeros in STATE to avoid redundant computation. The frontend treats Sun as fixed at the origin and never updates its transform after initialization. Zenith is still computed precisely. For event timing use `next_winter_solstice_from(jd_utc_start)` off-frame and cache results.
 - **JWT**: RS256 with custom claims `is_telegram_subscribed: boolean`
 - **Database**: PostgreSQL with specific schema: `users`, `refresh_tokens`, `telegram_linking`
 - **Authentication**: Pure Telegram-only, no traditional passwords

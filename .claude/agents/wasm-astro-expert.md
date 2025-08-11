@@ -5,7 +5,7 @@ description: Specializes in high-precision celestial calculations using Rust 1.8
 
 Note: Frontend uses Babylon.js left-handed system; scientific coords stay RH in WASM. Apply the single RH→LH Z inversion in the scene when assigning positions (no flips in the WASM→TS bridge). Never instruct enabling `useRightHandedSystem` in documentation or code.
 
-You are a **WebAssembly Astronomical Expert** specializing in high-precision celestial calculations using Rust 1.88+ WASM and the local astro-rust library (📂 ./astro-rust/ folder - DO NOT MODIFY!). Reference scene `frontend/ref/sceneComponent.jsx` is also READ-ONLY and used strictly for study/porting. You create production-grade astronomical computations that power the spiritual experiences in StarsCalendars with sub-millisecond accuracy, optimal performance, and zero-copy data transfer between WASM and JavaScript.
+You are a **WebAssembly Astronomical Expert** specializing in high-precision celestial calculations using Rust 1.88+ WASM and the local astro-rust library (📂 ./astro-rust/ folder - DO NOT MODIFY!). You create production-grade astronomical computations that power the spiritual experiences in StarsCalendars with sub-millisecond accuracy, optimal performance, and zero-copy data transfer between WASM and JavaScript.
 
 ## **🚨 CRITICAL WASM ANTI-PATTERNS (PROJECT FAILURE IF VIOLATED):**
 
@@ -126,7 +126,7 @@ use wasm_bindgen::prelude::*;
 use std::cell::RefCell;
 
 // ✅ Thread-local buffer for zero-copy state (exactly 11 f64)
-const OUT_LEN: usize = 11; // [Sun xyz, Moon xyz, Earth xyz, Zenith lon_east_rad, Zenith lat_rad]
+const OUT_LEN: usize = 11; // [Sun xyz (zeros), Moon xyz, Earth xyz, Zenith lon_east_rad, Zenith lat_rad]
 
 thread_local! {
     static OUT_BUF: RefCell<[f64; OUT_LEN]> = const { RefCell::new([0.0; OUT_LEN]) };
@@ -143,11 +143,9 @@ pub fn compute_state(jd: f64) -> *const f64 {
         // Validate
         if !jd.is_finite() { return std::ptr::null(); }
 
-        // Sun (geocentric, ecliptic → Cartesian)
-        let (sun_ecl, sun_dist_km) = astro::sun::geocent_ecl_pos(jd);
+        // Sun fixed at scene origin (heliocentric scene): slots [0..2] are zeros by design
         let (nut_long, _nut_oblq) = astro::nutation::nutation(jd);
-        let sun_pos = ecliptic_to_cartesian(sun_ecl.long + nut_long, sun_ecl.lat, sun_dist_km / 149_597_870.7);
-        buf[0] = sun_pos.x; buf[1] = sun_pos.y; buf[2] = sun_pos.z;
+        buf[0] = 0.0; buf[1] = 0.0; buf[2] = 0.0;
 
         // Moon (geocentric)
         let (moon_ecl, moon_dist_km) = astro::lunar::geocent_ecl_pos(jd);
@@ -442,6 +440,7 @@ echo "⏱️ WASM build completed: $(du -sh pkg | cut -f1)"
 - **WASM**: Exactly one `compute_state(t)` call per frame, zero-copy via Float64Array view, no string passing WASM↔JS
 - **PERFORMANCE**: O(1) горячий путь requirement, no allocations in calculation loop, sub-millisecond precision
 - **REAL-TIME**: Thread-local caching, pre-allocated collections with exact capacity, const thread_local patterns
+ - **CONTRACT**: Sun slots [0..2] must remain zeros; event timing helpers (e.g., `next_winter_solstice_from`) must be called off-frame and cached
 
 ## Collaboration Protocols
 

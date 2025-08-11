@@ -8,6 +8,7 @@ import {
   Mesh,
   MeshBuilder,
   PointLight,
+  Quaternion,
   Scene,
   ShaderMaterial,
   StandardMaterial,
@@ -45,7 +46,7 @@ type CelestialBodyConfig = {
 const CELESTIAL_BODIES: Record<string, CelestialBodyConfig> = {
   sun: {
     name: 'Sun',
-    radius: 40.0,                  // Match reference SUN_RADIUS
+    radius: 40.0,                  // Match reference SUN_RADIUS (restored)
     color: new Color3(1.0, 0.8, 0.3),
     emission: 1.0                  // Full emission for light source
   },
@@ -175,6 +176,13 @@ interface SceneState {
   lunarZenithMarker?: Mesh | null;
   earthPivot?: TransformNode | null;
   moonPivot?: TransformNode | null;
+  zenithRay?: Mesh | null;
+  zenithRayPositions?: Float32Array | null;
+  statsEl?: HTMLElement | null;
+  tbSolstice?: TextBlock | null;
+  lastSolsticeMinute?: number;
+  isSolsticeComputing?: boolean;
+  nextSolsticeJD?: number | null;
 }
 
 // ✅ FPS Counter interface for useRef
@@ -601,8 +609,9 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       Vector3.Zero(), // At Sun position (0,0,0)
       scene
     );
-    // Reference parity: only diffuse set; no custom intensity/specular/range
-    sunLight.diffuse = new Color3(0.5, 0.5, 0.5);
+    // Boost intensity to improve lit coverage on planet limbs
+    sunLight.diffuse = new Color3(1.0, 1.0, 1.0);
+    sunLight.intensity = 1.6;
     // Other properties left as Babylon defaults to match reference
 
     timer.mark('lighting_configured');
@@ -631,6 +640,8 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     sunMaterial.disableLighting = true; // Sun is self-illuminated
     sunMaterial.freeze(); // ✅ Material optimization
     sunMesh.material = sunMaterial;
+    // Freeze Sun transform: static at scene center
+    sunMesh.freezeWorldMatrix();
 
     // 🔥 Procedural fire texture on Sun (exactly like reference)
     try {
@@ -925,6 +936,12 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     zenithMarker.material = zenithMat;
     zenithMarker.parent = earthMesh; // local to Earth
 
+    // Debug ray: from Earth's center through zenith marker (local), length ~200 (preallocate positions buffer)
+    const zenithRay = MeshBuilder.CreateLines('zenithRay', { points: [Vector3.Zero(), new Vector3(0, 0, 200)], updatable: true }, scene);
+    zenithRay.color = new Color3(1, 0, 0);
+    zenithRay.parent = earthMesh;
+    const zenithRayPositions = zenithRay.getVerticesData("position") as Float32Array | null;
+
     // Lunar zenith (sublunar) marker (green)
     const lunarZenithMarker = MeshBuilder.CreateSphere('lunarZenithMarker', { diameter: 1.0, segments: 8 }, scene);
     const lunarZenithMat = new StandardMaterial('lunarZenithMat', scene);
@@ -962,6 +979,20 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     tbTD.top = 80;
     gui.addControl(tbTD);
 
+    // Winter solstice countdown (top-right)
+    const tbSolstice = new TextBlock('tbSolstice');
+    tbSolstice.fontSizeInPixels = 14;
+    tbSolstice.width = '380px';
+    tbSolstice.height = '20px';
+    tbSolstice.color = '#CCCDCE';
+    tbSolstice.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    tbSolstice.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    tbSolstice.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    tbSolstice.top = 8;
+    tbSolstice.left = -12;
+    tbSolstice.text = 'До зимнего солнцестояния: —';
+    gui.addControl(tbSolstice);
+
     // ✅ Update scene state ref
     sceneStateRef.current = {
       engine,
@@ -978,7 +1009,13 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       zenithMarker,
       lunarZenithMarker,
       earthPivot,
-      moonPivot
+      moonPivot,
+      zenithRay,
+      zenithRayPositions,
+      statsEl: typeof document !== 'undefined' ? document.getElementById('stats') : null,
+      tbSolstice,
+      lastSolsticeMinute: 0,
+      isSolsticeComputing: false
     };
 
     // ✅ CRITICAL - 60FPS RENDER LOOP with FPS tracking (Babylon.js 8 pattern)
@@ -987,7 +1024,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       // Use absolute UTC time for correct Julian Day
       const nowMs = Date.now();
       // Update FPS overlay using Engine API
-      const stats = document.getElementById('stats');
+      const stats = sceneStateRef.current.statsEl;
       if (stats) {
         // Babylon 8: prefer Engine.getFps() for reliable value
         const fps = scene.getEngine().getFps();
@@ -1015,18 +1052,46 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       }
 
       // ✅ TIME UPDATE - обновляем время каждую секунду (как в референсе строки 1331-1346)
-      const now = new Date();
-      const currentSecond = now.getSeconds();
+      const nowEpochMs = Date.now();
+      const currentSecond = Math.floor(nowEpochMs / 1000) % 60;
+      const currentMinute = Math.floor(nowEpochMs / 60000);
 
       // Проверяем, изменилась ли секунда (обновляем время раз в секунду)
       if (!sceneStateRef.current.lastSecond || sceneStateRef.current.lastSecond !== currentSecond) {
         sceneStateRef.current.lastSecond = currentSecond;
         // Обновляем Babylon GUI — без React state
-        if (sceneStateRef.current.tbTD) {
-          sceneStateRef.current.tbTD.text = formatCurrentTime(now);
+        // Construct Date only on second change to avoid per-frame allocations
+        const nowDate = new Date(nowEpochMs);
+        if (sceneStateRef.current.tbTD) sceneStateRef.current.tbTD.text = formatCurrentTime(nowDate);
+        if (sceneStateRef.current.tbNT) sceneStateRef.current.tbNT.text = calculateQuantumTime(nowDate);
+      }
+
+      // ✅ SOLSTICE COUNTDOWN (astronomical) — обновляем раз в минуту, расчёт вне кадра
+      if (sceneStateRef.current.tbSolstice && sceneStateRef.current.lastSolsticeMinute !== currentMinute && !sceneStateRef.current.isSolsticeComputing) {
+        sceneStateRef.current.lastSolsticeMinute = currentMinute;
+        // Always schedule the updater; it will reuse cached JD and avoid heavy scan if possible
+        sceneStateRef.current.isSolsticeComputing = true;
+        const snapshot = nowEpochMs;
+        if ((window as any).requestIdleCallback) {
+          (window as any).requestIdleCallback(() => computeSolsticeCountdown(snapshot, wasmModule!));
+        } else {
+          setTimeout(() => computeSolsticeCountdown(snapshot, wasmModule!), 0);
         }
-        if (sceneStateRef.current.tbNT) {
-          sceneStateRef.current.tbNT.text = calculateQuantumTime(now);
+      }
+
+      // Debug: log sublunar coordinates once per minute to cross-check with external sources
+      if (sceneStateRef.current.lastSolsticeMinute === currentMinute && wasmModule) {
+        const jdNow = JULIAN_DAY_UNIX_EPOCH + nowEpochMs / 86400000.0;
+        const sub = computeSublunarLatLonDeg(jdNow, wasmModule);
+        if (sub) {
+          console.log(`🌙 Sublunar (deg): lat=${sub.latDeg.toFixed(3)} lonE=${sub.lonDegEast.toFixed(3)} (E+; W−)`);
+          // Also log from marker local vector to verify mapping chain
+          const sceneState = sceneStateRef.current;
+          if (sceneState.lunarZenithMarker) {
+            const local = sceneState.lunarZenithMarker.position;
+            const subLocal = localVecToLatLonDeg(local);
+            console.log(`🟢 MarkerLocal→LatLon: lat=${subLocal.latDeg.toFixed(3)} lonE=${subLocal.lonDegEast.toFixed(3)}`);
+          }
         }
       }
 
@@ -1046,9 +1111,56 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
 
 
   // ✅ CORRECT - Pre-allocated Vector3 objects for zero-allocation updates
-  const sunPositionVector = useMemo(() => Vector3.Zero(), []);
   const moonPositionVector = useMemo(() => Vector3.Zero(), []);
   const earthPositionVector = useMemo(() => Vector3.Zero(), []);
+  const zenithLocalVector = useMemo(() => Vector3.Zero(), []);
+  const targetDirVector = useMemo(() => Vector3.Zero(), []);
+  const crossAxisVector = useMemo(() => Vector3.Zero(), []);
+  const pivotRotationQuat = useMemo(() => new Quaternion(), []);
+  const rollRotationQuat = useMemo(() => new Quaternion(), []);
+  const finalRotationQuat = useMemo(() => new Quaternion(), []);
+  const eNorthLocalVec = useMemo(() => Vector3.Zero(), []);
+  const eNorthWorldVec = useMemo(() => Vector3.Zero(), []);
+  const uProjVec = useMemo(() => Vector3.Zero(), []);
+  const rotMatrix = useMemo(() => Matrix.Identity(), []);
+
+  // Compute sublunar lat/lon (deg) from current WASM buffer and JD using mean obliquity and apparent sidereal time
+  const computeSublunarLatLonDeg = useCallback((jd: number, wasm: WASMModule): { latDeg: number; lonDegEast: number } | null => {
+    if (!stateViewRef.current) return null;
+    const s = stateViewRef.current;
+    // Ecliptic Cartesian (geocentric): RH coords
+    const mx = s[3]!; const my = s[4]!; const mz = s[5]!;
+    const rXY = Math.hypot(mx, my);
+    const lon = Math.atan2(my, mx);               // λ
+    const lat = Math.atan2(mz, rXY);              // β
+    // Mean obliquity ε (rad)
+    const eps = typeof wasm.get_mean_obliquity === 'function' ? wasm.get_mean_obliquity(jd) : 0.4090928; // ~23.439° fallback
+    const sinE = Math.sin(eps), cosE = Math.cos(eps);
+    const sinL = Math.sin(lon), cosL = Math.cos(lon);
+    const tanB = Math.tan(lat);
+    // Equatorial RA/Dec (radians)
+    const ra = Math.atan2(sinL * cosE - tanB * sinE, cosL);
+    const dec = Math.asin(Math.sin(lat) * cosE + Math.cos(lat) * sinE * sinL);
+    // Apparent sidereal time (radians)
+    const ast = typeof wasm.get_apparent_sidereal_time === 'function' ? wasm.get_apparent_sidereal_time(jd) : 0;
+    // Sub-lunar longitude east-positive: wrap to [-π, π]
+    let lonE = ast - ra;
+    lonE = ((lonE + Math.PI) % (2 * Math.PI)) - Math.PI;
+    const toDeg = (x: number) => x * 180 / Math.PI;
+    return { latDeg: toDeg(dec), lonDegEast: toDeg(lonE) };
+  }, []);
+
+  // Debug helper: derive lat/lon (east-positive) from an Earth-local direction vector
+  const localVecToLatLonDeg = useCallback((v: Vector3): { latDeg: number; lonDegEast: number } => {
+    const r = Math.hypot(v.x, v.y, v.z) || 1;
+    const x = v.x / r, y = v.y / r, z = v.z / r;
+    const lat = Math.asin(y);
+    const theta = Math.atan2(z, x); // theta = (-lon) + π
+    let lonE = Math.PI - theta;     // lon = π − theta
+    lonE = ((lonE + Math.PI) % (2 * Math.PI)) - Math.PI;
+    const toDeg = (x: number) => x * 180 / Math.PI;
+    return { latDeg: toDeg(lat), lonDegEast: toDeg(lonE) };
+  }, []);
 
   // ✅ REAL-TIME 60FPS: Update celestial positions directly from WASM every frame
   const updateCelestialPositionsRealtime = useCallback((wasmModule: WASMModule, currentTimeMs: number): void => {
@@ -1111,19 +1223,12 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
         sunZenithLat, sunZenithLng, sunZenithLatRad, sunZenithLngRad,
       } as const;
 
+      // yaw correction stored later into uProjVec.x/y (cos/sin) to avoid extra allocations
+
       // ✅ HELIOCENTRIC/GEOCENTRIC VISUALIZATION: Correct astronomical model
       const scaleAU = 700.0; // Match reference orbit scaling (~700 units per 1 AU)
 
-      // ✅ SUN ALWAYS AT CENTER (0,0,0) - HELIOCENTRIC MODEL
-      const sunMesh = sceneState.celestialMeshes.get('sun');
-      if (sunMesh) {
-        sunPositionVector.set(
-          astronomicalData.sun.x * scaleAU, // Always (0,0,0) from WASM
-          astronomicalData.sun.y * scaleAU,
-          astronomicalData.sun.z * scaleAU
-        );
-        sunMesh.position.copyFrom(sunPositionVector);
-      }
+      // Sun is static at scene center; no per-frame updates needed
 
       // ✅ EARTH ORBITS AROUND SUN - use real heliocentric coordinates (strict astronomy mapping)
       // ✅ Update Earth pivot world position and Earth-local zenith marker
@@ -1141,12 +1246,112 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
           sceneState.camera.setTarget(earthPositionVector);
         }
 
-        // ✅ Earth pivot: orient so zenith-marked surface points exactly to origin
+        // ✅ Compute zenith marker in Earth-local space FIRST (untransformed Earth),
+        // then orient pivot so this point looks exactly at scene origin
         const latRad = astronomicalData.sunZenithLatRad;
-        const markerLngRad = -astronomicalData.sunZenithLngRad; // west-positive
-        sceneState.earthPivot.rotation.y = -(markerLngRad + Math.PI);
-        sceneState.earthPivot.rotation.z = latRad;
-        sceneState.earthPivot.rotation.x = latRad;
+        const lonRad = astronomicalData.sunZenithLngRad; // east-positive
+
+        if (sceneState.zenithMarker) {
+          const r = CELESTIAL_BODIES.earth!.radius * 0.5; // visual radius
+          const phi = (Math.PI / 2) - latRad;
+          const theta = (-lonRad) + Math.PI; // canonical: west-positive + π
+          const sinPhi = Math.sin(phi);
+          const x = r * sinPhi * Math.cos(theta);
+          const z = r * sinPhi * Math.sin(theta);
+          const y = r * Math.cos(phi);
+          sceneState.zenithMarker.position.set(x, y, z);
+          // Update debug ray along the local zenith direction
+          if (sceneState.zenithRay && sceneState.zenithRayPositions && sceneState.zenithRayPositions.length >= 6) {
+            // reuse preallocated vectors and buffer
+            const lenInv = 1.0 / Math.sqrt(x * x + y * y + z * z);
+            const endX = x * lenInv * 200;
+            const endY = y * lenInv * 200;
+            const endZ = z * lenInv * 200;
+            sceneState.zenithRayPositions[3] = endX;
+            sceneState.zenithRayPositions[4] = endY;
+            sceneState.zenithRayPositions[5] = endZ;
+            sceneState.zenithRay.updateVerticesData("position", sceneState.zenithRayPositions);
+          }
+        }
+
+        // Orient pivot so the local zenith vector points exactly to origin using minimal rotation quaternion
+        if (!sceneState.zenithMarker) return;
+        // local zenith direction
+        zenithLocalVector.set(
+          sceneState.zenithMarker.position.x,
+          sceneState.zenithMarker.position.y,
+          sceneState.zenithMarker.position.z
+        ).normalize();
+        // world target direction (to Sun at origin)
+        targetDirVector.set(
+          -sceneState.earthPivot.position.x,
+          -sceneState.earthPivot.position.y,
+          -sceneState.earthPivot.position.z
+        ).normalize();
+        const d = Vector3.Dot(zenithLocalVector, targetDirVector);
+        if (d > 0.999999) {
+          // already aligned
+          pivotRotationQuat.set(0, 0, 0, 1);
+        } else if (d < -0.999999) {
+          // opposite; choose orthogonal axis
+          const ax = Math.abs(zenithLocalVector.x);
+          const ay = Math.abs(zenithLocalVector.y);
+          const az = Math.abs(zenithLocalVector.z);
+          if (ax < ay && ax < az) crossAxisVector.set(1, 0, 0);
+          else if (ay < az) crossAxisVector.set(0, 1, 0);
+          else crossAxisVector.set(0, 0, 1);
+          // axis = v x arbitrary
+          Vector3.CrossToRef(zenithLocalVector, crossAxisVector, crossAxisVector);
+          crossAxisVector.normalize();
+          Quaternion.RotationAxisToRef(crossAxisVector, Math.PI, pivotRotationQuat);
+        } else {
+          // general case
+          Vector3.CrossToRef(zenithLocalVector, targetDirVector, crossAxisVector);
+          crossAxisVector.normalize();
+          const angle = Math.acos(Math.min(1, Math.max(-1, d)));
+          Quaternion.RotationAxisToRef(crossAxisVector, angle, pivotRotationQuat);
+        }
+        // Compute roll to preserve intuitive tilt: align rotated local-North with projection of worldUp onto plane ⟂ targetDir
+        // 1) local North tangent at (phi, theta): e_north_local = -e_phi = [-cos(phi)cos(theta), sin(phi), -cos(phi)sin(theta)]
+        const phi = (Math.PI / 2) - latRad;
+        const theta = (-lonRad) + Math.PI;
+        const cosPhi = Math.cos(phi);
+        const sinPhi = Math.sin(phi);
+        const cosTheta = Math.cos(theta);
+        const sinTheta = Math.sin(theta);
+        eNorthLocalVec.set(-cosPhi * cosTheta, sinPhi, -cosPhi * sinTheta);
+        // Rotate eNorthLocal by q_align to world space
+        pivotRotationQuat.toRotationMatrix(rotMatrix);
+        Vector3.TransformCoordinatesToRef(eNorthLocalVec, rotMatrix, eNorthWorldVec);
+        eNorthWorldVec.normalize();
+        // Project worldUp onto plane orthogonal to targetDir
+        const worldUpY = 1.0;
+        uProjVec.set(
+          0 - targetDirVector.x * (0 * targetDirVector.x + worldUpY * targetDirVector.y + 0 * targetDirVector.z),
+          worldUpY - targetDirVector.y * (0 * targetDirVector.x + worldUpY * targetDirVector.y + 0 * targetDirVector.z),
+          0 - targetDirVector.z * (0 * targetDirVector.x + worldUpY * targetDirVector.y + 0 * targetDirVector.z)
+        );
+        if (uProjVec.lengthSquared() < 1e-9) {
+          // Fallback: project world Z if targetDir ~ worldUp
+          uProjVec.set(
+            0 - targetDirVector.x * (targetDirVector.z),
+            0 - targetDirVector.y * (targetDirVector.z),
+            1 - targetDirVector.z * (targetDirVector.z)
+          );
+        }
+        uProjVec.normalize();
+        // Signed angle between eNorthWorldVec and uProjVec around axis targetDir
+        const dotNu = Math.min(1, Math.max(-1, Vector3.Dot(eNorthWorldVec, uProjVec)));
+        const crossNu = Vector3.Cross(eNorthWorldVec, uProjVec);
+        const sign = Vector3.Dot(crossNu, targetDirVector) >= 0 ? 1 : -1;
+        const beta = Math.acos(dotNu) * sign;
+        Quaternion.RotationAxisToRef(targetDirVector, beta, rollRotationQuat);
+        // Final rotation: roll * align → normalize to ensure unit quaternion (critical for inverse)
+        rollRotationQuat.multiplyToRef(pivotRotationQuat, finalRotationQuat);
+        finalRotationQuat.normalize();
+        sceneState.earthPivot.rotation.set(0, 0, 0);
+        sceneState.earthPivot.rotationQuaternion = finalRotationQuat;
+
         // Earth mesh remains unrotated; only pivot orients the hierarchy (Moon orbit included)
         const earthMesh = sceneState.celestialMeshes.get('earth');
         if (earthMesh) {
@@ -1155,69 +1360,131 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
           earthMesh.rotation.z = 0;
         }
 
-        // ✅ Update zenith marker (Earth-local) — spherical from WASM, theta = markerLng + PI
-        if (sceneState.zenithMarker) {
-          const r = CELESTIAL_BODIES.earth!.radius * 0.5; // visual radius
-          const markerLatRad = astronomicalData.sunZenithLatRad;
-          const phi = (Math.PI / 2) - markerLatRad;
-          const theta = markerLngRad + Math.PI;
-          const sinPhi = Math.sin(phi);
-          const x = r * sinPhi * Math.cos(theta);
-          const z = r * sinPhi * Math.sin(theta);
-          const y = r * Math.cos(phi);
-          sceneState.zenithMarker.position.set(x, y, z);
+        // Compute yaw correction between world→local Sun direction and red zenith vector.
+        // This fixes any constant local Y-rotation offset between sphere texture seam and mathematical prime meridian.
+        // Result reused for sublunar marker below (no extra WASM calls).
+        {
+          const q = sceneState.earthPivot.rotationQuaternion!;
+          const invQ = new Quaternion(-q.x, -q.y, -q.z, q.w);
+          const n = Math.hypot(invQ.x, invQ.y, invQ.z, invQ.w);
+          if (n > 0) { invQ.x /= n; invQ.y /= n; invQ.z /= n; invQ.w /= n; }
+          // world Sun dir (from Earth to origin)
+          uProjVec.set(
+            -sceneState.earthPivot.position.x,
+            -sceneState.earthPivot.position.y,
+            -sceneState.earthPivot.position.z
+          ).normalize();
+          Matrix.FromQuaternionToRef(invQ, rotMatrix);
+          // localSunDir -> store in eNorthLocalVec
+          Vector3.TransformCoordinatesToRef(uProjVec, rotMatrix, eNorthLocalVec).normalize();
+          // red zenith local dir already in zenithLocalVector
+          const azSunLocal = Math.atan2(eNorthLocalVec.z, eNorthLocalVec.x);
+          const azRedLocal = Math.atan2(zenithLocalVector.z, zenithLocalVector.x);
+          const delta = azRedLocal - azSunLocal;
+          // Store yaw correction into preallocated uProjVec.xy as scratch to avoid extra fields
+          // uProjVec.x = cos(delta), uProjVec.y = sin(delta)
+          uProjVec.x = Math.cos(delta);
+          uProjVec.y = Math.sin(delta);
         }
 
-        // ✅ Compute and place sublunar (lunar zenith) marker locally BEFORE pivot transforms
-        if (sceneState.lunarZenithMarker) {
-          const r = CELESTIAL_BODIES.earth!.radius * 0.5;
-          // Geocentric lunar vector in AU from WASM buffer (ecliptic): (mxAU,myAU,mzAU)
-          const mxAU = buf[3]!; const myAU = buf[4]!; const mzAU = buf[5]!;
-          // Use the SAME mapping as for Earth (X->X, Y->Y, Z->-Z) in local Earth space
-          const vx = mxAU;             // X(ecl) -> X(local)
-          const vy = -myAU;             // Y(ecl) -> Y(local)
-          const vz = mzAU;            // Z(ecl) -> Z(local) with Z-flip
-          // Convert to spherical lon/lat in Earth-local coordinates (no explicit normalization)
-          const latLunar = Math.atan2(vy, Math.hypot(vx, vz));
-          const lonLunar = Math.atan2(vz, vx);
-          const phiL = (Math.PI / 2) - latLunar;
-          const thetaL = lonLunar;
-          const sinPhiL = Math.sin(phiL);
-          const xl = r * sinPhiL * Math.cos(thetaL);
-          const zl = r * sinPhiL * Math.sin(thetaL);
-          const yl = r * Math.cos(phiL);
-          sceneState.lunarZenithMarker.position.set(xl, yl, zl);
-        }
+        // (moved sublunar marker placement below, after moon position update)
       }
 
-      // ✅ MOON ORBITS AROUND EARTH - strict geocentric offset from WASM (1 AU = 200 units), single Z-flip, same axis mapping
+      // ✅ MOON ORBITS AROUND EARTH
       if (sceneState.moonPivot) {
-        const mxAU = buf[3]!; // geocentric X (AU)
-        const myAU = buf[4]!; // geocentric Y (AU)
-        const mzAU = buf[5]!; // geocentric Z (AU)
-        // Preserve elliptical shape: scale AU→units so that mean distance (~0.00257 AU) ≈ 200 units
-        // Apply the SAME RH→LH transform as Earth (X->X, Y->Y, Z->-Z) so full moon aligns opposite Sun
-        const vx = mxAU;
-        const vy = -myAU;
-        const vz = mzAU;
-        const mx = vx * MOON_UNITS_PER_AU;
-        const my = vy * MOON_UNITS_PER_AU;
-        const mz = vz * MOON_UNITS_PER_AU;
+        const mxAU = buf[3]!; const myAU = buf[4]!; const mzAU = buf[5]!;
+        const rUnits = Math.hypot(mxAU, myAU, mzAU) * MOON_UNITS_PER_AU;
         const moonMesh = sceneState.celestialMeshes.get('moon');
-        if (moonMesh) {
-          moonMesh.position.set(mx, my, mz);
+        // Compute sublunar lat/lon from RA/Dec&AST once and reuse for both marker and moon direction
+        const sub = computeSublunarLatLonDeg(julianDay, wasmModule);
+        if (moonMesh && sub && sceneState.earthPivot?.rotationQuaternion) {
+          const latL = sub.latDeg * Math.PI / 180;
+          const lonL = sub.lonDegEast * Math.PI / 180; // east-positive
+          const phiL = (Math.PI / 2) - latL;
+          const thetaL = (-lonL) + Math.PI;
+          const sinPhiL = Math.sin(phiL);
+          // Earth-local unit direction toward Moon
+          const lx = sinPhiL * Math.cos(thetaL);
+          const ly = Math.cos(phiL);
+          const lz = sinPhiL * Math.sin(thetaL);
+          // Transform local→world with Earth's current orientation
+          const q = sceneState.earthPivot.rotationQuaternion;
+          if (q) {
+            Matrix.FromQuaternionToRef(q, rotMatrix);
+            zenithLocalVector.set(lx, ly, lz);
+            Vector3.TransformCoordinatesToRef(zenithLocalVector, rotMatrix, targetDirVector);
+            targetDirVector.normalize().scaleInPlace(rUnits);
+            moonMesh.position.copyFrom(targetDirVector);
+          }
         }
         // ✅ Sync moonPivot POSITION only (keep geocentric vector in inertial ecliptic frame)
         if (sceneState.moonPivot && sceneState.earthPivot) {
           sceneState.moonPivot.position.copyFrom(sceneState.earthPivot.position);
-          //sceneState.moonPivot.rotation.set(0, 0, 0);
+          // Do not rotate moonPivot; keep lunar vector inertial
+        }
+
+        // ✅ Compute and place sublunar (lunar zenith) marker via same lat/lon mapping
+        if (sceneState.lunarZenithMarker && sceneState.earthPivot) {
+          const r = CELESTIAL_BODIES.earth!.radius * 0.5;
+          const sub2 = computeSublunarLatLonDeg(julianDay, wasmModule);
+          if (sub2) {
+            const latL2 = sub2.latDeg * Math.PI / 180;
+            const lonL2 = sub2.lonDegEast * Math.PI / 180; // east-positive
+            const phiL2 = (Math.PI / 2) - latL2;
+            const thetaL2 = (-lonL2) + Math.PI;
+            const sinPhiL2 = Math.sin(phiL2);
+            const xL2 = r * sinPhiL2 * Math.cos(thetaL2);
+            const zL2 = r * sinPhiL2 * Math.sin(thetaL2);
+            const yL2 = r * Math.cos(phiL2);
+            sceneState.lunarZenithMarker.position.set(xL2, yL2, zL2);
+          }
         }
       }
 
     } catch (error) {
       console.error('❌ Real-time Position Update Failed:', error);
     }
-  }, [sunPositionVector, moonPositionVector, earthPositionVector]);
+  }, [moonPositionVector, earthPositionVector]);
+
+  // Compute solstice countdown outside the render frame to keep 1× WASM call per frame
+  const computeSolsticeCountdown = useCallback((nowEpochMs: number, wasm: WASMModule): void => {
+    try {
+      // Prefer precise event time from WASM helper (TT-aware); fallback to decl scan if NaN
+      const nowJD = JULIAN_DAY_UNIX_EPOCH + nowEpochMs / 86400000.0;
+      // Reuse cached nextSolsticeJD if available and still in the future
+      let solsticeJD = sceneStateRef.current.nextSolsticeJD ?? Number.NaN;
+      if (!Number.isFinite(solsticeJD) || solsticeJD <= nowJD) {
+        // Compute next solstice from current JD and cache (helper returns JD_UTC)
+        const candidate = wasm.next_winter_solstice_from(nowJD);
+        if (Number.isFinite(candidate)) {
+          solsticeJD = candidate;
+        }
+        sceneStateRef.current.nextSolsticeJD = solsticeJD;
+      }
+      const solsticeMs = (solsticeJD - JULIAN_DAY_UNIX_EPOCH) * 86400000.0;
+      const diffMs = solsticeMs - nowEpochMs;
+      const totalMinutes = Math.max(0, Math.floor(diffMs / 60000));
+      const days = Math.floor(totalMinutes / (60 * 24));
+      const hours = Math.floor((totalMinutes - days * 24 * 60) / 60);
+      const minutes = totalMinutes - days * 24 * 60 - hours * 60;
+      const d2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+      const sDate = new Date(solsticeMs);
+      const sY = sDate.getFullYear();
+      const sM = d2(sDate.getMonth() + 1);
+      const sD = d2(sDate.getDate());
+      const sH = d2(sDate.getHours());
+      const sMin = d2(sDate.getMinutes());
+      if (sceneStateRef.current.tbSolstice) {
+        const hh = d2(hours);
+        const mm = d2(minutes);
+        sceneStateRef.current.tbSolstice.text = `До зимнего солнцестояния: ${days}:${hh}:${mm} / ${sY}-${sM}-${sD} ${sH}:${sMin}`;
+      }
+    } catch {
+      if (sceneStateRef.current.tbSolstice) sceneStateRef.current.tbSolstice.text = '—';
+    } finally {
+      sceneStateRef.current.isSolsticeComputing = false;
+    }
+  }, []);
 
   // ✅ ПРАВИЛЬНЫЙ useEffect как в референсе - ТОЛЬКО canvas как trigger!
   useEffect(() => {

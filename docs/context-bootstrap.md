@@ -4,7 +4,7 @@ This document is the single source of truth for agents. It resolves previous con
 
 ## Stack (major-only)
 - Frontend: TypeScript 5.9, React 19, Vite 7, Babylon.js 8 (major; latest 8.x at build time)
-- WASM core: Rust 1.88, wasm-bindgen; local `astro-rust/` (READ-ONLY). Reference scene `frontend/ref/sceneComponent.jsx` — READ-ONLY (для изучения и портирования, без правок).
+- WASM core: Rust 1.88, wasm-bindgen; local `astro-rust/` (READ-ONLY).
 - Backend: Axum 0.8, Tokio 1, SQLX 0.8, Teloxide 0.13 (not required for scene)
 
 ## Scene Model (reference parity)
@@ -30,7 +30,6 @@ cd /Volumes/WXW/R/_ai_/starscalendars/frontend && pnpm -w run dev:frontend-only
 
 Notes:
 - WASM обертка использует ТОЛЬКО локальную `astro-rust/` (READ-ONLY); любые правки запрещены.
-- `frontend/ref/sceneComponent.jsx` — READ-ONLY референс для паритета, без правок.
 - Координаты RH из WASM; единичный RH→LH Z‑flip применяется ТОЛЬКО в слое сцены при присвоении позиций.
 
 ## WASM contract and usage
@@ -62,6 +61,10 @@ Notes:
 - Single RH→LH Z-flip applies ONLY when assigning world positions from WASM; not used for marker math.
 - This behavior is CANONICAL. Do not change without updating this file and running visual/ephemeris tests.
 
+## Current achievements and next steps (2025‑08‑11)
+- Achieved: sublunar point (lunar zenith) is computed from lunar RA/Dec + apparent sidereal time; matches external sources. Moon position uses the same vector chain; longitudes now align with the marker
+- Next: move RA/Dec, AST, and sublunar φ/λ computation into `compute_state(jd)` so the scene does zero trigonometry (still exactly one call per frame). Also expose an Earth‑local unit vector for Earth→Moon to drive a visual tidal‑lock orientation (one side of the Moon facing Earth)
+
 ## Textures
 - Do not force `noMipmap` or `anisotropicFilteringLevel`. Use Babylon defaults.
 - Earth material: custom day/night shader with `earth-diffuse.jpg` and `earth-night-o2.png` and height map `earth-height.png` applied once mesh ready.
@@ -75,7 +78,7 @@ Notes:
 - One render loop, no extra timers. No mock data. No manual performance hacks that conflict with reference parity.
 - Major-only versions in package manifests and Cargo.toml (e.g., `"@babylonjs/core": "8"`, `axum = "0.8"`).
 - `astro-rust/` is read-only.
- - `frontend/ref/sceneComponent.jsx` is read-only reference; do not modify.
+
 
 ## What is implemented now (BabylonScene.tsx)
 - Reference mesh sizes/segments set. Fire=128, GodRays=100. Skybox via base path. GUI matches ref. No manual mipmaps.
@@ -83,13 +86,12 @@ Notes:
 
 ## Agent initialization prompt (paste into new chat)
 ```
-You are joining the StarsCalendars project. Use docs/context-bootstrap.md as the single source of truth. Implement strictly:
+Use docs/context-bootstrap.md as the single source of truth. Key rules:
  - Heliocentric scene (Sun@0,0,0), DIAMETER semantics (Earth=50, Moon=20, Sun=40), ENV_H=2, segments Earth/Clouds=300, Sun=15, Moon=25.
  - One compute_state(jd) per frame; zero-copy view; Z flip applied in scene (not in bridge).
- - Zenith is included in compute_state buffer (lonE, lat in radians); build pivot hierarchy and apply rotations as specified.
-- Marker longitude tweak: -(lonE_deg - 7 + trueAnomalyDeg). True anomaly from atan2(y, x) of Earth heliocentric vector.
-- No manual mipmaps/anisotropy; Babylon GUI only; Canvas full-screen.
-Current work: finalize pivot hierarchy, moon local offset, and marker formula. All other parity items are in place.
+ - Zenith in buffer (lonE, lat radians). Build pivot hierarchy and align marker to Sun.
+ - Moon position and sublunar point must come from the same chain (RA/Dec + AST). No rotating lunar orbit with Earth pivot.
+ - No manual mipmaps/anisotropy; Babylon GUI only; Canvas full-screen.
 ```
 
 

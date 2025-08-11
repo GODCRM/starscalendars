@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 VIOLATIONS=0
-TOTAL_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -not -path "./frontend/ref/*" | wc -l | tr -d ' ')
+TOTAL_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" | wc -l | tr -d ' ')
 
 echo "📊 Scanning $TOTAL_FILES Rust files"
 
@@ -77,7 +77,7 @@ scan_pattern() {
 
     echo "🔍 Scanning for: $pattern"
 
-    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null || true)
+    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
 
     if [[ -z "$matches" ]]; then
         echo "✅ No violations found for: $pattern"
@@ -169,7 +169,7 @@ echo "🔍 Checking enhanced anti.md patterns..."
 # unwrap_or with eager evaluation (improved regex to avoid false positives)
 echo "🔍 Scanning for unwrap_or eager evaluation anti-pattern..."
 # Look for unwrap_or( followed by function calls like func(), build_something(), etc.
-eager_unwrap_or=$(grep -rn "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null | grep -E "unwrap_or\([^\)]*[a-zA-Z_][a-zA-Z0-9_]*\s*\(" || true)
+eager_unwrap_or=$(grep -rn "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null | grep -E "unwrap_or\([^\)]*[a-zA-Z_][a-zA-Z0-9_]*\s*\(" || true)
 if [[ -n "$eager_unwrap_or" ]]; then
     echo -e "${RED}❌ CRITICAL: Found unwrap_or() with potential eager evaluation${NC}"
     echo -e "${YELLOW}📝 Suggestion: Use unwrap_or_else(|| expensive_operation()) for lazy evaluation${NC}"
@@ -182,7 +182,7 @@ fi
 
 # Missing error documentation in Result functions
 echo "🔍 Checking for missing error documentation..."
-result_functions=$(grep -rn "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null || true)
+result_functions=$(grep -rn "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
 if [[ -n "$result_functions" ]]; then
     echo -e "${BLUE}📋 Found $(echo "$result_functions" | wc -l) Result-returning functions${NC}"
     # Note: Full documentation check would require more sophisticated analysis

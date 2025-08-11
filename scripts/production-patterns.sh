@@ -57,7 +57,7 @@ validate_pattern() {
     echo "🔍 Scanning for: $pattern"
 
     # Find all matches
-    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=frontend/ref . 2>/dev/null || true)
+    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
 
     if [[ -z "$matches" ]]; then
         echo "✅ No violations found for: $pattern"

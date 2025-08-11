@@ -1,3 +1,6 @@
+Axis/Seasons model (future VR notes)
+- Per-frame orientation via solar zenith: φ = δ⊙; longitude from apparent sidereal time. Seasons/lighting are correct (solstices φ≈±ε, equinoxes φ≈0).
+- We don’t persist an inertial axis vector to Polaris; this is sufficient for visuals. If needed later, add `earthAxisNode` in inertial space with precession/nutation and diurnal angle θ⊕.
 # 🌟 StarsCalendars
 
 > Spiritual astronomy platform combining high-precision astronomical calculations with 3D visualization, WebAssembly performance, and Telegram community integration.
@@ -35,7 +38,9 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **Thread-local buffers** for performance optimization
 - Output (bundler target) is written to `frontend/src/wasm-astro/` as `starscalendars_wasm_astro.js` + `*_bg.wasm`
 - Use left-handed Babylon system (default). Scientific coordinates remain RH (WASM). Apply single RH→LH Z flip in the scene when assigning positions; no flips in WASM bridge
-- Single-call per frame: `compute_state(jd)` returns 11 f64 values: Sun xyz (geocentric), Moon xyz (geocentric), Earth xyz (heliocentric), and Solar zenith [lon_east_rad, lat_rad].
+- Single-call per frame: `compute_state(jd)` returns 11 f64 values: Sun zeros, Moon xyz (geocentric), Earth xyz (heliocentric), and Solar zenith [lon_east_rad, lat_rad].
+  - Sun slots [0..2] are zeros by design (Sun fixed at origin).
+  - Event timing helper: `next_winter_solstice_from(jd_utc_start)` — off-frame only, returns JD UTC of next minimum δ⊙.
 - Zenith marker placement is canonical and must not be altered:
   - Use WASM radians directly; no degree conversions or constants
   - Local Earth-space spherical: `phi=(π/2)-lat`, `theta=(-lon_east_rad)+π`
@@ -81,8 +86,8 @@ The `astro-rust/` folder contains the local copy of the astronomical calculation
 - **🎯 Usage**: Referenced via `astro = { path = "./astro-rust" }` in Cargo.toml
 - **⚠️ WARNING**: Any modifications will break astronomical precision and corrupt calculations
 
-### Reference Scene - READ-ONLY
-`frontend/ref/sceneComponent.jsx` is a canonical reference implementation used only for study and porting. **Do not modify** this file.
+### Reference Scene
+Референсная сцена больше не используется как источник истины и удалена из процесса. Все правила и формулы закреплены в текущей документации и в коде сцены.
 
 ## 🚀 Quick Start
 
@@ -168,6 +173,7 @@ make pre-commit
 **✅ ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ:**
 - ТОЛЬКО функции из astro-rust для астрономических расчетов
 - Единый вызов `compute_state(jd)` на кадр (зенит уже в буфере)
+- Исключение производительности: координаты Солнца в буфере заполняются нулями (сцена держит Солнце в (0,0,0)); вычисление солнечной позиции в горячем пути опущено намеренно
 - Реальные эфемеридные данные, коррекции нутации/прецессии при необходимости
 
 ### General Anti-Patterns
@@ -260,6 +266,19 @@ make pre-commit
 - ✅ WASM-JS интеграция функционирует
 - ✅ Zero anti-patterns соблюдены
 - ✅ Performance targets достигнуты
+
+### ✅ Достигнуто сегодня (астрономия/сцена)
+- Сублинарная точка (зенит Луны) вычисляется из RA/Dec Луны + видимого сидерического времени (AST); совпадает с внешними источниками
+- Позиция Луны синхронизирована с маркером: используется тот же вектор (RA/Dec+AST → локальный земной вектор → мир), устранён постоянный сдвиг долготы
+- Солнце статично в (0,0,0); слоты [0..2] STATE = 0
+
+### ⏭️ Завтра (оптимизация вычислений и визуальный tidal lock)
+- Расширить `compute_state(jd)` и вернуть в STATE предрасчёт, чтобы сцена не делала тригонометрию:
+  - `lunar_ra_rad`, `lunar_dec_rad`, `apparent_sidereal_time_rad`
+  - `sublunar_lon_east_rad`, `sublunar_lat_rad`
+  - Единичный Earth-local вектор направления на Луну (или эквивалент в согласованной СК)
+  - Ровно 1× `compute_state` на кадр; без дополнительных wasm-вызовов
+- Реализовать визуальный tidal lock Луны: поворачивать её меш так, чтобы «одна сторона к Земле» (без либраций на этом этапе)
 
 ## 🤝 Contributing
 

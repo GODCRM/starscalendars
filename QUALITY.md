@@ -91,7 +91,7 @@ impl UserRepository for PostgresUserRepository {
 - **Load Time**: <3s first contentful paint
 - **Memory**: Zero allocations in Babylon.js render loop
 - **Scene Rules**: 1× `compute_state(jd)` per frame (zenith included in state); no manual mipmap/anisotropy toggles; LH system with RH→LH Z flip applied in the scene (no flips in bridge)
-- **Immutable Assets**: `astro-rust/` и `frontend/ref/sceneComponent.jsx` — READ-ONLY для разработчиков проекта. Они исключены из автоматических линтеров/форматтеров/антипаттерн‑сканов. Любые правки в них запрещены политикой репозитория и код‑ревью (без технического запрета на FS уровне).
+- **Immutable Asset**: `astro-rust/` — READ-ONLY для разработчиков проекта. Исключён из автоматических линтеров/форматтеров/антипаттерн‑сканов. Любые правки в нём запрещены политикой репозитория и код‑ревью (без технического запрета на FS уровне).
 
 ### **Telegram Bot Performance**
 - **Target**: <500ms response time for all commands

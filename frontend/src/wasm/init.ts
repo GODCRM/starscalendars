@@ -50,6 +50,9 @@ export interface WASMModule {
   readonly compute_state: (julianDay: number) => number;
   readonly get_version: () => string;
   readonly memory: WebAssembly.Memory;
+  readonly next_winter_solstice_from: (julianDayUtcStart: number) => number;
+  readonly get_mean_obliquity: (julianDay: number) => number;
+  readonly get_apparent_sidereal_time: (julianDay: number) => number;
 }
 
 // ✅ CORRECT - Performance monitoring for WASM operations
@@ -75,9 +78,6 @@ let globalWasmModule: WASMModule | null = null;
 let isInitialized = false;
 let initializationPromise: Promise<WASMModule> | null = null;
 
-// Vite 7.1.1 WASM init signature: `*.wasm?init` returns an async initializer
-type ViteWasmInit = (imports?: WebAssembly.Imports) => Promise<WebAssembly.Instance>;
-
 /**
  * Initialize WASM module with runtime module loading
  */
@@ -102,12 +102,18 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       const wasmNs = (await import('../wasm-astro/starscalendars_wasm_astro_bg.wasm')) as unknown as { memory?: WebAssembly.Memory };
 
       const compute_state_raw = (wrapper as unknown as { compute_state?: (jd: number) => number }).compute_state;
+      const next_winter_solstice_from_raw = (wrapper as unknown as { next_winter_solstice_from?: (jd: number) => number }).next_winter_solstice_from;
       const get_version_fn = (wrapper as unknown as { get_version?: () => string }).get_version;
+      const get_mean_obliquity_raw = (wrapper as unknown as { get_mean_obliquity?: (jd: number) => number }).get_mean_obliquity;
+      const get_apparent_sidereal_time_raw = (wrapper as unknown as { get_apparent_sidereal_time?: (jd: number) => number }).get_apparent_sidereal_time;
       const memory = wasmNs.memory;
 
       if (!memory) throw new Error('WASM memory export missing');
       if (typeof compute_state_raw !== 'function') throw new Error('WASM export compute_state missing');
       if (typeof get_version_fn !== 'function') throw new Error('WASM get_version export missing');
+      if (typeof next_winter_solstice_from_raw !== 'function') throw new Error('WASM export next_winter_solstice_from missing');
+      if (typeof get_mean_obliquity_raw !== 'function') throw new Error('WASM export get_mean_obliquity missing');
+      if (typeof get_apparent_sidereal_time_raw !== 'function') throw new Error('WASM export get_apparent_sidereal_time missing');
 
       // Smoke test
             const testJD = 2451545.0; // J2000 epoch
@@ -132,6 +138,18 @@ export const initializeWASM = async (): Promise<WASMModule> => {
         },
         get_version: (): string => version,
         memory,
+        next_winter_solstice_from: (jdStartUtc: number) => {
+          if (!Number.isFinite(jdStartUtc)) throw new Error(`Invalid Julian Day: ${jdStartUtc}`);
+          return next_winter_solstice_from_raw(jdStartUtc);
+        },
+        get_mean_obliquity: (jd: number) => {
+          if (!Number.isFinite(jd)) throw new Error(`Invalid Julian Day: ${jd}`);
+          return get_mean_obliquity_raw(jd);
+        },
+        get_apparent_sidereal_time: (jd: number) => {
+          if (!Number.isFinite(jd)) throw new Error(`Invalid Julian Day: ${jd}`);
+          return get_apparent_sidereal_time_raw(jd);
+        },
       };
 
       globalWasmModule = module;
