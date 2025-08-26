@@ -99,6 +99,103 @@ macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
+// ===== Reusable time scale utilities (UTC↔TT) with leap seconds support =====
+mod timescales {
+    use std::cell::RefCell;
+    use wasm_bindgen::prelude::*;
+
+    thread_local! {
+        static TAI_MINUS_UTC_OVERRIDE: RefCell<Option<f64>> = const { RefCell::new(None) };
+    }
+
+    const LEAP_SECONDS: &[(i32, u8, f64)] = &[
+        (1972, 1, 10.0),
+        (1972, 7, 11.0),
+        (1973, 1, 12.0),
+        (1974, 1, 13.0),
+        (1975, 1, 14.0),
+        (1976, 1, 15.0),
+        (1977, 1, 16.0),
+        (1978, 1, 17.0),
+        (1979, 1, 18.0),
+        (1980, 1, 19.0),
+        (1981, 7, 20.0),
+        (1982, 7, 21.0),
+        (1983, 7, 22.0),
+        (1985, 7, 23.0),
+        (1988, 1, 24.0),
+        (1990, 1, 25.0),
+        (1991, 1, 26.0),
+        (1992, 7, 27.0),
+        (1993, 7, 28.0),
+        (1994, 7, 29.0),
+        (1996, 1, 30.0),
+        (1997, 7, 31.0),
+        (1999, 1, 32.0),
+        (2006, 1, 33.0),
+        (2009, 1, 34.0),
+        (2013, 1, 35.0),
+        (2015, 7, 36.0),
+        (2017, 1, 37.0),
+    ];
+
+    fn tai_minus_utc_seconds_for_year_month(year: i32, month: u8) -> f64 {
+        let override_val = TAI_MINUS_UTC_OVERRIDE.with(|c| *c.borrow());
+        if let Some(v) = override_val {
+            return v;
+        }
+        // Saturate to last known (37 s since 2017-01) for future years until updated
+        let mut val = if year < 1972 { 0.0 } else { 10.0 };
+        let mut i = 0usize;
+        while i < LEAP_SECONDS.len() {
+            let (y, m, v) = LEAP_SECONDS[i];
+            if year > y || (year == y && month >= m) {
+                val = v;
+            }
+            i += 1;
+        }
+        val
+    }
+
+    pub fn utc_to_tt_jd(jd_utc: f64) -> f64 {
+        let (y, m, _d) = match astro::time::date_frm_julian_day(jd_utc) {
+            Ok((yy, mm, dd)) => (yy as i32, mm as u8, dd),
+            Err(_) => return f64::NAN,
+        };
+        let tai_utc = tai_minus_utc_seconds_for_year_month(y, m);
+        let tt_minus_utc = tai_utc + 32.184;
+        jd_utc + tt_minus_utc / 86400.0
+    }
+
+    pub fn tt_to_utc_jd(jd_tt: f64) -> f64 {
+        let (y, m, _d) = match astro::time::date_frm_julian_day(jd_tt) {
+            Ok((yy, mm, dd)) => (yy as i32, mm as u8, dd),
+            Err(_) => return f64::NAN,
+        };
+        let tai_utc = tai_minus_utc_seconds_for_year_month(y, m);
+        let tt_minus_utc = tai_utc + 32.184;
+        jd_tt - tt_minus_utc / 86400.0
+    }
+
+    #[wasm_bindgen]
+    pub fn set_tai_minus_utc_override(seconds: f64) {
+        TAI_MINUS_UTC_OVERRIDE.with(|c| {
+            *c.borrow_mut() = if seconds.is_finite() && seconds >= 0.0 {
+                Some(seconds)
+            } else {
+                None
+            };
+        });
+    }
+
+    #[wasm_bindgen]
+    pub fn clear_tai_minus_utc_override() {
+        TAI_MINUS_UTC_OVERRIDE.with(|c| {
+            *c.borrow_mut() = None;
+        });
+    }
+}
+
 /// Thread-local buffer for ephemeris data (O(1) горячий путь requirement)
 ///
 /// Pre-allocated buffer that can hold all planetary positions in flat f64 array.
@@ -186,28 +283,24 @@ pub fn next_winter_solstice_from(jd_utc_start: f64) -> f64 {
         Err(_) => return f64::NAN,
     };
 
-    // Helper: convert UTC JD to TT JD using ΔT(year, month)
-    let to_tt = |jd: f64| -> f64 {
-        let (year, month, _day) = match astro::time::date_frm_julian_day(jd) {
-            Ok((y, m, d)) => (y as i32, m as u8, d),
-            Err(_) => return f64::NAN,
-        };
-        let delta_t_sec = astro::time::delta_t(year, month);
-        astro::time::julian_ephemeris_day(jd, delta_t_sec)
-    };
+    use crate::timescales::{tt_to_utc_jd, utc_to_tt_jd};
 
     // Solar declination δ⊙ (apparent) at TT JD
     let solar_decl_tt = |jd_tt: f64| -> f64 {
+        // Nutation and true obliquity
         let (nut_long, nut_oblq) = astro::nutation::nutation(jd_tt);
         let mean_oblq = astro::ecliptic::mn_oblq_IAU(jd_tt);
         let true_oblq = mean_oblq + nut_oblq;
-        let (sun_ecl, _sun_dist_km) = astro::sun::geocent_ecl_pos(jd_tt);
-        let corrected_long = sun_ecl.long + nut_long;
+        // Geocentric ecliptic coordinates and Sun-Earth distance (AU)
+        let (sun_ecl, sun_dist_au) = astro::sun::geocent_ecl_pos(jd_tt);
+        // Annual aberration in ecliptic longitude (radians)
+        let ab_long = astro::aberr::sol_aberr(sun_dist_au);
+        let corrected_long = sun_ecl.long + nut_long + ab_long;
         astro::coords::dec_frm_ecl(corrected_long, sun_ecl.lat, true_oblq)
     };
 
     // Start from TT corresponding to start UTC
-    let jd_tt0 = to_tt(jd_utc);
+    let jd_tt0 = utc_to_tt_jd(jd_utc);
     if !jd_tt0.is_finite() {
         return f64::NAN;
     }
@@ -216,7 +309,7 @@ pub fn next_winter_solstice_from(jd_utc_start: f64) -> f64 {
     let mut best_jd = jd_tt0;
     let mut best_val = f64::INFINITY;
     let mut jd = jd_tt0;
-    let end = jd_tt0 + 200.0;
+    let end = jd_tt0 + 400.0;
     while jd <= end {
         let v = solar_decl_tt(jd);
         if v < best_val {
@@ -243,14 +336,7 @@ pub fn next_winter_solstice_from(jd_utc_start: f64) -> f64 {
     let jd_tt_min = (a + b) / 2.0;
 
     // Convert TT -> UTC using ΔT at event date
-    let (year_ev, month_ev, _day_ev) = match astro::time::date_frm_julian_day(jd_tt_min) {
-        Ok((y, m, d)) => (y as i32, m as u8, d),
-        Err(_) => return f64::NAN,
-    };
-    let delta_t_sec_ev = astro::time::delta_t(year_ev, month_ev);
-    let jd_utc_ev = jd_tt_min - (delta_t_sec_ev / 86400.0);
-
-    jd_utc_ev
+    tt_to_utc_jd(jd_tt_min)
 }
 
 // Removed legacy helpers get_body_count/get_coordinate_count (no longer used by frontend)
