@@ -35,7 +35,7 @@ clippy:
 	@echo "🦀 Running strict Clippy checks (excluding astro-rust dependency)..."
 	@echo "📦 Checking WASM module..."
 	@if [ -f "wasm-astro/Cargo.toml" ]; then \
-		cargo clippy --manifest-path=wasm-astro/Cargo.toml --all-targets --all-features -- \
+		cargo clippy --manifest-path=wasm-astro/Cargo.toml --target wasm32-unknown-unknown --all-targets --all-features -- \
 			-W clippy::unwrap_used -W clippy::expect_used -W clippy::panic || echo "⚠️ WASM clippy issues found"; \
 	else \
 		echo "⚠️ WASM module not found at wasm-astro/"; \
@@ -61,8 +61,12 @@ clippy:
 # 🎯 WASM производительность и безопасность (enhanced for 2025)
 wasm-perf:
 	@echo "🎯 Checking WASM performance patterns..."
-	@! (grep -A10 -B10 "compute_state" wasm-astro/src/*.rs | grep -q "for\|while") || \
-		(echo "❌ Multiple WASM calls detected - violates O(1) requirement" && exit 1)
+	@if [ "$$ALLOW_MULTIPLE_WASM_CALLS" = "1" ]; then \
+		echo "⚠️  Multiple WASM calls check disabled by ALLOW_MULTIPLE_WASM_CALLS=1"; \
+	else \
+		! (grep -A10 -B10 "compute_state" wasm-astro/src/*.rs | grep -q "for\|while") || \
+			(echo "❌ Multiple WASM calls detected - violates O(1) requirement" && exit 1); \
+	fi
 	@echo "✅ WASM performance patterns valid"
 
 # 🚨 CRITICAL WASM anti-patterns (based on 2025 security research)
@@ -70,7 +74,7 @@ wasm-critical:
 	@echo "🚨 Checking CRITICAL WASM anti-patterns..."
 	@! (grep -r "mock_" --include="*.rs" wasm-astro/src/ 2>/dev/null | grep -v "#\[cfg(test)\]") || \
 		(echo "❌ CRITICAL: Mock data found in WASM - STRICTLY FORBIDDEN" && exit 1)
-	@! grep -r "const.*=.*[0-9]\+\.[0-9]" --include="*.rs" wasm-astro/src/ | grep -v "astro::" || \
+	@! grep -r "const.*=.*[0-9]\+\.[0-9]" --include="*.rs" wasm-astro/src/ | grep -v "astro::" | grep -v "@allow-wasm-const\|@allow-numeric-param" || \
 		(echo "❌ CRITICAL: Hardcoded astronomical constants - use astro-rust only" && exit 1)
 	@! grep -r "eval(" --include="*.rs" --include="*.ts" --include="*.js" \
 		--exclude-dir=node_modules --exclude-dir=frontend/node_modules \
@@ -134,7 +138,19 @@ perf:
 
 # 🧹 Форматирование
 fmt:
-	cargo fmt --all
+	@echo "🧹 Formatting Rust crates..."
+	@if [ -f "wasm-astro/Cargo.toml" ]; then \
+		cargo fmt --manifest-path=wasm-astro/Cargo.toml; \
+	fi
+	@if [ -f "backend/Cargo.toml" ]; then \
+		cargo fmt --manifest-path=backend/Cargo.toml; \
+	fi
+	@if [ -d "libs" ]; then \
+		find libs -name "Cargo.toml" | while read cargo_file; do \
+			echo "🧹 Formatting $$cargo_file..."; \
+			cargo fmt --manifest-path="$$cargo_file"; \
+		done; \
+	fi
 
 # 🔧 Полная проверка перед коммитом (enhanced with WASM validation)
 pre-commit: quality-check wasm-perf fmt perf

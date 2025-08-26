@@ -15,14 +15,14 @@ impl UserId {
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
-    
+
     /// Create from UUID
     pub fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
-    
+
     /// Parse a user ID from a string
-    /// 
+    ///
     /// # Errors
     /// Returns `DomainError::InvalidUserId` if the string is not a valid UUID
     pub fn parse(s: &str) -> crate::DomainResult<Self> {
@@ -30,7 +30,7 @@ impl UserId {
             .map(Self)
             .map_err(|_parse_error| crate::DomainError::InvalidUserId(s.to_string()))
     }
-    
+
     /// Get the underlying UUID
     pub fn as_uuid(&self) -> Uuid {
         self.0
@@ -55,7 +55,7 @@ pub struct TelegramUserId(i64);
 
 impl TelegramUserId {
     /// Create a new TelegramUserId
-    /// 
+    ///
     /// # Errors
     /// Returns `DomainError::InvalidTelegramUserId` if the ID is invalid (e.g., negative)
     pub fn new(id: i64) -> crate::DomainResult<Self> {
@@ -64,7 +64,7 @@ impl TelegramUserId {
         }
         Ok(Self(id))
     }
-    
+
     /// Get the underlying i64 value
     pub fn as_i64(self) -> i64 {
         self.0
@@ -133,7 +133,7 @@ impl JwtClaims {
     ) -> Self {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
         let exp = now + 900; // 15 minutes
-        
+
         Self {
             sub: user_id.to_string(),
             user_id: user_id.clone(),
@@ -145,7 +145,7 @@ impl JwtClaims {
             roles: roles.iter().cloned().collect(),
         }
     }
-    
+
     /// Create new JWT claims with Telegram integration
     pub fn new_with_telegram(
         user_id: &UserId,
@@ -156,7 +156,7 @@ impl JwtClaims {
     ) -> Self {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
         let exp = now + 900; // 15 minutes
-        
+
         Self {
             sub: user_id.to_string(),
             user_id: user_id.clone(),
@@ -168,18 +168,18 @@ impl JwtClaims {
             roles: roles.iter().cloned().collect(),
         }
     }
-    
+
     /// Check if token is expired
     pub fn is_expired(&self) -> bool {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
         now >= self.exp
     }
-    
+
     /// Check if user has required role
     pub fn has_role(&self, role: &str) -> bool {
         self.roles.iter().any(|r| r == role)
     }
-    
+
     /// Check if user has premium subscription
     pub fn has_premium_access(&self) -> bool {
         self.is_telegram_subscribed || self.has_role("premium") || self.has_role("admin")
@@ -208,7 +208,7 @@ impl RefreshToken {
     pub fn new(user_id: UserId, token_hash: String) -> Self {
         let now = time::OffsetDateTime::now_utc();
         let expires_at = now + time::Duration::days(30);
-        
+
         Self {
             id: Uuid::new_v4(),
             user_id,
@@ -218,12 +218,12 @@ impl RefreshToken {
             is_revoked: false,
         }
     }
-    
+
     /// Check if refresh token is valid
     pub fn is_valid(&self) -> bool {
         !self.is_revoked && self.expires_at > time::OffsetDateTime::now_utc()
     }
-    
+
     /// Revoke the refresh token
     pub fn revoke(&mut self) {
         self.is_revoked = true;
@@ -250,7 +250,7 @@ impl LinkingToken {
     pub fn new(user_id: UserId) -> Self {
         let now = time::OffsetDateTime::now_utc();
         let expires_at = now + time::Duration::minutes(5);
-        
+
         Self {
             token: Uuid::new_v4(),
             user_id,
@@ -259,12 +259,12 @@ impl LinkingToken {
             is_used: false,
         }
     }
-    
+
     /// Check if linking token is valid
     pub fn is_valid(&self) -> bool {
         !self.is_used && self.expires_at > time::OffsetDateTime::now_utc()
     }
-    
+
     /// Mark token consumed
     pub fn mark_used(&mut self) {
         self.is_used = true;
@@ -293,15 +293,18 @@ impl AuthStatus {
     pub fn is_authenticated(&self) -> bool {
         matches!(self, Self::Authenticated { .. })
     }
-    
+
     /// Check if user has premium access
     pub fn has_premium_access(&self) -> bool {
         match self {
-            Self::Authenticated { subscription_active, .. } => *subscription_active,
+            Self::Authenticated {
+                subscription_active,
+                ..
+            } => *subscription_active,
             _ => false,
         }
     }
-    
+
     /// Get user ID if authenticated
     pub fn user_id(&self) -> Option<&UserId> {
         match self {
@@ -314,52 +317,52 @@ impl AuthStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_user_id_generation() {
         let id1 = UserId::new();
         let id2 = UserId::new();
         assert_ne!(id1, id2);
     }
-    
+
     #[test]
     fn test_telegram_user_id_validation() {
         assert!(TelegramUserId::new(12345).is_ok());
         assert!(TelegramUserId::new(-1).is_err());
         assert!(TelegramUserId::new(0).is_err());
     }
-    
+
     #[test]
     fn test_jwt_claims_expiration() {
         let user_id = UserId::new();
         let claims = JwtClaims::new(&user_id, None, false, &[]);
-        
+
         // Should not be expired immediately
         assert!(!claims.is_expired());
     }
-    
+
     #[test]
     fn test_refresh_token_validity() {
         let user_id = UserId::new();
         let mut token = RefreshToken::new(user_id, "hash".to_string());
-        
+
         assert!(token.is_valid());
-        
+
         token.revoke();
         assert!(!token.is_valid());
     }
-    
+
     #[test]
     fn test_linking_token_expiration() {
         let user_id = UserId::new();
         let mut token = LinkingToken::new(user_id);
-        
+
         assert!(token.is_valid());
-        
+
         token.mark_used();
         assert!(!token.is_valid());
     }
-    
+
     #[test]
     fn test_auth_status() {
         let user_id = UserId::new();
@@ -368,7 +371,7 @@ mod tests {
             telegram_linked: true,
             subscription_active: true,
         };
-        
+
         assert!(status.is_authenticated());
         assert!(status.has_premium_access());
         assert_eq!(status.user_id(), Some(&user_id));

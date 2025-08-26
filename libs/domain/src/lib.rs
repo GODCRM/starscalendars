@@ -11,28 +11,28 @@
 //! - No error-prone operations like unwrap, expect, or panic
 
 // ❌ REMOVED: astronomical types violate WASM-only architecture per tz.md
-pub mod telegram;
-pub mod events;
-pub mod spiritual;
-pub mod user;
 pub mod auth;
-pub mod ports;
 pub mod errors;
+pub mod events;
+pub mod ports;
+pub mod spiritual;
+pub mod telegram;
+pub mod user;
 
 // ❌ REMOVED: astronomical types - WASM-only calculations per tz.md
 // Re-export core domain types (specific imports to avoid ambiguity)
-pub use telegram::{TelegramChannelId, SubscriptionStatus, TelegramProfile};
-pub use events::{DomainEvent, UserEvent, AstronomicalEvent, Event, EventId, EventPublisher};
-pub use spiritual::{SpiritualProfile};
-pub use user::{User, UserId};
-pub use auth::{JwtClaims, RefreshToken, LinkingToken};
-pub use ports::*;
+pub use auth::{JwtClaims, LinkingToken, RefreshToken};
 pub use errors::*;
+pub use events::{AstronomicalEvent, DomainEvent, Event, EventId, EventPublisher, UserEvent};
+pub use ports::*;
+pub use spiritual::SpiritualProfile;
+pub use telegram::{SubscriptionStatus, TelegramChannelId, TelegramProfile};
+pub use user::{User, UserId};
 
 // Explicit re-exports to avoid ambiguity
-pub use telegram::TelegramUserId as TelegramId;
 pub use events::SpiritualEvent as EventSpiritualEvent;
 pub use spiritual::SpiritualEvent as SpiritualEventData;
+pub use telegram::TelegramUserId as TelegramId;
 
 /// Domain-wide result type for error handling
 pub type DomainResult<T> = Result<T, DomainError>;

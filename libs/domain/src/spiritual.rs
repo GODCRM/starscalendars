@@ -51,11 +51,7 @@ pub struct SpiritualEvent {
 
 impl SpiritualEvent {
     /// Create new spiritual event
-    pub fn new(
-        event_type: String,
-        title: String,
-        occurs_at: time::OffsetDateTime,
-    ) -> Self {
+    pub fn new(event_type: String, title: String, occurs_at: time::OffsetDateTime) -> Self {
         Self {
             id: Uuid::new_v4(),
             event_type,
@@ -66,12 +62,12 @@ impl SpiritualEvent {
             quantum_resonance: None,
         }
     }
-    
+
     /// Check if event is in the future
     pub fn is_upcoming(&self) -> bool {
         self.occurs_at > time::OffsetDateTime::now_utc()
     }
-    
+
     /// Check if event has high spiritual significance
     pub fn is_significant(&self) -> bool {
         self.quantum_resonance.map_or(false, |r| r > 0.8)

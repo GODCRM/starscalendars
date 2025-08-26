@@ -1,8 +1,8 @@
 //! User management use cases
 
+use crate::{AppResult, AppServices, ports::UserRepository};
 use async_trait::async_trait;
 use starscalendars_domain::*;
-use crate::{ports::UserRepository, AppResult, AppServices};
 
 /// User management use case interface
 #[async_trait]

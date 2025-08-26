@@ -3,10 +3,10 @@
 //! Event-driven architecture for decoupled communication between
 //! domain aggregates and external systems integration.
 
+use crate::TelegramId;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::TelegramId;
 // ❌ REMOVED: JulianDay, CelestialBody imports violate WASM-only architecture per tz.md
 
 /// Unique identifier for domain events
@@ -41,7 +41,7 @@ pub enum UserEvent {
         occurred_at: OffsetDateTime,
         linking_token: crate::LinkingToken,
     },
-    
+
     /// User completed Telegram verification
     TelegramVerificationCompleted {
         event_id: EventId,
@@ -49,14 +49,14 @@ pub enum UserEvent {
         telegram_user_id: TelegramId,
         linking_token: crate::LinkingToken,
     },
-    
+
     /// User session established successfully
     SessionEstablished {
         event_id: EventId,
         occurred_at: OffsetDateTime,
         telegram_user_id: TelegramId,
     },
-    
+
     /// User subscription status changed
     SubscriptionStatusChanged {
         event_id: EventId,
@@ -65,7 +65,7 @@ pub enum UserEvent {
         old_status: crate::SubscriptionStatus,
         new_status: crate::SubscriptionStatus,
     },
-    
+
     /// User accessed premium feature
     PremiumFeatureAccessed {
         event_id: EventId,
@@ -85,7 +85,7 @@ impl DomainEvent for UserEvent {
             Self::PremiumFeatureAccessed { event_id, .. } => *event_id,
         }
     }
-    
+
     fn occurred_at(&self) -> OffsetDateTime {
         match self {
             Self::AuthenticationStarted { occurred_at, .. } => *occurred_at,
@@ -95,7 +95,7 @@ impl DomainEvent for UserEvent {
             Self::PremiumFeatureAccessed { occurred_at, .. } => *occurred_at,
         }
     }
-    
+
     fn event_type(&self) -> &'static str {
         match self {
             Self::AuthenticationStarted { .. } => "UserAuthenticationStarted",
@@ -118,7 +118,7 @@ pub enum AstronomicalEvent {
         celestial_bodies: Vec<String>, // Celestial body names - actual data in WASM frontend
         calculation_duration_micros: u64,
     },
-    
+
     /// 3D scene updated with new positions
     SceneUpdated {
         event_id: EventId,
@@ -126,7 +126,7 @@ pub enum AstronomicalEvent {
         julian_day: f64, // Julian Day as f64 - calculated in WASM frontend only
         frame_rate: f32,
     },
-    
+
     /// Significant astronomical event detected
     SignificantEventDetected {
         event_id: EventId,
@@ -146,7 +146,7 @@ impl DomainEvent for AstronomicalEvent {
             Self::SignificantEventDetected { event_id, .. } => *event_id,
         }
     }
-    
+
     fn occurred_at(&self) -> OffsetDateTime {
         match self {
             Self::CalculationCompleted { occurred_at, .. } => *occurred_at,
@@ -154,7 +154,7 @@ impl DomainEvent for AstronomicalEvent {
             Self::SignificantEventDetected { occurred_at, .. } => *occurred_at,
         }
     }
-    
+
     fn event_type(&self) -> &'static str {
         match self {
             Self::CalculationCompleted { .. } => "AstronomicalCalculationCompleted",
@@ -176,7 +176,7 @@ pub enum SpiritualEvent {
         recommendation_type: String,
         content: String,
     },
-    
+
     /// User engaged with spiritual content
     SpiritualContentEngaged {
         event_id: EventId,
@@ -185,7 +185,7 @@ pub enum SpiritualEvent {
         content_type: String,
         engagement_type: String, // viewed, shared, saved, etc.
     },
-    
+
     /// Community interaction occurred
     CommunityInteraction {
         event_id: EventId,
@@ -204,7 +204,7 @@ impl DomainEvent for SpiritualEvent {
             Self::CommunityInteraction { event_id, .. } => *event_id,
         }
     }
-    
+
     fn occurred_at(&self) -> OffsetDateTime {
         match self {
             Self::RecommendationGenerated { occurred_at, .. } => *occurred_at,
@@ -212,7 +212,7 @@ impl DomainEvent for SpiritualEvent {
             Self::CommunityInteraction { occurred_at, .. } => *occurred_at,
         }
     }
-    
+
     fn event_type(&self) -> &'static str {
         match self {
             Self::RecommendationGenerated { .. } => "SpiritualRecommendationGenerated",
@@ -238,7 +238,7 @@ impl DomainEvent for Event {
             Self::Spiritual(event) => event.event_id(),
         }
     }
-    
+
     fn occurred_at(&self) -> OffsetDateTime {
         match self {
             Self::User(event) => event.occurred_at(),
@@ -246,7 +246,7 @@ impl DomainEvent for Event {
             Self::Spiritual(event) => event.occurred_at(),
         }
     }
-    
+
     fn event_type(&self) -> &'static str {
         match self {
             Self::User(event) => event.event_type(),
@@ -259,7 +259,7 @@ impl DomainEvent for Event {
 /// Event publisher trait for dependency injection
 pub trait EventPublisher {
     type Error;
-    
+
     fn publish(&self, event: Event) -> Result<(), Self::Error>;
     fn publish_batch(&self, events: Vec<Event>) -> Result<(), Self::Error>;
 }
@@ -267,14 +267,14 @@ pub trait EventPublisher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn event_id_generation() {
         let id1 = EventId::new();
         let id2 = EventId::new();
         assert_ne!(id1, id2);
     }
-    
+
     #[test]
     fn user_event_trait_implementation() {
         let event = UserEvent::SessionEstablished {
@@ -282,11 +282,11 @@ mod tests {
             occurred_at: OffsetDateTime::now_utc(),
             telegram_user_id: TelegramId::new(123456789).expect("test user ID should be valid"),
         };
-        
+
         assert_eq!(event.event_type(), "UserSessionEstablished");
         assert!(event.occurred_at() <= OffsetDateTime::now_utc());
     }
-    
+
     #[test]
     fn astronomical_event_serialization() {
         let event = AstronomicalEvent::CalculationCompleted {
@@ -296,10 +296,11 @@ mod tests {
             celestial_bodies: vec!["Sun".to_string(), "Moon".to_string()],
             calculation_duration_micros: 1500,
         };
-        
+
         let serialized = serde_json::to_string(&event).expect("test event should serialize");
-        let deserialized: AstronomicalEvent = serde_json::from_str(&serialized).expect("test event should deserialize");
-        
+        let deserialized: AstronomicalEvent =
+            serde_json::from_str(&serialized).expect("test event should deserialize");
+
         assert_eq!(event.event_type(), deserialized.event_type());
     }
 }

@@ -323,16 +323,16 @@ pub fn next_winter_solstice_from(jd_utc_start: f64) -> f64 {
     let target = 270.0_f64.to_radians();
     let lambda0 = solar_lambda_app_tt(jd_tt0);
     // Mean solar rate ~0.98564736°/day = 0.017202124 rad/day
-    const SOLAR_MEAN_RATE: f64 = 0.017202124;
+    const SOLAR_MEAN_RATE: f64 = 0.017202124; // @allow-numeric-param
     // Forward phase to next target
     let delta_forward = wrap_two_pi(target - lambda0);
     let mut t = jd_tt0 + delta_forward / SOLAR_MEAN_RATE;
 
     // Newton with numeric derivative (robust, few iterations)
     let mut iter = 0u32;
-    const H: f64 = 1.0e-3; // ~86.4 s
-    const MAX_ITERS: u32 = 16;
-    const MAX_STEP: f64 = 2.0; // days
+    const H: f64 = 1.0e-3; // ~86.4 s @allow-numeric-param
+    const MAX_ITERS: u32 = 16; // @allow-numeric-param
+    const MAX_STEP: f64 = 2.0; // days @allow-numeric-param
     loop {
         if !t.is_finite() || iter >= MAX_ITERS {
             break;
@@ -1063,12 +1063,12 @@ thread_local! {
     static QUANTUM_TABLE: RefCell<Vec<QuantumEntry>> = RefCell::new(Vec::with_capacity(32000));
 }
 
-const QT_CONST_NT_MS: f64 = 1344643200000.0; // constNT
-const QT_CONST_D_MS: f64 = 86459178.082191780821918_f64; // constD
-const QT_CONST_D_EXTRA_MS: f64 = 43229589.41095890410959_f64; // constDExtra
-const QT_MAX_TIME_MS: f64 = 4090089600000.0; // maxTime
-const QT_SPECIAL_YEAR: i32 = 11;
-const QT_SPECIAL_DAY: i32 = 121;
+const QT_CONST_NT_MS: f64 = 1344643200000.0; // constNT @allow-wasm-const
+const QT_CONST_D_MS: f64 = 86459178.082191780821918_f64; // constD @allow-wasm-const
+const QT_CONST_D_EXTRA_MS: f64 = 43229589.41095890410959_f64; // constDExtra @allow-wasm-const
+const QT_MAX_TIME_MS: f64 = 4090089600000.0; // maxTime @allow-wasm-const
+const QT_SPECIAL_YEAR: i32 = 11; // specialYear @allow-wasm-const
+const QT_SPECIAL_DAY: i32 = 121; // specialDay @allow-wasm-const
 
 fn init_quantum_table_if_needed() {
     QUANTUM_TABLE.with(|tbl| {

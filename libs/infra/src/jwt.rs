@@ -3,11 +3,11 @@
 //! JSON Web Token creation and validation using RS256 algorithm.
 
 use async_trait::async_trait;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation, Algorithm};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 // Use only domain types for Clean Architecture
+use crate::InfraError;
 use starscalendars_domain::*;
 use uuid::Uuid;
-use crate::InfraError;
 
 /// JWT service implementation using RS256
 pub struct JwtServiceImpl {
@@ -19,19 +19,19 @@ pub struct JwtServiceImpl {
 impl JwtServiceImpl {
     /// Create new JWT service with RSA key pair
     pub fn new(private_key_pem: &[u8], public_key_pem: &[u8]) -> Result<Self, InfraError> {
-        let encoding_key = EncodingKey::from_rsa_pem(private_key_pem)
-            .map_err(|e| InfraError::Jwt(e))?;
-        
-        let decoding_key = DecodingKey::from_rsa_pem(public_key_pem)
-            .map_err(|e| InfraError::Jwt(e))?;
-        
+        let encoding_key =
+            EncodingKey::from_rsa_pem(private_key_pem).map_err(|e| InfraError::Jwt(e))?;
+
+        let decoding_key =
+            DecodingKey::from_rsa_pem(public_key_pem).map_err(|e| InfraError::Jwt(e))?;
+
         Ok(Self {
             encoding_key,
             decoding_key,
             algorithm: Algorithm::RS256,
         })
     }
-    
+
     /// Create with generated keys for development/testing
     pub fn new_with_generated_keys() -> Result<Self, InfraError> {
         // Generate a temporary RSA key pair for testing
@@ -65,7 +65,7 @@ ECgYEA3K9B8R3P5L3G8T7K8X3J3W3K5G8T3A8P5R3L8G3O5C8K3J3G8T5Y8X3K5L
 3G8R5P3J3Y8X3K9B8R3P5L3G8T7K8X3J3W3K5G8T3A8P5R3L8G3O5C8K3J3G8T5Y
 8X3K5L3G8R5P3J3Y8X3K9B8R3P5L3G8T7K8X3J3W3K5G8T3A8P5R3L8G3O5C8K3J
 -----END RSA PRIVATE KEY-----"#;
-        
+
         let public_key = r#"-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1jf2XjNNLUt9XJRvXHYH
 9bY8KhJKp7dJ0+k3m5P6/uUqNc6HIqyM2CfBXGOc7JvYfzHvE7fOFJz4pV+Ew4O7
@@ -75,7 +75,7 @@ F1FUj7tJ0+Fn2n+xJwzUq8gL8O5LuJ4qb6v4pJ5k5H5w5G8gzX5jz1r5Y8X5zQ8f
 Kg3jYbK8P6V6Y9w6gKUX8T8L9UM2XBuJzXzJoG3H6YqGdKxGlbKbEHJGHJ7lMGXj
 wIDAQAB
 -----END PUBLIC KEY-----"#;
-        
+
         Self::new(private_key.as_bytes(), public_key.as_bytes())
     }
 }
@@ -84,33 +84,32 @@ wIDAQAB
 impl JwtService for JwtServiceImpl {
     async fn create_access_token(&self, claims: &JwtClaims) -> PortResult<String> {
         let header = Header::new(self.algorithm);
-        
-        encode(&header, claims, &self.encoding_key)
-            .map_err(|e| InfraError::Jwt(e).into())
+
+        encode(&header, claims, &self.encoding_key).map_err(|e| InfraError::Jwt(e).into())
     }
-    
+
     async fn validate_access_token(&self, token: &str) -> PortResult<JwtClaims> {
         let mut validation = Validation::new(self.algorithm);
         validation.validate_exp = true;
-        
-        let token_data = decode::<JwtClaims>(token, &self.decoding_key, &validation)
-            .map_err(|e| {
+
+        let token_data =
+            decode::<JwtClaims>(token, &self.decoding_key, &validation).map_err(|e| {
                 match e.kind() {
                     jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
                         // Get expiry time from the token if possible
                         let exp_time = time::OffsetDateTime::now_utc();
                         let infra_error = InfraError::Internal(
-                            DomainError::JwtTokenExpired(exp_time).to_string()
+                            DomainError::JwtTokenExpired(exp_time).to_string(),
                         );
                         DomainError::from(infra_error)
                     }
                     _ => InfraError::Jwt(e).into(),
                 }
             })?;
-        
+
         Ok(token_data.claims)
     }
-    
+
     async fn create_refresh_token(&self) -> PortResult<String> {
         // Create a cryptographically secure random token
         Ok(Uuid::new_v4().to_string())
@@ -133,12 +132,12 @@ impl MockJwtService {
             mock_claims: None,
         }
     }
-    
+
     /// Set whether tokens should be valid
     pub fn set_tokens_valid(&mut self, valid: bool) {
         self.tokens_valid = valid;
     }
-    
+
     /// Set mock claims to return
     pub fn set_mock_claims(&mut self, claims: JwtClaims) {
         self.mock_claims = Some(claims);
@@ -156,12 +155,12 @@ impl JwtService for MockJwtService {
     async fn create_access_token(&self, _claims: &JwtClaims) -> PortResult<String> {
         Ok("mock_access_token".to_string())
     }
-    
+
     async fn validate_access_token(&self, _token: &str) -> PortResult<JwtClaims> {
         if !self.tokens_valid {
             return Err(InfraError::Internal("Invalid token".to_string()).into());
         }
-        
+
         match &self.mock_claims {
             Some(claims) => Ok(claims.clone()),
             None => {
@@ -170,7 +169,7 @@ impl JwtService for MockJwtService {
             }
         }
     }
-    
+
     async fn create_refresh_token(&self) -> PortResult<String> {
         Ok("mock_refresh_token".to_string())
     }

@@ -11,6 +11,8 @@ pub fn request_id_layer() -> RequestIdLayer {
 }
 
 /// Logging middleware layer
-pub fn logging_layer() -> TraceLayer<tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>> {
+pub fn logging_layer()
+-> TraceLayer<tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>>
+{
     TraceLayer::new_for_http()
 }

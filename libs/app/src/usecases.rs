@@ -1,8 +1,8 @@
 //! Use cases for application business logic
 
+use crate::{AppResult, ports::*};
 use async_trait::async_trait;
 use starscalendars_domain::*;
-use crate::{ports::*, AppResult};
 use std::sync::Arc;
 
 mod auth;
@@ -14,7 +14,7 @@ pub use auth::*;
 pub use user::*;
 
 /// Dependency injection container for use cases
-/// 
+///
 /// ❌ CORRECTED: Removed astronomical_service per tz.md WASM-only architecture requirement  
 #[derive(Clone)]
 pub struct AppServices {

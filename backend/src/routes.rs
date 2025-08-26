@@ -1,9 +1,14 @@
 //! Route definitions for the backend server
 
-use axum::{Router, routing::{get, post}, response::Json, extract::State};
-use serde_json::{json, Value};
-use starscalendars_app::AppServices;
 use crate::websocket::{WebSocketManager, websocket_handler};
+use axum::{
+    Router,
+    extract::State,
+    response::Json,
+    routing::{get, post},
+};
+use serde_json::{Value, json};
+use starscalendars_app::AppServices;
 use std::sync::Arc;
 
 /// Health check routes
@@ -16,7 +21,10 @@ pub fn health_routes() -> Router {
 /// Authentication routes
 pub fn auth_routes() -> Router {
     Router::new()
-        .route("/auth/telegram", post(|| async { "Telegram auth endpoint" }))
+        .route(
+            "/auth/telegram",
+            post(|| async { "Telegram auth endpoint" }),
+        )
         .route("/auth/refresh", post(|| async { "Token refresh endpoint" }))
         .route("/auth/link", post(|| async { "Account linking endpoint" }))
 }
@@ -24,15 +32,23 @@ pub fn auth_routes() -> Router {
 /// API routes for astronomical data
 pub fn api_routes() -> Router {
     Router::new()
-        .route("/api/ephemeris", get(|| async { "Ephemeris data endpoint" }))
-        .route("/api/ephemeris/:date", get(|| async { "Historical ephemeris endpoint" }))
-        .route("/api/user/profile", get(|| async { "User profile endpoint" }))
+        .route(
+            "/api/ephemeris",
+            get(|| async { "Ephemeris data endpoint" }),
+        )
+        .route(
+            "/api/ephemeris/:date",
+            get(|| async { "Historical ephemeris endpoint" }),
+        )
+        .route(
+            "/api/user/profile",
+            get(|| async { "User profile endpoint" }),
+        )
 }
 
 /// WebSocket routes
 pub fn websocket_routes() -> Router {
-    Router::new()
-        .route("/ws", get(websocket_handler))
+    Router::new().route("/ws", get(websocket_handler))
 }
 
 async fn health_check() -> Json<Value> {
@@ -44,9 +60,7 @@ async fn health_check() -> Json<Value> {
     }))
 }
 
-async fn readiness_check(
-    State(services): State<AppServices>,
-) -> Json<Value> {
+async fn readiness_check(State(services): State<AppServices>) -> Json<Value> {
     let health_report = match services.health_check().await {
         Ok(report) => report,
         Err(e) => {
@@ -56,7 +70,7 @@ async fn readiness_check(
             }));
         }
     };
-    
+
     Json(json!({
         "status": if health_report.overall_healthy { "ready" } else { "not_ready" },
         "checks": {

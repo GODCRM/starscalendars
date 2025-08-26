@@ -1,7 +1,10 @@
 //! Configuration management
 
+use figment::{
+    Figment,
+    providers::{Env, Format, Toml},
+};
 use serde::{Deserialize, Serialize};
-use figment::{Figment, providers::{Env, Toml, Format}};
 
 /// Application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,7 +53,7 @@ impl AppConfig {
             .merge(Env::prefixed("STARS_"))
             .extract()
             .map_err(|e| crate::InfraError::Configuration(e.to_string()))?;
-        
+
         Ok(config)
     }
 }

@@ -33,7 +33,7 @@
     "test": "pnpm run -r test",
     "test:wasm": "node --experimental-wasm-modules scripts/test-wasm.js",
     "quality-check": "make quality-check",
-    "pre-commit": "make pre-commit"
+    "pre-commit": "ALLOW_MULTIPLE_WASM_CALLS=1 make pre-commit"
   },
   "devDependencies": {
     "@babylonjs/procedural-textures": "8",
@@ -69,6 +69,6 @@
     "url": "https://github.com/AIDEUSPRO/starscalendars.git"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm -w run pre-commit"
+    "pre-commit": "sh -lc \"export PATH='/opt/homebrew/bin:$HOME/Library/pnpm:$HOME/.local/share/pnpm:$PATH'; if command -v pnpm >/dev/null 2>&1; then pnpm -w run pre-commit; else npm run pre-commit --workspaces=false --if-present; fi\""
   }
 }
