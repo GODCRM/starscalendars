@@ -783,7 +783,7 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     });
     cloudsMaterial.alpha = 0.9; // чуть прозрачнее
     // Clouds (NPOT) without mipmaps
-    const cloudsTex = new Texture('/textures/earth-c.jpg', scene);
+    const cloudsTex = new Texture('/textures/earth-c.jpg', scene, false, false, Texture.BILINEAR_SAMPLINGMODE);
     cloudsMaterial.setTexture('cloudsTexture', cloudsTex);
     const cloudsMesh = MeshBuilder.CreateSphere('clouds', {
       diameter: earthDiameter + 2, // ENV_H = 2, based on DIAMETER
@@ -804,7 +804,9 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       '/textures/universe/universe_nx.jpg',
       '/textures/universe/universe_ny.jpg',
       '/textures/universe/universe_nz.jpg',
-    ], scene);
+    ], scene, /* noMipmap */ true);
+    // Safari/WebGL: avoid early material binding before texture is ready
+    skybox.isVisible = false;
     cube.onLoadObservable.addOnce(() => {
       cube.coordinatesMode = Texture.SKYBOX_MODE;
       skyboxMaterial.reflectionTexture = cube;
@@ -817,9 +819,9 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       skybox.position = Vector3.Zero();
       skyboxMaterial.freeze();
       skybox.freezeWorldMatrix();
+      skybox.isVisible = true;
     });
-    // Keep material attached for visibility while loading
-    skybox.material = skyboxMaterial;
+    // Do not attach material before the cubemap is ready (Safari generateMipmap race)
 
     timer.mark('skybox_created');
 

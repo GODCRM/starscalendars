@@ -916,17 +916,22 @@ pub fn get_moon_horizontal_parallax(distance_km: f64) -> f64 {
 /// Internal helper: compute solar zenith position in radians (lon E-positive, lat N-positive)
 #[inline]
 fn solar_zenith_position_rad_internal(julian_day: f64) -> (f64, f64) {
-    // Geocentric solar ecliptic position
-    let (sun_ecl, _sun_dist_km) = astro::sun::geocent_ecl_pos(julian_day);
-    // Nutation and obliquity
+    // Geocentric solar ecliptic position with high-precision corrections
+    let (sun_ecl, sun_dist_au) = astro::sun::geocent_ecl_pos(julian_day);
+    // FK5 conversion (longitude/latitude)
+    let (sun_long_fk5, sun_lat_fk5) =
+        astro::sun::ecl_coords_to_FK5(julian_day, sun_ecl.long, sun_ecl.lat);
+    // Annual aberration in ecliptic longitude
+    let ab_long = astro::aberr::sol_aberr(sun_dist_au);
+    // Nutation and true obliquity
     let (nut_long, nut_oblq) = astro::nutation::nutation(julian_day);
     let mean_oblq = astro::ecliptic::mn_oblq_IAU(julian_day);
     let true_oblq = mean_oblq + nut_oblq;
-    let sun_corrected_long = sun_ecl.long + nut_long;
-    // Equatorial coordinates
+    let sun_corrected_long = sun_long_fk5 + ab_long + nut_long;
+    // Equatorial coordinates (apparent)
     let sun_right_ascension =
-        astro::coords::asc_frm_ecl(sun_corrected_long, sun_ecl.lat, true_oblq);
-    let sun_declination = astro::coords::dec_frm_ecl(sun_corrected_long, sun_ecl.lat, true_oblq);
+        astro::coords::asc_frm_ecl(sun_corrected_long, sun_lat_fk5, true_oblq);
+    let sun_declination = astro::coords::dec_frm_ecl(sun_corrected_long, sun_lat_fk5, true_oblq);
     // Sidereal time (apparent)
     let mean_sidereal_time = astro::time::mn_sidr(julian_day);
     let apparent_sidereal_time = astro::time::apprnt_sidr(mean_sidereal_time, nut_long, true_oblq);

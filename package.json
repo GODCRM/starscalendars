@@ -11,6 +11,7 @@
     "i18n"
   ],
   "scripts": {
+    "prepare": "simple-git-hooks",
     "build": "pnpm run build:wasm && pnpm run build:frontend && pnpm run build:dioxus && cargo build --release",
     "build:frontend": "pnpm --filter frontend build",
     "build:dioxus": "pnpm --filter dioxus-app build",
@@ -65,6 +66,9 @@
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GODCRM/starscalendars.git"
+    "url": "https://github.com/AIDEUSPRO/starscalendars.git"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm -w run pre-commit"
   }
 }
