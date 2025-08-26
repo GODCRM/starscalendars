@@ -285,18 +285,32 @@ pub fn next_winter_solstice_from(jd_utc_start: f64) -> f64 {
 
     use crate::timescales::{tt_to_utc_jd, utc_to_tt_jd};
 
-    // Solar declination δ⊙ (apparent) at TT JD
-    let solar_decl_tt = |jd_tt: f64| -> f64 {
-        // Nutation and true obliquity
-        let (nut_long, nut_oblq) = astro::nutation::nutation(jd_tt);
-        let mean_oblq = astro::ecliptic::mn_oblq_IAU(jd_tt);
-        let true_oblq = mean_oblq + nut_oblq;
-        // Geocentric ecliptic coordinates and Sun-Earth distance (AU)
+    // Helpers for angular math
+    #[inline]
+    fn wrap_two_pi(x: f64) -> f64 {
+        astro::angle::limit_to_two_PI(x)
+    }
+    #[inline]
+    fn principal_angle(x: f64) -> f64 {
+        let w = wrap_two_pi(x);
+        if w > std::f64::consts::PI {
+            w - 2.0 * std::f64::consts::PI
+        } else {
+            w
+        }
+    }
+
+    // Apparent solar ecliptic longitude λ_app (TT)
+    let solar_lambda_app_tt = |jd_tt: f64| -> f64 {
+        // Geometric geocentric ecliptic coords (mean equinox of date)
         let (sun_ecl, sun_dist_au) = astro::sun::geocent_ecl_pos(jd_tt);
-        // Annual aberration in ecliptic longitude (radians)
+        // FK5 correction
+        let (long_fk5, lat_fk5) = astro::sun::ecl_coords_to_FK5(jd_tt, sun_ecl.long, sun_ecl.lat);
+        // Annual aberration (radians)
         let ab_long = astro::aberr::sol_aberr(sun_dist_au);
-        let corrected_long = sun_ecl.long + nut_long + ab_long;
-        astro::coords::dec_frm_ecl(corrected_long, sun_ecl.lat, true_oblq)
+        // Nutation in longitude
+        let (nut_long, _nut_oblq) = astro::nutation::nutation(jd_tt);
+        wrap_two_pi(long_fk5 + ab_long + nut_long)
     };
 
     // Start from TT corresponding to start UTC
@@ -305,35 +319,46 @@ pub fn next_winter_solstice_from(jd_utc_start: f64) -> f64 {
         return f64::NAN;
     }
 
-    // Coarse scan forward up to ~200 days to find vicinity of minimum
-    let mut best_jd = jd_tt0;
-    let mut best_val = f64::INFINITY;
-    let mut jd = jd_tt0;
-    let end = jd_tt0 + 400.0;
-    while jd <= end {
-        let v = solar_decl_tt(jd);
-        if v < best_val {
-            best_val = v;
-            best_jd = jd;
-        }
-        jd += 1.0;
-    }
+    // Target longitude: 270° (winter solstice)
+    let target = 270.0_f64.to_radians();
+    let lambda0 = solar_lambda_app_tt(jd_tt0);
+    // Mean solar rate ~0.98564736°/day = 0.017202124 rad/day
+    const SOLAR_MEAN_RATE: f64 = 0.017202124;
+    // Forward phase to next target
+    let delta_forward = wrap_two_pi(target - lambda0);
+    let mut t = jd_tt0 + delta_forward / SOLAR_MEAN_RATE;
 
-    // Refine around best_jd with ternary search
-    let mut a = best_jd - 5.0;
-    let mut b = best_jd + 5.0;
-    for _ in 0..40 {
-        let m1 = a + (b - a) / 3.0;
-        let m2 = b - (b - a) / 3.0;
-        let f1 = solar_decl_tt(m1);
-        let f2 = solar_decl_tt(m2);
-        if f1 < f2 {
-            b = m2;
-        } else {
-            a = m1;
+    // Newton with numeric derivative (robust, few iterations)
+    let mut iter = 0u32;
+    const H: f64 = 1.0e-3; // ~86.4 s
+    const MAX_ITERS: u32 = 16;
+    const MAX_STEP: f64 = 2.0; // days
+    loop {
+        if !t.is_finite() || iter >= MAX_ITERS {
+            break;
         }
+        let lam = solar_lambda_app_tt(t);
+        let f = principal_angle(lam - target);
+        if f.abs() < 1.0e-10 {
+            break;
+        }
+        let lam_p = solar_lambda_app_tt(t + H);
+        let lam_m = solar_lambda_app_tt(t - H);
+        let dfdt = principal_angle(lam_p - lam_m) / (2.0 * H);
+        if dfdt.abs() < 1.0e-12 {
+            break;
+        }
+        let mut step = f / dfdt;
+        if step > MAX_STEP {
+            step = MAX_STEP;
+        }
+        if step < -MAX_STEP {
+            step = -MAX_STEP;
+        }
+        t -= step;
+        iter += 1;
     }
-    let jd_tt_min = (a + b) / 2.0;
+    let jd_tt_min = t;
 
     // Convert TT -> UTC using ΔT at event date
     tt_to_utc_jd(jd_tt_min)
