@@ -6,6 +6,10 @@ set -euo pipefail
 
 echo "🛡️ Quality Guardian: Comprehensive quality enforcement..."
 echo "📊 Checking $(git diff --cached --name-only | wc -l) files for quality violations"
+if [ -n "${SKIP_PRECOMMIT:-}" ]; then
+    echo "⚠️  SKIP_PRECOMMIT set - skipping checks"
+    exit 0
+fi
 
 # Performance timer for quality checks
 start_time=$(date +%s.%N)
@@ -50,8 +54,29 @@ if [ -z "$STAGED_RS_FILES" ]; then
 else
     log_info "Checking $(echo "$STAGED_RS_FILES" | wc -l) Rust files"
 fi
+# JS/TS anti-patterns (warnings only locally)
+if [ -f "scripts/anti-patterns-js.sh" ]; then
+    log_info "JS/TS anti-pattern scan (staged)"
+    if bash scripts/anti-patterns-js.sh >/tmp/js_scan.out 2>&1; then
+        log_success "JS/TS anti-patterns clean"
+    else
+        log_warning "JS/TS anti-patterns found; see /tmp/js_scan.out"
+        cat /tmp/js_scan.out | sed 's/^/    /' | head -40
+    fi
+fi
 
-# 🚨 CRITICAL ANTI-PATTERNS - Rust 1.88+ Standards
+# Secret baseline scan (warnings only locally)
+if [ -f "scripts/secret-scan.sh" ]; then
+    log_info "Secret baseline scan"
+    if bash scripts/secret-scan.sh >/tmp/secret_scan.out 2>&1; then
+        log_success "Secret scan clean"
+    else
+        log_warning "Potential secrets found; see /tmp/secret_scan.out"
+        cat /tmp/secret_scan.out | sed 's/^/    /' | head -40
+    fi
+fi
+
+# 🚨 CRITICAL ANTI-PATTERNS - Rust 1.89+ Standards
 log_info "Scanning for critical anti-patterns..."
 
 # Enhanced forbidden patterns with context

@@ -14,6 +14,19 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Centralized excludes
+EXCLUDES=(--exclude-dir=.git --exclude-dir=target --exclude-dir=astro-rust --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=frontend/node_modules)
+
+# Search helper (prefers ripgrep if available)
+search_content() {
+  local pattern="$1"; shift
+  if command -v rg >/dev/null 2>&1; then
+    rg -n --color=never -uu ${EXCLUDES[@]} -e "$pattern" "$@" || true
+  else
+    grep -rn ${EXCLUDES[@]} --include="*.rs" -- "$pattern" "$@" 2>/dev/null || true
+  fi
+}
+
 VIOLATIONS=0
 TOTAL_FILES=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" | wc -l | tr -d ' ')
 
@@ -77,7 +90,7 @@ scan_pattern() {
 
     echo "🔍 Scanning for: $pattern"
 
-    local matches=$(grep -rn "$pattern" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
+    local matches=$(search_content "$pattern" .)
 
     if [[ -z "$matches" ]]; then
         echo "✅ No violations found for: $pattern"
@@ -117,20 +130,20 @@ scan_pattern() {
         echo -e "${RED}❌ CRITICAL: Found forbidden pattern: $pattern${NC}"
         echo -e "${YELLOW}📝 Suggestion: $suggestion${NC}"
         echo "📁 Files:"
-        echo "$production_violations" | sed 's/^  /  - /'
+        echo "$production_violations" | sed 's/^/  - /'
         ((VIOLATIONS++))
         return 1
     elif [[ -n "$test_violations" ]]; then
         if [[ "$allow_in_tests" == "true" ]]; then
             echo -e "${GREEN}✅ Pattern found only in test code (acceptable): $pattern${NC}"
             echo -e "${BLUE}📍 Test locations:${NC}"
-            echo "$test_violations" | sed 's/^  /  - /' | head -5
+            echo "$test_violations" | sed 's/^/  - /' | head -5
             return 0
         else
             echo -e "${RED}❌ CRITICAL: Found forbidden pattern even in tests: $pattern${NC}"
             echo -e "${YELLOW}📝 Suggestion: $suggestion${NC}"
             echo "📁 Test files:"
-            echo "$test_violations" | sed 's/^  /  - /'
+            echo "$test_violations" | sed 's/^/  - /'
             ((VIOLATIONS++))
             return 1
         fi
@@ -146,11 +159,14 @@ echo "🚨 Checking core anti-patterns..."
 scan_pattern "HashMap::new()" "HashMap initialization without capacity" "Use HashMap::with_capacity(n) for pre-allocation" "false"
 scan_pattern "panic!(" "panic! usage" "Use Result<T, E> with custom error types" "true"
 scan_pattern "\.unwrap()" "unwrap() usage" "Use Result<T, E> with proper error handling" "true"
-scan_pattern "unreachable!()" "unreachable! usage" "Use Result<T, E> with proper error handling" "true"
-scan_pattern "unimplemented!()" "unimplemented! usage" "Implement the function or use todo!() during development" "true"
+scan_pattern "\.unwrap_u8\(" "unwrap_u8 usage" "Use explicit checks or safe conversions (avoid unwrap_*)" "true"
+scan_pattern "\.unwrap_unchecked\(" "unwrap_unchecked usage" "Never use unchecked unwraps; use typed errors or invariants" "true"
+scan_pattern "\.unwrap_err\(" "unwrap_err usage" "Avoid unwrap_err; pattern-match Result explicitly" "true"
+scan_pattern "unreachable!(" "unreachable! usage" "Use Result<T, E> with proper error handling" "true"
+scan_pattern "unimplemented!(" "unimplemented! usage" "Implement the function or use todo!() during development" "true"
 scan_pattern "BTreeMap::new()" "BTreeMap initialization without capacity" "Use BTreeMap::new() with proper sizing consideration" "false"
 scan_pattern "\.expect(" "expect() usage" "Use Result<T, E> with custom error types" "true"
-scan_pattern "todo!()" "todo! usage" "Complete implementation before production" "true"
+scan_pattern "todo!(" "todo! usage" "Complete implementation before production" "true"
 scan_pattern "HashSet::new()" "HashSet initialization without capacity" "Use HashSet::with_capacity(n) for pre-allocation" "false"
 scan_pattern "Vec::new()" "Vec initialization without capacity" "Use Vec::with_capacity(n) for pre-allocation" "false"
 scan_pattern "eval(" "eval() function usage" "🚨 CRITICAL SECURITY VULNERABILITY - never use eval() in any context" "false"
@@ -161,7 +177,7 @@ echo "  - .expect() is acceptable in #[cfg(test)] modules"
 echo "  - Production code must use proper error handling"
 
 echo ""
-echo "🦀 Rust 1.88+ specific pattern validation..."
+echo "🦀 Rust 1.89+ specific pattern validation..."
 
 # Enhanced anti.md patterns (2025-01-08)
 echo "🔍 Checking enhanced anti.md patterns..."
@@ -169,23 +185,44 @@ echo "🔍 Checking enhanced anti.md patterns..."
 # unwrap_or with eager evaluation (improved regex to avoid false positives)
 echo "🔍 Scanning for unwrap_or eager evaluation anti-pattern..."
 # Look for unwrap_or( followed by function calls like func(), build_something(), etc.
-eager_unwrap_or=$(grep -rn "\.unwrap_or(" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null | grep -E "unwrap_or\([^\)]*[a-zA-Z_][a-zA-Z0-9_]*\s*\(" || true)
+eager_unwrap_or=$(search_content "\\.unwrap_or\([^)\n]*[a-zA-Z_]\w*\s*\(" . | sed 's/^/  - /' || true)
 if [[ -n "$eager_unwrap_or" ]]; then
     echo -e "${RED}❌ CRITICAL: Found unwrap_or() with potential eager evaluation${NC}"
     echo -e "${YELLOW}📝 Suggestion: Use unwrap_or_else(|| expensive_operation()) for lazy evaluation${NC}"
     echo "📍 Locations:"
-    echo "$eager_unwrap_or" | sed 's/^/  - /'
+    echo "$eager_unwrap_or"
     ((VIOLATIONS++))
 else
     echo "✅ No unwrap_or eager evaluation violations found"
 fi
 
+# map_or eager default (Option::map_or)
+eager_map_or=$(search_content "\\.map_or\([,)]*[^,)]*[a-zA-Z_]\w*\s*\(" . | sed 's/^/  - /' || true)
+if [[ -n "$eager_map_or" ]]; then
+    echo -e "${RED}❌ map_or() eager default detected${NC}"
+    echo -e "${YELLOW}📝 Suggestion: Use map_or_else(|| default, |v| f(v))${NC}"
+    echo "$eager_map_or"
+    ((VIOLATIONS++))
+else
+    echo "✅ No map_or eager default patterns"
+fi
+
+# ok_or eager default (prefer ok_or_else)
+eager_ok_or=$(search_content "\\.ok_or\([^)\n]*[a-zA-Z_]\w*\s*\(" . | sed 's/^/  - /' || true)
+if [[ -n "$eager_ok_or" ]]; then
+    echo -e "${RED}❌ ok_or() eager error construction detected${NC}"
+    echo -e "${YELLOW}📝 Suggestion: Use ok_or_else(|| error())${NC}"
+    echo "$eager_ok_or"
+    ((VIOLATIONS++))
+else
+    echo "✅ No ok_or eager error patterns"
+fi
+
 # Missing error documentation in Result functions
 echo "🔍 Checking for missing error documentation..."
-result_functions=$(grep -rn "fn.*-> Result" --include="*.rs" --exclude-dir=target --exclude-dir=astro-rust . 2>/dev/null || true)
+result_functions=$(search_content "fn.*-> *Result" .)
 if [[ -n "$result_functions" ]]; then
     echo -e "${BLUE}📋 Found $(echo "$result_functions" | wc -l) Result-returning functions${NC}"
-    # Note: Full documentation check would require more sophisticated analysis
     echo "⚠️  Manual review recommended for error documentation completeness"
 fi
 

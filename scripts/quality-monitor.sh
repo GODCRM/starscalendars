@@ -116,7 +116,11 @@ declare -A ANTI_PATTERNS=(
 PATTERN_VIOLATIONS=0
 
 for pattern in "${!ANTI_PATTERNS[@]}"; do
-violations=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "$pattern" {} \; 2>/dev/null | wc -l | tr -d ' ')
+if command -v rg >/dev/null 2>&1; then
+    violations=$(rg -l -uu --color=never -g '!target/**' -g '!astro-rust/**' -g '!node_modules/**' -g '!dist/**' -g '!frontend/node_modules/**' -e "$pattern" || true | wc -l | tr -d ' ')
+else
+    violations=$(find . -name "*.rs" -not -path "./target/*" -not -path "./astro-rust/*" -exec grep -l "$pattern" {} \; 2>/dev/null | wc -l | tr -d ' ')
+fi
 
     if [ "$violations" -gt 0 ]; then
         echo "- ❌ **$pattern**: $violations files (${ANTI_PATTERNS[$pattern]})" >> "$REPORT_FILE"

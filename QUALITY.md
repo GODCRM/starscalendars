@@ -2,7 +2,7 @@
 ## Zero-Tolerance Quality Enforcement for StarsCalendars Spiritual Platform
 
 [![Quality Guardian](https://img.shields.io/badge/Quality-Guardian%20Enforced-green)](https://github.com/starscalendars/starscalendars)
-[![Rust 1.88+](https://img.shields.io/badge/Rust-1.88%2B-orange)](https://www.rust-lang.org/)
+[![Rust 1.89+](https://img.shields.io/badge/Rust-1.89%2B-orange)](https://www.rust-lang.org/)
 [![Zero Anti-patterns](https://img.shields.io/badge/Anti--patterns-Zero%20Tolerance-red)](./QUALITY.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20Compliance-blue)](./CLAUDE.md)
 
@@ -338,3 +338,18 @@ error: usage of `as` conversion is not allowed
 - [deny.toml](./deny.toml) - Security and dependency scanning rules
 - [.githooks/pre-commit](./.githooks/pre-commit) - Git commit validation
 - [.github/workflows/quality-guardian.yml](./.github/workflows/quality-guardian.yml) - CI/CD quality pipeline
+
+---
+
+## ✅ PR Checklist (Quality Gate)
+- [ ] No `unwrap()`, `expect()`, or `panic!()` in production code
+- [ ] No `as` casts; use `TryFrom`/`TryInto`
+- [ ] No `.await` inside loops on hot/request paths (batch + join)
+- [ ] No string-built SQL (use `sqlx::query!`/`query_as!`)
+- [ ] Functions returning `Result` do NOT contain unwrap/expect
+- [ ] Errors are typed (`thiserror`); proper propagation with `?`
+- [ ] Rate limits on public endpoints; no secrets in logs
+- [ ] Cargo MAJOR pins only; `cargo build --locked` passes
+
+## 📚 Documentation
+- Anti-patterns guide: see `./anti.md`
