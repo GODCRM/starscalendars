@@ -79,7 +79,9 @@ irrelevant
 - **Frontend**: React 19 + Babylon.js 8 + TypeScript 5.9 with Vite 7 (needs TypeScript config fixes)
 - **Backend**: Axum server with clean architecture layers implemented (needs SQLX database setup)  
 - **WASM Module**: ✅ ПОЛНОСТЬЮ РАБОТАЕТ — полный набор оберток соответствует astro-rust; горячий путь — единый `compute_state(jd)` (включая солнечный зенит для поворота Земли)
-  - Новое: сцена использует единый вектор на Луну, полученный из RA/Dec+AST; сублунарная точка и позиция Луны совпадают. Завтра переносим расчёт RA/Dec/AST и сублунарных φ/λ в буфер `compute_state` для полного O(1) на кадр без тригонометрии в TS. Добавим вспомогательные компоненты для визуального tidal lock (одна сторона Луны к Земле)
+  - Новое: сцена использует единый вектор на Луну, полученный из RA/Dec+AST; сублунарная точка и позиция Луны совпадают.
+  - Next: расширить `compute_state(jd)` и вернуть в STATE: `lunar_ra_rad`, `lunar_dec_rad`, `apparent_sidereal_time_rad`, `sublunar_lon_east_rad`, `sublunar_lat_rad`, а также Earth‑local единичный вектор направления на Луну — убрать тригонометрию из TS и подготовить визуальный tidal lock (одна сторона Луны к Земле)
+  - Новое (зафиксировано): модуль `timescales` для UTC↔TT по формуле (TT−UTC)=(TAI−UTC)+32.184s с WASM‑override; точный поиск зимнего солнцестояния через λ_app(t)=270° (FK5 + аберрация + нутация, TT→UTC через timescales); перенос NT (Quantum Time) в WASM функцией `get_quantum_time_components(ms, tzMin)`; обновление NT в UI раз в минуту
 - **Domain/App/Infra Libraries**: Clean architecture implementation (some import issues)
 - **Dioxus App**: Authentication and profile management (configured)
 - **Quality System**: Comprehensive Makefile and quality rules (fully working)

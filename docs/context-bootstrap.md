@@ -70,9 +70,10 @@ Notes:
 - Earth material: custom day/night shader with `earth-diffuse.jpg` and `earth-night-o2.png` and height map `earth-height.png` applied once mesh ready.
 - Clouds: custom shader, texture `earth-c.jpg`, shell diameter = Earth diameter + 2, rotation.z = π, parent=earth.
 
-## Quantum date (reference logic)
-- Constants: `constNT=1344643200000, constD=86459178.082191780821918, constDExtra=43229589.41095890410959, constY=31557600000, maxTime=4090089600000, specialDays {year:11, day:121}`.
-- Build NT array once (≈30k). For display each second: use `findClosestSmaller` over adjusted UTC midnight (offset 4h per ref).
+## Quantum date (NT)
+- Реализация перенесена в WASM: `get_quantum_time_components(epoch_ms, tz_offset_min)` возвращает `[d_in_decade, decade, year]`
+- Семантика идентична прежней JS (константы/особые дни), но вычисление централизовано и кэшируемо
+- Обновление текста NT — раз в минуту в idle, без участия рендер-цикла
 
 ## Quality and rules
 - One render loop, no extra timers. No mock data. No manual performance hacks that conflict with reference parity.

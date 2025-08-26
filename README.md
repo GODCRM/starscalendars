@@ -40,7 +40,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - Use left-handed Babylon system (default). Scientific coordinates remain RH (WASM). Apply single RH→LH Z flip in the scene when assigning positions; no flips in WASM bridge
 - Single-call per frame: `compute_state(jd)` returns 11 f64 values: Sun zeros, Moon xyz (geocentric), Earth xyz (heliocentric), and Solar zenith [lon_east_rad, lat_rad].
   - Sun slots [0..2] are zeros by design (Sun fixed at origin).
-  - Event timing helper: `next_winter_solstice_from(jd_utc_start)` — off-frame only, returns JD UTC of next minimum δ⊙.
+  - Event timing helper: `next_winter_solstice_from(jd_utc_start)` — off-frame only; high-precision λ_app(t)=270° solver (FK5 + aberration + nutation, TT↔UTC via TAI−UTC+32.184s), returns JD UTC.
 - Zenith marker placement is canonical and must not be altered:
   - Use WASM radians directly; no degree conversions or constants
   - Local Earth-space spherical: `phi=(π/2)-lat`, `theta=(-lon_east_rad)+π`
@@ -59,6 +59,12 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 - **Pure Telegram** authentication (no passwords)
 - **Subscription verification** via getChatMember API
 - **GUI**: Babylon GUI for date/quantum date; a single `#stats` div overlay for FPS; no other HTML overlays
+
+### Quantum Time (NT)
+- NT (quantum date) moved from JS to WASM:
+  - `get_quantum_time_components(epoch_ms, timezone_offset_minutes)` returns `[d_in_decade, decade_index, year_index]` (f64*3 pointer; zero-copy read in TS)
+  - Identical semantics to legacy JS (special days, fixed durations), but centralized and reusable
+  - UI updates once per minute in idle to avoid frame cost
 
 ## 📁 Project Structure
 

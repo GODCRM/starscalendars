@@ -163,9 +163,15 @@ export const initializeWASM = async (): Promise<WASMModule> => {
           if (!Number.isFinite(ms) || !Number.isFinite(tzmin)) throw new Error('Invalid inputs to get_quantum_time_components');
           return get_quantum_time_components_raw(ms, tzmin);
         },
-        set_tai_minus_utc_override: typeof set_tai_minus_utc_override_raw === 'function' ? (s: number) => set_tai_minus_utc_override_raw(s) : undefined,
-        clear_tai_minus_utc_override: typeof clear_tai_minus_utc_override_raw === 'function' ? () => clear_tai_minus_utc_override_raw() : undefined,
       };
+
+      // Attach optional functions only if present to satisfy exactOptionalPropertyTypes
+      if (typeof set_tai_minus_utc_override_raw === 'function') {
+        (module as any).set_tai_minus_utc_override = (s: number) => set_tai_minus_utc_override_raw(s);
+      }
+      if (typeof clear_tai_minus_utc_override_raw === 'function') {
+        (module as any).clear_tai_minus_utc_override = () => clear_tai_minus_utc_override_raw();
+      }
 
       globalWasmModule = module;
       isInitialized = true;
