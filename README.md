@@ -18,7 +18,7 @@ StarsCalendars is a high-performance spiritual astronomy platform that provides:
 ## 🛠️ Technology Stack
 
 ### Backend
-- **Rust 1.88+** with Cargo edition 2024
+- **Rust 1.89+** with Cargo edition 2024
 - **Axum** web framework with WebSocket support
 - **PostgreSQL** with SQLX for compile-time query validation
 - **Teloxide** for Telegram Bot API integration
@@ -93,7 +93,7 @@ The `astro-rust/` folder contains the local copy of the astronomical calculation
 
 ### Prerequisites
 
-- **Rust 1.88+** (automatically managed via `rust-toolchain.toml`)
+- **Rust 1.89+** (automatically managed via `rust-toolchain.toml`)
 - **Node.js 20+** and **pnpm 9+**
 - **PostgreSQL 17+**
 - **Redis** (for caching)
@@ -234,7 +234,7 @@ make pre-commit
 - [x] Монорепозиторий с pnpm workspaces
 - [x] Clean Architecture (domain/app/infra слои) 
 - [x] Quality Guardian система (77% готовности)
-- [x] Rust 1.88+ compliance с zero anti-patterns
+- [x] Rust 1.89+ compliance с zero anti-patterns
 - [x] CI/CD pipeline, VS Code интеграция
 
 ✅ **Phase 1.1: Астрономическое ядро** (ЗАВЕРШЕНО)
@@ -248,7 +248,7 @@ make pre-commit
 ✅ Frontend Build: 17.48s with Vite 7.1.1 (Target: <20s)
 ✅ Bundle Size: 7.4MB total (5.3MB Babylon.js, 1.6MB WASM)
 ✅ WASM Module: 1.6MB compiled with astro-rust
-✅ Zero Anti-Patterns: Rust 1.88+ compliant
+✅ Zero Anti-Patterns: Rust 1.89+ compliant
 ✅ TypeScript: 100% strict typing (5.9.2)
 ✅ React: 19.1.1 latest features
 ```

@@ -1044,6 +1044,127 @@ pub fn get_function_count() -> usize {
     25
 }
 
+// ===================== QUANTUM TIME (NT) SUPPORT =====================
+// 1:1 перенос семантики из фронта (без строк). Возвращаем числа для форматирования на JS.
+
+#[derive(Clone, Copy)]
+struct QuantumEntry {
+    u_ms: f64, // Unix ms
+    d: i32,    // day in year [0..365)
+    y: i32,    // year index starting at 0
+}
+
+thread_local! {
+    static QUANTUM_TABLE: RefCell<Vec<QuantumEntry>> = RefCell::new(Vec::with_capacity(32000));
+}
+
+const QT_CONST_NT_MS: f64 = 1344643200000.0; // constNT
+const QT_CONST_D_MS: f64 = 86459178.082191780821918_f64; // constD
+const QT_CONST_D_EXTRA_MS: f64 = 43229589.41095890410959_f64; // constDExtra
+const QT_MAX_TIME_MS: f64 = 4090089600000.0; // maxTime
+const QT_SPECIAL_YEAR: i32 = 11;
+const QT_SPECIAL_DAY: i32 = 121;
+
+fn init_quantum_table_if_needed() {
+    QUANTUM_TABLE.with(|tbl| {
+        let mut v = tbl.borrow_mut();
+        if !v.is_empty() {
+            return;
+        }
+        let mut u = QT_CONST_NT_MS;
+        let mut d: i32 = 0;
+        let mut y: i32 = 0;
+        while u < QT_MAX_TIME_MS {
+            v.push(QuantumEntry { u_ms: u, d, y });
+            if y == QT_SPECIAL_YEAR && d == QT_SPECIAL_DAY {
+                u += QT_CONST_D_EXTRA_MS;
+                d += 1;
+                v.push(QuantumEntry { u_ms: u, d, y });
+                u += QT_CONST_D_EXTRA_MS;
+                d += 1;
+                v.push(QuantumEntry { u_ms: u, d, y });
+            } else {
+                u += QT_CONST_D_MS;
+                d += 1;
+            }
+            if d == 365 {
+                d = 0;
+                y += 1;
+            }
+        }
+    });
+}
+
+#[inline]
+fn floor_div(a: f64, b: f64) -> f64 {
+    (a / b).floor()
+}
+
+fn adjust_ms_like_js(epoch_ms: f64, tz_offset_min: f64) -> f64 {
+    // JS: setHours(24 - (getTimezoneOffset()/60 + 4)); minutes=seconds=ms=0
+    // Воспроизводим локальную нормализацию суток и переносим к UTC.
+    let local_ms = epoch_ms - tz_offset_min * 60_000.0;
+    let day_ms = 86_400_000.0;
+    let hour_ms = 3_600_000.0;
+    let tz_hours = tz_offset_min / 60.0;
+    let target_h_real = 24.0 - (tz_hours + 4.0);
+    let target_h_floor = target_h_real.floor();
+    // Нормализуем часы и сдвиг дня
+    let h_norm = ((target_h_floor % 24.0) + 24.0) % 24.0;
+    let day_offset = ((target_h_floor - h_norm) / 24.0).floor();
+    let local_day_idx = floor_div(local_ms, day_ms);
+    let adjusted_local_ms = (local_day_idx + day_offset) * day_ms + h_norm * hour_ms;
+    // Обратно в UTC
+    adjusted_local_ms + tz_offset_min * 60_000.0
+}
+
+fn binary_search_qt(table: &[QuantumEntry], target_u_ms: f64) -> Option<QuantumEntry> {
+    let mut left: isize = 0;
+    let mut right: isize = table.len() as isize - 1;
+    let mut best: Option<QuantumEntry> = None;
+    while left <= right {
+        let mid = left + ((right - left) / 2);
+        let e = table[mid as usize];
+        if e.u_ms <= target_u_ms {
+            best = Some(e);
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+    best
+}
+
+/// Compute Quantum Time components [d_in_decade, decade_index, year_index]
+/// Input: epoch_ms (Unix ms), timezone_offset_minutes (like Date.getTimezoneOffset())
+#[wasm_bindgen]
+pub fn get_quantum_time_components(epoch_ms: f64, timezone_offset_minutes: f64) -> *const f64 {
+    thread_local! { static QT_OUT: RefCell<[f64; 3]> = const { RefCell::new([0.0; 3]) }; }
+    QT_OUT.with(|buf| {
+        let mut out = buf.borrow_mut();
+        if !epoch_ms.is_finite() || !timezone_offset_minutes.is_finite() {
+            return std::ptr::null();
+        }
+        init_quantum_table_if_needed();
+        let adjusted_ms = adjust_ms_like_js(epoch_ms, timezone_offset_minutes);
+        let res = QUANTUM_TABLE.with(|tbl| {
+            let v = tbl.borrow();
+            binary_search_qt(&v, adjusted_ms)
+        });
+        match res {
+            Some(e) => {
+                let dp = (e.d / 10) as f64;
+                let d_in_decade = (e.d - (e.d / 10) * 10) as f64;
+                out[0] = d_in_decade;
+                out[1] = dp;
+                out[2] = e.y as f64;
+                out.as_ptr()
+            }
+            None => std::ptr::null(),
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -130,30 +130,12 @@ const STAR_CONFIG = {
   showMilkyWay: false     // Показать Млечный Путь
 } as const;
 
-// ✅ КРИТИЧЕСКИЙ БЛОК 2: QUANTUM TIME CONSTANTS из референсной сцены (строки 107-144)
-const QUANTUM_TIME_CONFIG = {
-  // Константы для квантового времени (точно из референса)
-  constNT: 1344643200000,                    // Базовая временная точка
-  constD: 86459178.082191780821918,          // Обычный день в миллисекундах
-  constDExtra: 43229589.41095890410959,      // Дополнительные дни (2 раза в году)
-  constY: 31557600000,                       // Год в миллисекундах
-  maxTime: 4090089600000,                    // Максимальное время
-  specialDays: { year: 11, day: 121 }        // Особые дни: 11-й год, 121-й день
-} as const;
-
 // ✅ КРИТИЧЕСКИЙ БЛОК 3: РУССКИЕ НАЗВАНИЯ для времени (строки 1294-1296)
 const RUSSIAN_DATE_NAMES = {
   months: ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"],
   days: ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"],
   daysNum: ["первый", "второй", "третий", "четвертый", "пятый", "шестой", "седьмой", "восьмой", "девятый", "десятый", "одиннадцатый", "двенадцатый", "тринадцатый", "четырнадцатый", "пятнадцатый", "шестнадцатый", "семнадцатый", "восемнадцатый", "девятнадцатый", "двадцатый"]
 } as const;
-
-// ✅ QUANTUM TIME - интерфейс для квантового времени (из референсной сцены)
-interface QuantumTimeEntry {
-  readonly u: number; // Unix timestamp в миллисекундах
-  readonly d: number; // День в квантовом календаре
-  readonly y: number; // Год в квантовом календаре
-}
 
 // ✅ ВРЕМЯ И ДАТА - интерфейс для форматированного времени
 // (UI time is updated directly inside Babylon GUI; no cross-component payload needed)
@@ -183,6 +165,9 @@ interface SceneState {
   lastSolsticeMinute?: number;
   isSolsticeComputing?: boolean;
   nextSolsticeJD?: number | null;
+  // NT scheduling
+  lastNTMinute?: number;
+  isNTComputing?: boolean;
 }
 
 // ✅ FPS Counter interface for useRef
@@ -220,9 +205,6 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     isReady: false
   });
 
-  // ✅ QUANTUM TIME - массив квантового времени (референсная сцена строки 1272-1291)
-  const quantumTimeArrayRef = useRef<QuantumTimeEntry[]>([]);
-
   // ✅ Internal canvas ref (self-managed canvas)
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -238,101 +220,23 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
 
   // ✅ КРИТИЧЕСКИЙ БЛОК 4: QUANTUM TIME FUNCTIONS (строки 82-98, 107-144 из референса)
 
-  /**
-   * Функция для бинарного поиска ближайшего меньшего элемента по полю u
-   * Точный перенос из референсной сцены (строки 82-98)
-   */
-  const findClosestSmaller = useCallback((arr: QuantumTimeEntry[], targetU: number): QuantumTimeEntry | null => {
-    let left = 0;
-    let right = arr.length - 1;
-    let closestSmaller: QuantumTimeEntry | null = null;
-
-    while (left <= right) {
-      const mid = Math.floor((left + right) / 2);
-      if (arr[mid]!.u <= targetU) {
-        closestSmaller = arr[mid]!;
-        left = mid + 1;
-      } else {
-        right = mid - 1;
-      }
-    }
-    return closestSmaller;
-  }, []);
-
-  /**
-   * Инициализация массива квантового времени NT
-   * Точный перенос из референсной сцены (строки 1272-1291)
-   */
-  const initializeQuantumTimeArray = useCallback((): void => {
-    if (quantumTimeArrayRef.current.length >= 30000) {
-      return; // Массив уже инициализирован
-    }
-
-    console.log('🌌 Initializing Quantum Time Array...');
-    const NT: QuantumTimeEntry[] = [];
-    const udy = { u: QUANTUM_TIME_CONFIG.constNT, d: 0, y: 0 };
-
-    while (udy.u < QUANTUM_TIME_CONFIG.maxTime) {
-      NT.push({ ...udy });
-
-      if (udy.y === QUANTUM_TIME_CONFIG.specialDays.year && udy.d === QUANTUM_TIME_CONFIG.specialDays.day) {
-        // Особые дни: добавляем 2 дополнительных дня
-        udy.u += QUANTUM_TIME_CONFIG.constDExtra;
-        udy.d += 1;
-        NT.push({ ...udy });
-        udy.u += QUANTUM_TIME_CONFIG.constDExtra;
-        udy.d += 1;
-        NT.push({ ...udy });
-      } else {
-        // Обычный день
-        udy.u += QUANTUM_TIME_CONFIG.constD;
-        udy.d += 1;
-      }
-
-      if (udy.d === 365) {
-        udy.d = 0;
-        udy.y += 1;
-      }
-    }
-
-    quantumTimeArrayRef.current = NT;
-    console.log(`✅ Quantum Time Array initialized with ${NT.length} entries`);
-  }, []);
-
-  /**
-   * Расчет квантового времени для даты
-   * Точный перенос из референсной сцены (строки 100-144)
-   */
-  const calculateQuantumTime = useCallback((date: Date): string => {
-    // Корректируем время для UTC (как в референсе)
-    const adjustedDate = new Date(date);
-    adjustedDate.setHours(24 - (adjustedDate.getTimezoneOffset() / 60 + 4));
-    adjustedDate.setMinutes(0);
-    adjustedDate.setSeconds(0);
-    adjustedDate.setMilliseconds(0);
-
-    // Инициализируем массив если нужно
-    if (quantumTimeArrayRef.current.length === 0) {
-      initializeQuantumTimeArray();
-    }
-
-    // Находим ближайшее квантовое время
-    const res = findClosestSmaller(quantumTimeArrayRef.current, adjustedDate.getTime());
-    if (!res) {
+  // Переносим NT на WASM: форматируем метку из трёх компонентов [d_in_decade, decade, year]
+  const getQuantumTimeFromWASM = useCallback((epochMs: number, wasm: WASMModule): string => {
+    try {
+      const tzMin = new Date(epochMs).getTimezoneOffset();
+      const ptr = wasm.get_quantum_time_components(epochMs, tzMin);
+      if (!ptr) return '00.00.00';
+      const mem = wasm.memory.buffer;
+      const view = new Float64Array(mem, ptr, 3);
+      const dInDecade = (view[0]! | 0) as number;
+      const decade = (view[1]! | 0) as number;
+      const year = (view[2]! | 0) as number;
+      const d2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+      return `${d2(dInDecade)}.${d2(decade)}.${d2(year % 100)}`;
+    } catch {
       return '00.00.00';
     }
-
-    const yNTr = Math.trunc(res.y);
-    const dNTrr = Math.trunc(res.d);
-    const dpNTr = Math.trunc(dNTrr / 10);
-    const dNTr = dNTrr - (dpNTr * 10);
-
-    const yNT = `00${yNTr.toString()}`;
-    const dNT = `00${dNTr.toString()}`;
-    const dpNT = `00${dpNTr.toString()}`;
-
-    return `${dNT.substring(dNT.length - 2)}.${dpNT.substring(dpNT.length - 2)}.${yNT.substring(yNT.length - 2)}`;
-  }, [findClosestSmaller, initializeQuantumTimeArray]);
+  }, []);
 
   /**
    * Форматирование текущего времени
@@ -959,11 +863,12 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     const tbNT = new TextBlock('tbNT');
     tbNT.fontSizeInPixels = 34;
     tbNT.width = '200px';
-    tbNT.height = '34px';
+    tbNT.height = '44px';
     tbNT.color = '#CCCDCE';
     tbNT.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     tbNT.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     tbNT.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    tbNT.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
     tbNT.top = 40;
     gui.addControl(tbNT);
 
@@ -971,11 +876,12 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
     const tbTD = new TextBlock('tbTD');
     tbTD.fontSizeInPixels = 15;
     tbTD.width = '320px';
-    tbTD.height = '20px';
+    tbTD.height = '26px';
     tbTD.color = '#CCCDCE';
     tbTD.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     tbTD.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     tbTD.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    tbTD.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
     tbTD.top = 80;
     gui.addControl(tbTD);
 
@@ -1015,7 +921,10 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       statsEl: typeof document !== 'undefined' ? document.getElementById('stats') : null,
       tbSolstice,
       lastSolsticeMinute: 0,
-      isSolsticeComputing: false
+      isSolsticeComputing: false,
+      // NT scheduling
+      lastNTMinute: 0,
+      isNTComputing: false,
     };
 
     // ✅ CRITICAL - 60FPS RENDER LOOP with FPS tracking (Babylon.js 8 pattern)
@@ -1056,20 +965,36 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       const currentSecond = Math.floor(nowEpochMs / 1000) % 60;
       const currentMinute = Math.floor(nowEpochMs / 60000);
 
-      // Проверяем, изменилась ли секунда (обновляем время раз в секунду)
       if (!sceneStateRef.current.lastSecond || sceneStateRef.current.lastSecond !== currentSecond) {
         sceneStateRef.current.lastSecond = currentSecond;
-        // Обновляем Babylon GUI — без React state
-        // Construct Date only on second change to avoid per-frame allocations
         const nowDate = new Date(nowEpochMs);
         if (sceneStateRef.current.tbTD) sceneStateRef.current.tbTD.text = formatCurrentTime(nowDate);
-        if (sceneStateRef.current.tbNT) sceneStateRef.current.tbNT.text = calculateQuantumTime(nowDate);
+      }
+
+      // ✅ QUANTUM TIME LABEL — обновляем раз в минуту, расчёт вне кадра (легковесный)
+      if (sceneStateRef.current.tbNT && sceneStateRef.current.lastNTMinute !== currentMinute && !sceneStateRef.current.isNTComputing) {
+        sceneStateRef.current.lastNTMinute = currentMinute;
+        sceneStateRef.current.isNTComputing = true;
+        const snapshot = nowEpochMs;
+        const updateNT = () => {
+          try {
+            if (wasmModule && sceneStateRef.current.tbNT) {
+              sceneStateRef.current.tbNT.text = getQuantumTimeFromWASM(snapshot, wasmModule);
+            }
+          } finally {
+            sceneStateRef.current.isNTComputing = false;
+          }
+        };
+        if ((window as any).requestIdleCallback) {
+          (window as any).requestIdleCallback(updateNT);
+        } else {
+          setTimeout(updateNT, 0);
+        }
       }
 
       // ✅ SOLSTICE COUNTDOWN (astronomical) — обновляем раз в минуту, расчёт вне кадра
       if (sceneStateRef.current.tbSolstice && sceneStateRef.current.lastSolsticeMinute !== currentMinute && !sceneStateRef.current.isSolsticeComputing) {
         sceneStateRef.current.lastSolsticeMinute = currentMinute;
-        // Always schedule the updater; it will reuse cached JD and avoid heavy scan if possible
         sceneStateRef.current.isSolsticeComputing = true;
         const snapshot = nowEpochMs;
         if ((window as any).requestIdleCallback) {
@@ -1080,20 +1005,20 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       }
 
       // Debug: log sublunar coordinates once per minute to cross-check with external sources
-      if (sceneStateRef.current.lastSolsticeMinute === currentMinute && wasmModule) {
-        const jdNow = JULIAN_DAY_UNIX_EPOCH + nowEpochMs / 86400000.0;
-        const sub = computeSublunarLatLonDeg(jdNow, wasmModule);
-        if (sub) {
-          console.log(`🌙 Sublunar (deg): lat=${sub.latDeg.toFixed(3)} lonE=${sub.lonDegEast.toFixed(3)} (E+; W−)`);
-          // Also log from marker local vector to verify mapping chain
-          const sceneState = sceneStateRef.current;
-          if (sceneState.lunarZenithMarker) {
-            const local = sceneState.lunarZenithMarker.position;
-            const subLocal = localVecToLatLonDeg(local);
-            console.log(`🟢 MarkerLocal→LatLon: lat=${subLocal.latDeg.toFixed(3)} lonE=${subLocal.lonDegEast.toFixed(3)}`);
-          }
-        }
-      }
+      // if (sceneStateRef.current.lastSolsticeMinute === currentMinute && wasmModule) {
+      //   const jdNow = JULIAN_DAY_UNIX_EPOCH + nowEpochMs / 86400000.0;
+      //   const sub = computeSublunarLatLonDeg(jdNow, wasmModule);
+      //   if (sub) {
+      //     console.log(`🌙 Sublunar (deg): lat=${sub.latDeg.toFixed(3)} lonE=${sub.lonDegEast.toFixed(3)} (E+; W−)`);
+      //     // Also log from marker local vector to verify mapping chain
+      //     const sceneState = sceneStateRef.current;
+      //     if (sceneState.lunarZenithMarker) {
+      //       const local = sceneState.lunarZenithMarker.position;
+      //       const subLocal = localVecToLatLonDeg(local);
+      //       console.log(`🟢 MarkerLocal→LatLon: lat=${subLocal.latDeg.toFixed(3)} lonE=${subLocal.lonDegEast.toFixed(3)}`);
+      //     }
+      //   }
+      // }
 
       // ✅ Render scene (automatically clears with dark space background)
       scene.render();
@@ -1151,16 +1076,16 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
   }, []);
 
   // Debug helper: derive lat/lon (east-positive) from an Earth-local direction vector
-  const localVecToLatLonDeg = useCallback((v: Vector3): { latDeg: number; lonDegEast: number } => {
-    const r = Math.hypot(v.x, v.y, v.z) || 1;
-    const x = v.x / r, y = v.y / r, z = v.z / r;
-    const lat = Math.asin(y);
-    const theta = Math.atan2(z, x); // theta = (-lon) + π
-    let lonE = Math.PI - theta;     // lon = π − theta
-    lonE = ((lonE + Math.PI) % (2 * Math.PI)) - Math.PI;
-    const toDeg = (x: number) => x * 180 / Math.PI;
-    return { latDeg: toDeg(lat), lonDegEast: toDeg(lonE) };
-  }, []);
+  // const localVecToLatLonDeg = useCallback((v: Vector3): { latDeg: number; lonDegEast: number } => {
+  //   const r = Math.hypot(v.x, v.y, v.z) || 1;
+  //   const x = v.x / r, y = v.y / r, z = v.z / r;
+  //   const lat = Math.asin(y);
+  //   const theta = Math.atan2(z, x); // theta = (-lon) + π
+  //   let lonE = Math.PI - theta;     // lon = π − theta
+  //   lonE = ((lonE + Math.PI) % (2 * Math.PI)) - Math.PI;
+  //   const toDeg = (x: number) => x * 180 / Math.PI;
+  //   return { latDeg: toDeg(lat), lonDegEast: toDeg(lonE) };
+  // }, []);
 
   // ✅ REAL-TIME 60FPS: Update celestial positions directly from WASM every frame
   const updateCelestialPositionsRealtime = useCallback((wasmModule: WASMModule, currentTimeMs: number): void => {
@@ -1395,13 +1320,18 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
         const mxAU = buf[3]!; const myAU = buf[4]!; const mzAU = buf[5]!;
         const rUnits = Math.hypot(mxAU, myAU, mzAU) * MOON_UNITS_PER_AU;
         const moonMesh = sceneState.celestialMeshes.get('moon');
-        // Compute sublunar lat/lon from RA/Dec&AST once and reuse for both marker and moon direction
+        // Compute sublunar lat/lon once per frame and reuse
         const sub = computeSublunarLatLonDeg(julianDay, wasmModule);
-        if (moonMesh && sub && sceneState.earthPivot?.rotationQuaternion) {
-          const latL = sub.latDeg * Math.PI / 180;
-          const lonL = sub.lonDegEast * Math.PI / 180; // east-positive
-          const phiL = (Math.PI / 2) - latL;
-          const thetaL = (-lonL) + Math.PI;
+        let latRad: number | null = null;
+        let lonRad: number | null = null;
+        if (sub) {
+          latRad = sub.latDeg * Math.PI / 180;
+          lonRad = sub.lonDegEast * Math.PI / 180; // east-positive
+        }
+
+        if (moonMesh && latRad !== null && lonRad !== null && sceneState.earthPivot?.rotationQuaternion) {
+          const phiL = (Math.PI / 2) - latRad;
+          const thetaL = (-lonRad) + Math.PI;
           const sinPhiL = Math.sin(phiL);
           // Earth-local unit direction toward Moon
           const lx = sinPhiL * Math.cos(thetaL);
@@ -1423,21 +1353,16 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
           // Do not rotate moonPivot; keep lunar vector inertial
         }
 
-        // ✅ Compute and place sublunar (lunar zenith) marker via same lat/lon mapping
-        if (sceneState.lunarZenithMarker && sceneState.earthPivot) {
+        // ✅ Place sublunar (lunar zenith) marker using the same sublunar coords
+        if (sceneState.lunarZenithMarker && sceneState.earthPivot && latRad !== null && lonRad !== null) {
           const r = CELESTIAL_BODIES.earth!.radius * 0.5;
-          const sub2 = computeSublunarLatLonDeg(julianDay, wasmModule);
-          if (sub2) {
-            const latL2 = sub2.latDeg * Math.PI / 180;
-            const lonL2 = sub2.lonDegEast * Math.PI / 180; // east-positive
-            const phiL2 = (Math.PI / 2) - latL2;
-            const thetaL2 = (-lonL2) + Math.PI;
-            const sinPhiL2 = Math.sin(phiL2);
-            const xL2 = r * sinPhiL2 * Math.cos(thetaL2);
-            const zL2 = r * sinPhiL2 * Math.sin(thetaL2);
-            const yL2 = r * Math.cos(phiL2);
-            sceneState.lunarZenithMarker.position.set(xL2, yL2, zL2);
-          }
+          const phiL2 = (Math.PI / 2) - latRad;
+          const thetaL2 = (-lonRad) + Math.PI;
+          const sinPhiL2 = Math.sin(phiL2);
+          const xL2 = r * sinPhiL2 * Math.cos(thetaL2);
+          const zL2 = r * sinPhiL2 * Math.sin(thetaL2);
+          const yL2 = r * Math.cos(phiL2);
+          sceneState.lunarZenithMarker.position.set(xL2, yL2, zL2);
         }
       }
 
@@ -1524,15 +1449,6 @@ const BabylonScene: React.FC<BabylonSceneProps> = ({ wasmModule }) => {
       }
     };
   }, [initializeBabylonScene]);
-
-  // ✅ QUANTUM TIME INITIALIZATION - инициализируем квантовое время при старте
-  useEffect(() => {
-    console.log('🌌 Initializing quantum time system...');
-    initializeQuantumTimeArray();
-
-    // НЕ СОЗДАЕМ React state! Только инициализируем массив
-    // БЕЗ setTimeDisplay() и БЕЗ onTimeUpdate() чтобы избежать ререндера
-  }, [initializeQuantumTimeArray]);
 
   // ✅ Self-managed canvas
   return (

@@ -53,6 +53,11 @@ export interface WASMModule {
   readonly next_winter_solstice_from: (julianDayUtcStart: number) => number;
   readonly get_mean_obliquity: (julianDay: number) => number;
   readonly get_apparent_sidereal_time: (julianDay: number) => number;
+  // NT (Quantum Time)
+  readonly get_quantum_time_components: (epochMs: number, timezoneOffsetMinutes: number) => number;
+  // Optional: timescale overrides for leap seconds (forward-compatible)
+  readonly set_tai_minus_utc_override?: (seconds: number) => void;
+  readonly clear_tai_minus_utc_override?: () => void;
 }
 
 // ✅ CORRECT - Performance monitoring for WASM operations
@@ -106,6 +111,9 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       const get_version_fn = (wrapper as unknown as { get_version?: () => string }).get_version;
       const get_mean_obliquity_raw = (wrapper as unknown as { get_mean_obliquity?: (jd: number) => number }).get_mean_obliquity;
       const get_apparent_sidereal_time_raw = (wrapper as unknown as { get_apparent_sidereal_time?: (jd: number) => number }).get_apparent_sidereal_time;
+      const get_quantum_time_components_raw = (wrapper as unknown as { get_quantum_time_components?: (ms: number, tzmin: number) => number }).get_quantum_time_components;
+      const set_tai_minus_utc_override_raw = (wrapper as unknown as { set_tai_minus_utc_override?: (s: number) => void }).set_tai_minus_utc_override;
+      const clear_tai_minus_utc_override_raw = (wrapper as unknown as { clear_tai_minus_utc_override?: () => void }).clear_tai_minus_utc_override;
       const memory = wasmNs.memory;
 
       if (!memory) throw new Error('WASM memory export missing');
@@ -114,6 +122,7 @@ export const initializeWASM = async (): Promise<WASMModule> => {
       if (typeof next_winter_solstice_from_raw !== 'function') throw new Error('WASM export next_winter_solstice_from missing');
       if (typeof get_mean_obliquity_raw !== 'function') throw new Error('WASM export get_mean_obliquity missing');
       if (typeof get_apparent_sidereal_time_raw !== 'function') throw new Error('WASM export get_apparent_sidereal_time missing');
+      if (typeof get_quantum_time_components_raw !== 'function') throw new Error('WASM export get_quantum_time_components missing');
 
       // Smoke test
             const testJD = 2451545.0; // J2000 epoch
@@ -150,6 +159,12 @@ export const initializeWASM = async (): Promise<WASMModule> => {
           if (!Number.isFinite(jd)) throw new Error(`Invalid Julian Day: ${jd}`);
           return get_apparent_sidereal_time_raw(jd);
         },
+        get_quantum_time_components: (ms: number, tzmin: number) => {
+          if (!Number.isFinite(ms) || !Number.isFinite(tzmin)) throw new Error('Invalid inputs to get_quantum_time_components');
+          return get_quantum_time_components_raw(ms, tzmin);
+        },
+        set_tai_minus_utc_override: typeof set_tai_minus_utc_override_raw === 'function' ? (s: number) => set_tai_minus_utc_override_raw(s) : undefined,
+        clear_tai_minus_utc_override: typeof clear_tai_minus_utc_override_raw === 'function' ? () => clear_tai_minus_utc_override_raw() : undefined,
       };
 
       globalWasmModule = module;
